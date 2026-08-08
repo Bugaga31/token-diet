@@ -148,20 +148,20 @@ class SelfVerifier:
 
 # ── Reasoning compression ─────────────────────────────────────────────────────
 
-# Patterns to strip from verbose reasoning
+# Patterns to strip from verbose reasoning (sentence-level only, preserve facts)
 _COMPRESS_PATTERNS = [
-    # Thinking markers
-    (re.compile(r"\bLet me think (?:about this|step by step|carefully)\.?", re.I), ""),
-    (re.compile(r"\bI (?:think|believe|would say|'d say|will|would|can|could|might|may) (?:\w+ ){0,3}(?:that )?", re.I), ""),
-    (re.compile(r"\bIt (?:seems|appears|is (?:clear|evident|obvious|likely|possible|important|worth noting|interesting))(?: to me)? that ", re.I), ""),
-    (re.compile(r"\b(?:Based on|According to|Looking at|From) (?:the |my |our )?(?:analysis|data|records|documents|information|context|above)[,:]?\s*", re.I), ""),
-    # Filler transitions
-    (re.compile(r"\b(?:First(?:ly)?|Second(?:ly)?|Third(?:ly)?|Finally|In conclusion|To summarize|In summary|To conclude),?\s*", re.I), ""),
-    (re.compile(r"\b(?:Furthermore|Moreover|Additionally|In addition|Also|However|Nevertheless|Nonetheless|Therefore|Thus|Hence|Consequently|As a result),?\s*", re.I), ""),
-    # Ceremonial
-    (re.compile(r"\b(?:I hope this|Let me know|Feel free|Please let me|Don't hesitate)[^.!?]*[.!?]", re.I), ""),
-    # Repetitive phrases
-    (re.compile(r"((?:the|a|an) (?:aforementioned|above-mentioned|said|same) (?:policy|rule|procedure|number|value|amount|result|answer|data|information))\s*", re.I), r"\1 "),
+    # Standalone thinking sentences (only when they're the whole sentence)
+    (re.compile(r"^Let me think (?:about this|step by step|carefully)\.?\s*", re.I | re.M), ""),
+    # Introductory phrases at sentence start (keep the content after comma)
+    (re.compile(r"^(?:Based on|According to|Looking at|From) (?:the |my |our )?(?:analysis|data|records|documents|information|context|above)[,:]\s*", re.I | re.M), ""),
+    # Filler transitions at sentence start
+    (re.compile(r"^(?:First(?:ly)?|Second(?:ly)?|Third(?:ly)?|Finally|In conclusion|To summarize|In summary|To conclude),?\s*", re.I | re.M), ""),
+    (re.compile(r"^(?:Furthermore|Moreover|Additionally|In addition|Also|However|Nevertheless|Nonetheless|Therefore|Thus|Hence|Consequently|As a result),?\s*", re.I | re.M), ""),
+    # Politeness hedges (only standalone, not when directly before content)
+    (re.compile(r"\bI (?:think|believe|would say|'d say) (?:that )?", re.I), ""),
+    (re.compile(r"\bIt (?:seems|appears) (?:to me )?(?:that )?", re.I), ""),
+    # Ceremonial closing sentences (whole sentence only)
+    (re.compile(r"(?:I hope this|Let me know|Feel free|Please let me|Don't hesitate)[^.!?]*[.!?]\s*", re.I), ""),
 ]
 
 

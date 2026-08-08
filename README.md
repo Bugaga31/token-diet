@@ -1,8 +1,8 @@
-# token-diet v2.1.0
+# token-diet v2.2.0 🌍 Green Edition
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-153%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-193%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 [![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
@@ -202,6 +202,23 @@ Human Impact ($946/year saved with token-diet)
 
 > Чем меньше люди тратят на нейронки — тем больше у них остаётся на мороженое,
 > парк с семьёй, книги, кофе с друзьями. На то, на что раньше не хватало времени.
+
+## Use with anymodel.org — double the savings
+
+token-diet compresses prompts BEFORE they reach the API. Services like
+[anymodel.org](https://anymodel.org) provide models at wholesale prices
+($0.10/M flat rate vs $35/M vendor pricing). **Combine them**:
+
+```
+your prompt → token-diet (46.6% compression) → anymodel ($0.10/M)
+                                         = ~73% total savings vs direct vendor
+```
+
+| Layer | Savings |
+|---|---|
+| Vendor → anymodel | ~97% (volume pricing) |
+| anymodel + token-diet | +46.6% (token compression) |
+| **Combined vs vendor direct** | **~98.5% cheaper** |
 
 ## License
 
