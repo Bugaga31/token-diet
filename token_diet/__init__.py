@@ -98,6 +98,13 @@ from .prompt_distiller import (
     SectionStats,
 )
 from .question_normalizer import normalize_question
+from .sherlock_reasoner import (
+    SelfVerifier,
+    SherlockReasoner,
+    VerifierResult,
+    compress_reasoning,
+    sherlock_system_prompt,
+)
 from .smart_multiplier import (
     MultiplierResult,
     Scenario,
@@ -151,6 +158,8 @@ __all__ = [
     "SelectionEntry",
     "SemanticCache",
     "SmartMultiplier",
+    "SelfVerifier",
+    "SherlockReasoner",
     "TaskMetrics",
     "TokenMeter",
     "TranslationCache",
@@ -184,6 +193,7 @@ __all__ = [
     "prepare_request",
     "project_fields",
     "reduce_output",
+    "sherlock_system_prompt",
     "structpack_roundtrip_safe",
     "translation_safe",
     "unpack_records",

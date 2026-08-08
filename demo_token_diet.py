@@ -57,6 +57,7 @@ from token_diet.optimization_runner import (
 from token_diet.question_normalizer import normalize_question
 from token_diet.few_shot_selector import FewShotSelector, Example
 from token_diet.prompt_distiller import PromptDistiller
+from token_diet.sherlock_reasoner import SherlockReasoner, compress_reasoning
 from token_diet.smart_multiplier import SmartMultiplier, compare_llm_quality
 from token_diet.tool_schema_compressor import guarded_tool_schemas
 
@@ -425,6 +426,34 @@ def demo_distiller_selector():
         print(f"  -> Q: {e.input} | A: {e.output}")
 
 
+def demo_sherlock():
+    print("\n" + "-" * 70)
+    print("Sherlock Reasoner — smarter at lower cost")
+    print("-" * 70)
+    sr = SherlockReasoner()
+
+    # Show enhanced prompt
+    base = "You are a financial analyst."
+    enhanced = sr.enhance(base)
+    print(f"  System prompt: {count_tokens(base)}t -> {count_tokens(enhanced)}t (+{count_tokens(enhanced)-count_tokens(base)}t template, cached)")
+
+    # Compress verbose answer
+    verbose = (
+        "Let me think about this step by step. Based on the provided data, "
+        "I can see that artem has 5 blocked orders. The refund policy states "
+        "that returns are possible within 14 days with a 15% restocking fee. "
+        "In conclusion, the user should file an RMA. I hope this helps!"
+    )
+    compact, before, after = sr.compress(verbose)
+    print(f"  Before ({before}t): {verbose[:80]}...")
+    print(f"  After  ({after}t): {compact}")
+    print(f"  Saved: {before-after}t ({100*(before-after)//max(1,before)}%)")
+
+    # Self-verify
+    check = sr.check("How many blocked orders?", compact)
+    print(f"  Verifier: score={check.score:.2f}, {'CLEAN' if check.is_clean else 'ISSUES FOUND'}")
+
+
 def demo_smart_multiplier():
     print("\n" + "─" * 70)
     print("Smart Multiplier — 5× intelligence, lower cost")
@@ -500,6 +529,9 @@ def main() -> int:
 
     # Step 8: Prompt Distiller + Few-shot Selector
     demo_distiller_selector()
+
+    # Step 9: Sherlock Reasoner — smarter at same/lower cost
+    demo_sherlock()
 
     print("=" * 70)
     return 0
