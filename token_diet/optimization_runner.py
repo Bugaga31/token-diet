@@ -411,20 +411,6 @@ def _prose_proposal(profile: RequestProfile) -> OptimizationProposal:
         applicable=after_t < before_t,
         details="ceremony/filler phrases removed from history prose",
     )
-    section = "history"
-    if not profile.history_text:
-        return OptimizationProposal(name="compress_prose", target_section=section, applicable=False)
-    before = profile.counter(profile.history_text)
-    compressed, before_t, after_t = compress_with_routing(profile.history_text)
-    return OptimizationProposal(
-        name="compress_prose",
-        target_section=section,
-        tokens_before=before_t,
-        tokens_after=after_t,
-        risk="medium",
-        applicable=after_t < before_t,
-        details="ceremony/filler phrases removed from history prose",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +513,32 @@ class OptimizationRunner:
         optimized_answer: str = "",
         baseline_similarity: float | None = None,
     ) -> OptimizationReport:
+        # ── Cache check: identical question → 0 tokens ─────────────────
+        cache_hit = False
+        if self.cache is not None and profile.question:
+            cached = self.cache.get(profile.question)
+            if cached is not None:
+                cache_hit = True
+                metrics = profile.measure()
+                baseline_tokens = sum(s.tokens for s in metrics.sections)
+                return OptimizationReport(
+                    task_id=profile.task_id,
+                    baseline_tokens=baseline_tokens,
+                    optimized_tokens=0,  # cache hit = output-only cost
+                    proposals=[
+                        OptimizationProposal(
+                            name="semantic_cache",
+                            target_section="output",
+                            tokens_before=baseline_tokens,
+                            tokens_after=0,
+                            risk="none",
+                            applicable=True,
+                            details="CACHE HIT — answer served from cache for 0 tokens",
+                        )
+                    ],
+                    rejected=[],
+                )
+
         metrics = profile.measure()
         proposals = self.propose(profile)
         baseline_tokens = sum(s.tokens for s in metrics.sections)
@@ -557,6 +569,10 @@ class OptimizationRunner:
                 baseline_answer=baseline_answer,
             )
             gate_result = self.gate.verify(case, optimized_answer, similarity=baseline_similarity)
+
+        # ── Cache population: remember answer for next time ────────────
+        if self.cache is not None and optimized_answer and not cache_hit:
+            self.cache.put(profile.question, optimized_answer)
 
         breakpoints = self.cache_analyzer.analyze(profile.system_prompt + canonical_json(profile.tools or {}))
 

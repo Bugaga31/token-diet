@@ -54,6 +54,10 @@ from .core import (
     structpack_roundtrip_safe,
     unpack_records,
 )
+from .few_shot_selector import (
+    Example,
+    FewShotSelector,
+)
 from .equivalence_gate import (
     CriticalFact,
     EquivalenceGate,
@@ -89,6 +93,10 @@ from .optimization_runner import (
     SectionMetrics,
     TaskMetrics,
 )
+from .prompt_distiller import (
+    PromptDistiller,
+    SectionStats,
+)
 from .question_normalizer import normalize_question
 from .smart_multiplier import (
     MultiplierResult,
@@ -120,6 +128,8 @@ __all__ = [
     "CriticalFact",
     "EquivalenceGate",
     "EventStore",
+    "Example",
+    "FewShotSelector",
     "GateResult",
     "MemoryEvent",
     "IntelligenceBooster",
@@ -132,10 +142,12 @@ __all__ = [
     "PROVIDER_PRICES",
     "PriceTable",
     "PromptBuilder",
+    "PromptDistiller",
     "RegressionCase",
     "RequestProfile",
     "Scenario",
     "SectionMetrics",
+    "SectionStats",
     "SelectionEntry",
     "SemanticCache",
     "SmartMultiplier",

@@ -55,6 +55,8 @@ from token_diet.optimization_runner import (
     RequestProfile,
 )
 from token_diet.question_normalizer import normalize_question
+from token_diet.few_shot_selector import FewShotSelector, Example
+from token_diet.prompt_distiller import PromptDistiller
 from token_diet.smart_multiplier import SmartMultiplier, compare_llm_quality
 from token_diet.tool_schema_compressor import guarded_tool_schemas
 
@@ -384,6 +386,45 @@ def demo_cache_breakpoints():
     print(f"  fingerprint: {__import__('token_diet.cache_breakpoints', fromlist=['fingerprint']).fingerprint(bad_static)}")
 
 
+def demo_distiller_selector():
+    print("\n" + "-" * 70)
+    print("Prompt Distiller + Few-shot Selector")
+    print("-" * 70)
+
+    distiller = PromptDistiller(min_observations=3)
+    system = (
+        "You are a financial analyst. Always verify numbers.\n\n"
+        "Today is 2026-08-08. The current time is 14:30 UTC.\n\n"
+        "Refund policy: 14 days, 15% fee, RMA required.\n\n"
+        "Compliance: T+1 reporting, 0.25% penalty.\n\n"
+        "Use polite language and emojis where appropriate."
+    )
+    for _ in range(5):
+        distiller.observe(system, "Refund in 14 days with 15% fee. Verify numbers for compliance.")
+    distilled, dropped, before, after = distiller.distill(system)
+    print(f"  Before: {before}t | After: {after}t ({100*(before-after)//max(1,before)}% saved)")
+    if dropped:
+        print(f"  Dropped: {dropped[:80]}...")
+    print(f"  Stats: {distiller.stats()}")
+
+    bank = [
+        Example("Refund my order", "14-day policy, 15% fee.", ["refund"]),
+        Example("Blocked trades rules", "T+1 reporting, 0.25% penalty.", ["compliance"]),
+        Example("Password reset", "Settings > Security > Reset.", ["account"]),
+        Example("Trading hours", "MOEX 10:00-19:00 MSK.", ["trading"]),
+        Example("Cancel subscription", "Billing page > Cancel.", ["billing"]),
+    ]
+    sel = FewShotSelector(bank=bank, max_examples=2)
+    query = "How do refunds work for blocked orders?"
+    selected = sel.select(query)
+    all_tokens = sum(count_tokens(e.input + e.output) for e in bank)
+    sel_tokens = sum(count_tokens(e.input + e.output) for e in selected)
+    print(f"\n  Few-shot: {len(bank)} examples ({all_tokens}t) -> {len(selected)} ({sel_tokens}t, {100*(all_tokens-sel_tokens)//max(1,all_tokens)}% saved)")
+    print(f"  Query: {query}")
+    for e in selected:
+        print(f"  -> Q: {e.input} | A: {e.output}")
+
+
 def demo_smart_multiplier():
     print("\n" + "─" * 70)
     print("Smart Multiplier — 5× intelligence, lower cost")
@@ -456,6 +497,9 @@ def main() -> int:
 
     # Step 7: Smart Multiplier — 5× intelligence at lower cost
     demo_smart_multiplier()
+
+    # Step 8: Prompt Distiller + Few-shot Selector
+    demo_distiller_selector()
 
     print("=" * 70)
     return 0
