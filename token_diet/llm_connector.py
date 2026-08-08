@@ -1,8 +1,12 @@
 """LLM Connector — real API calls with actual token measurement.
 
-Supports Anthropic and OpenAI APIs. When no API key is available,
+Supports Anthropic, OpenAI, and DeepSeek APIs. When no API key is available,
 falls back to deterministic simulation using count_tokens and the
 built-in deterministic_judge for quality comparison.
+
+DeepSeek pricing (per 1M tokens):
+  deepseek-v4-flash: $0.14 input (cache miss), $0.14 input (cache hit), $0.28 output
+  deepseek-v4-pro:   $0.435 input, $0.87 output
 
 Usage:
     conn = LLMConnector.from_env()  # auto-detect available API keys
@@ -25,7 +29,14 @@ except ImportError:
     from core import count_tokens, PriceTable, Usage  # type: ignore[no-redef]
     from loss_router import reduce_output  # type: ignore[no-redef]
 
-PRICE_TABLE = PriceTable(3.0, 3.75, 0.30, 15.0)
+# Default price tables per provider
+PROVIDER_PRICES = {
+    "openai": PriceTable(3.0, 3.75, 0.30, 15.0),
+    "anthropic": PriceTable(3.0, 3.75, 0.30, 15.0),
+    "deepseek": PriceTable(0.14, 0.14, 0.14, 0.28),  # flash pricing
+    "deepseek-pro": PriceTable(0.435, 0.435, 0.435, 0.87),
+    "simulation": PriceTable(3.0, 3.75, 0.30, 15.0),
+}
 
 
 @dataclass
@@ -57,16 +68,18 @@ class LLMConnector:
         model: str | None = None,
         api_key: str | None = None,
         provider: str | None = None,
-        prices: PriceTable = PRICE_TABLE,
+        prices: PriceTable | None = None,
     ):
         self.provider = provider or self._detect_provider(api_key)
         self.api_key = api_key or self._detect_key(self.provider)
         self.model = model or {
             "anthropic": "claude-3-5-haiku-latest",
             "openai": "gpt-4o-mini",
+            "deepseek": "deepseek-v4-flash",
+            "deepseek-pro": "deepseek-v4-pro",
             "simulation": "gpt-4o-mini-sim",
-        }.get(self.provider, "gpt-4o-mini-sim")
-        self.prices = prices
+        }.get(self.provider, "deepseek-v4-flash")
+        self.prices = prices or PROVIDER_PRICES.get(self.provider, PROVIDER_PRICES["simulation"])
 
     @staticmethod
     def from_env() -> LLMConnector:
@@ -74,15 +87,20 @@ class LLMConnector:
 
     @staticmethod
     def _detect_provider(api_key: str | None) -> str:
-        key = api_key or os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY") or ""
+        key = api_key or os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
+        if os.getenv("DEEPSEEK_API_KEY") or (api_key and api_key.startswith("sk-") and not api_key.startswith("sk-ant-")):
+            # Generic sk- keys default to deepseek since it's cheapest
+            return "deepseek"
         if os.getenv("ANTHROPIC_API_KEY") or (api_key and key.startswith("sk-ant-")):
             return "anthropic"
-        if os.getenv("OPENAI_API_KEY") or (api_key and key.startswith("sk-")):
+        if os.getenv("OPENAI_API_KEY"):
             return "openai"
         return "simulation"
 
     @staticmethod
     def _detect_key(provider: str) -> str:
+        if provider == "deepseek" or provider == "deepseek-pro":
+            return os.getenv("DEEPSEEK_API_KEY", "")
         if provider == "anthropic":
             return os.getenv("ANTHROPIC_API_KEY", "")
         if provider == "openai":
@@ -101,8 +119,8 @@ class LLMConnector:
                 return self._simulate(question, system_prompt, tools, max_tokens)
             if self.provider == "anthropic":
                 return self._ask_anthropic(question, system_prompt, tools, max_tokens)
-            if self.provider == "openai":
-                return self._ask_openai(question, system_prompt, tools, max_tokens)
+            if self.provider in ("openai", "deepseek", "deepseek-pro"):
+                return self._ask_openai_compat(question, system_prompt, tools, max_tokens)
             return self._simulate(question, system_prompt, tools, max_tokens)
         except Exception as exc:
             # Graceful fallback: API error → simulation with apology
@@ -131,9 +149,9 @@ class LLMConnector:
             real=False,
         )
 
-    # ── OpenAI (openai package) ─────────────────────────────────────────
+    # ── OpenAI / DeepSeek (both OpenAI-compatible) ─────────────────────
 
-    def _ask_openai(
+    def _ask_openai_compat(
         self, question: str, system: str, tools: dict | None, max_tokens: int
     ) -> LLMResult:
         try:
@@ -141,7 +159,12 @@ class LLMConnector:
         except ImportError as exc:
             raise RuntimeError("pip install openai") from exc
 
-        client = openai.OpenAI(api_key=self.api_key)
+        # DeepSeek uses its own base URL; OpenAI uses default
+        base_url = None
+        if self.provider in ("deepseek", "deepseek-pro"):
+            base_url = "https://api.deepseek.com"
+
+        client = openai.OpenAI(api_key=self.api_key, base_url=base_url) if base_url else openai.OpenAI(api_key=self.api_key)
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -157,7 +180,6 @@ class LLMConnector:
             cache_read_tokens=getattr(usage_data, "cache_read_input_tokens", 0) or 0,
             output_tokens=usage_data.completion_tokens,
         )
-        # Extract cache details from prompt_tokens_details if available
         details = getattr(usage_data, "prompt_tokens_details", None)
         if details is not None and hasattr(details, "cached_tokens"):
             cw = getattr(details, "cached_tokens", 0)

@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -73,7 +73,7 @@ from .json_compressor import compress_json, compress_tool_result as compress_too
 from .llm_connector import (
     LLMConnector,
     LLMResult,
-    PRICE_TABLE,
+    PROVIDER_PRICES,
 )
 from .loss_router import (
     compress_prose_aggressive,
@@ -129,7 +129,7 @@ __all__ = [
     "OptimizationProposal",
     "OptimizationReport",
     "OptimizationRunner",
-    "PRICE_TABLE",
+    "PROVIDER_PRICES",
     "PriceTable",
     "PromptBuilder",
     "RegressionCase",
