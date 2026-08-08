@@ -18,33 +18,38 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-try:
-    from .core import (
-        Usage,
-        PriceTable,
-        count_tokens,
-        guarded_records,
-        canonical_json,
-        deduplicate_chunks,
-        BlobStore,
-        structpack_roundtrip_safe,
-    )
+try:from .core import (
+    BlobStore,
+    PriceTable,
+    SemanticCache,
+    Usage,
+    canonical_json,
+    count_tokens,
+    deduplicate_chunks,
+    guarded_records,
+    structpack_roundtrip_safe,
+)
 except ImportError:  # standalone use
     from core import (  # type: ignore[no-redef]
-        Usage,
-        PriceTable,
-        count_tokens,
-        guarded_records,
-        canonical_json,
-        deduplicate_chunks,
         BlobStore,
+        PriceTable,
+        SemanticCache,
+        Usage,
+        canonical_json,
+        count_tokens,
+        deduplicate_chunks,
+        guarded_records,
         structpack_roundtrip_safe,
     )
 
 try:
     from .equivalence_gate import EquivalenceGate, GateResult, RegressionCase
+    from .tool_schema_compressor import guarded_tool_schemas
+    from .question_normalizer import normalize_question
 except ImportError:
     from equivalence_gate import EquivalenceGate, GateResult, RegressionCase  # type: ignore[no-redef]
+    from tool_schema_compressor import guarded_tool_schemas  # type: ignore[no-redef]
+    from question_normalizer import normalize_question  # type: ignore[no-redef]
 
 try:
     from .cache_breakpoints import CacheBreakpointAnalyzer
@@ -338,7 +343,74 @@ def _aggressive_prose_proposal(profile: RequestProfile) -> OptimizationProposal:
     )
 
 
+def _tool_schema_proposal(profile: RequestProfile) -> OptimizationProposal:
+    section = "tools"
+    if not profile.tools:
+        return OptimizationProposal(name="strip_tool_descriptions", target_section=section, applicable=False)
+    _compressed, before, after, applied = guarded_tool_schemas(profile.tools)
+    return OptimizationProposal(
+        name="strip_tool_descriptions",
+        target_section=section,
+        tokens_before=before,
+        tokens_after=after,
+        risk="none",
+        applicable=applied,
+        details=f"tool descriptions stripped; {before} → {after} tokens" if applied else "no descriptions to strip",
+    )
+
+
+def _question_normalizer_proposal(profile: RequestProfile) -> OptimizationProposal:
+    section = "question"
+    if not profile.question:
+        return OptimizationProposal(name="normalize_question", target_section=section, applicable=False)
+    normalized = normalize_question(profile.question)
+    if normalized == profile.question:
+        return OptimizationProposal(name="normalize_question", target_section=section, applicable=False, details="no filler detected")
+    before = profile.counter(profile.question)
+    after = profile.counter(normalized)
+    return OptimizationProposal(
+        name="normalize_question",
+        target_section=section,
+        tokens_before=before,
+        tokens_after=after,
+        risk="low",
+        applicable=after < before,
+        details=f"politeness filler stripped: {profile.question[:30]!r} → {normalized[:30]!r}",
+    )
+
+
+def _cache_hit_proposal(profile: RequestProfile, cache: SemanticCache | None) -> OptimizationProposal:
+    section = "output"
+    if cache is None:
+        return OptimizationProposal(name="semantic_cache", target_section=section, applicable=False, details="no cache configured")
+    if cache.get(profile.question):
+        return OptimizationProposal(
+            name="semantic_cache",
+            target_section=section,
+            tokens_before=profile.output_tokens,
+            tokens_after=0,
+            risk="none",
+            applicable=True,
+            details="cache HIT — answer served for 0 tokens",
+        )
+    return OptimizationProposal(name="semantic_cache", target_section=section, applicable=False, details="cache MISS")
+
+
 def _prose_proposal(profile: RequestProfile) -> OptimizationProposal:
+    section = "history"
+    if not profile.history_text:
+        return OptimizationProposal(name="compress_prose", target_section=section, applicable=False)
+    before = profile.counter(profile.history_text)
+    compressed, before_t, after_t = compress_with_routing(profile.history_text)
+    return OptimizationProposal(
+        name="compress_prose",
+        target_section=section,
+        tokens_before=before_t,
+        tokens_after=after_t,
+        risk="medium",
+        applicable=after_t < before_t,
+        details="ceremony/filler phrases removed from history prose",
+    )
     section = "history"
     if not profile.history_text:
         return OptimizationProposal(name="compress_prose", target_section=section, applicable=False)
@@ -368,13 +440,15 @@ class OptimizationRunner:
         prices: PriceTable,
         blobs: BlobStore | None = None,
         gate: EquivalenceGate | None = None,
+        cache: SemanticCache | None = None,
         max_proposals: int = 3,
-        max_sections_considered: int = 3,
+        max_sections_considered: int = 4,
         counter: Counter = count_tokens,
     ):
         self.prices = prices
         self.blobs = blobs or BlobStore()
         self.gate = gate
+        self.cache = cache
         self.max_proposals = max_proposals
         self.max_sections_considered = max_sections_considered
         self.counter = counter
@@ -407,6 +481,11 @@ class OptimizationRunner:
         if "history" in targets:
             candidates.append(_prose_proposal(profile))
             candidates.append(_aggressive_prose_proposal(profile))
+        if "tools" in targets:
+            candidates.append(_tool_schema_proposal(profile))
+        if "question" in targets:
+            candidates.append(_question_normalizer_proposal(profile))
+            candidates.append(_cache_hit_proposal(profile, self.cache))
 
         applicable = [p for p in candidates if p.applicable and p.savings_tokens > 0]
         rejected = [p for p in candidates if p not in applicable]

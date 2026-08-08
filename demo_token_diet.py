@@ -36,6 +36,7 @@ from token_diet.core import (
     ContextLedger,
     PriceTable,
     PromptBuilder,
+    SemanticCache,
     canonical_json,
     count_tokens,
     deduplicate_chunks,
@@ -53,6 +54,8 @@ from token_diet.optimization_runner import (
     OptimizationRunner,
     RequestProfile,
 )
+from token_diet.question_normalizer import normalize_question
+from token_diet.tool_schema_compressor import guarded_tool_schemas
 
 # ── prices (GPT-4o-mini-ish) ────────────────────────────────────────────────
 PRICES = PriceTable(
@@ -154,6 +157,24 @@ def demo_components() -> dict[str, tuple[int, int, str]]:
     reduced = reduce_output(ai_answer)
     after = count_tokens(reduced)
     rows["reduce_output"] = (before, after, "ceremony stripped")
+
+    # ── Tool schema compression ─────────────────────────────────────────
+    tools = {"functions": [
+        {"name": "search_orders", "description": "Search the order book for matching orders by ticker, side, and status. Returns a list of matching orders with amounts and timestamps.",
+         "parameters": {"type": "object", "properties": {"ticker": {"type": "string", "description": "Stock ticker symbol, e.g. SBER"}, "status": {"type": "string", "description": "Order status: active, blocked, or filled"}}, "required": ["ticker"]}},
+        {"name": "get_refund_policy", "description": "Retrieve the current refund policy document. Returns the full text of the policy including restocking fees and RMA requirements. This function should be called whenever a user asks about returns or refunds.",
+         "parameters": {"type": "object", "properties": {}, "required": []}},
+    ]}
+    before = count_tokens(canonical_json(tools))
+    _, _b, after, _applied = guarded_tool_schemas(tools)
+    rows["tool_schema"] = (before, after, "descriptions stripped" if after < before else "no descriptions")
+
+    # ── Question normalizer ────────────────────────────────────────────
+    verbose_q = "Can you please help me to summarise all blocked orders for artem and explain the refund policy?"
+    before = count_tokens(verbose_q)
+    normalized = normalize_question(verbose_q)
+    after = count_tokens(normalized)
+    rows["normalize_question"] = (before, after, f"{verbose_q[:25]!r} → {normalized[:25]!r}")
 
     # ── Translation (mock) ──────────────────────────────────────────────
     long_prose = "The refund policy requires customers to submit a return merchandise authorization form within fourteen calendar days of purchase. " * 4
