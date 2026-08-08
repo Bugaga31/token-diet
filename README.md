@@ -2,7 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-81%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-139%20passed-brightgreen.svg)]()
+[![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
+[![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 
 **The same information, fewer billed tokens.**
 
