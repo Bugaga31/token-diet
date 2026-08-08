@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "token-diet"
 version = "2.2.0"
-description = "LLM context compression, memory, caching and language routing — lossless, reversible, drop-in."
+description = "Track. Optimize. Achieve. — AI cost optimization for the planet and the people."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -26,7 +26,11 @@ classifiers = [
 Homepage = "https://github.com/Bugaga31/token-diet"
 Repository = "https://github.com/Bugaga31/token-diet"
 
+[project.scripts]
+token-diet = "token_diet.server:main"
+
 [project.optional-dependencies]
+server = ["fastapi", "uvicorn", "httpx"]
 tiktoken = ["tiktoken"]
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.4"]
 

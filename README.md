@@ -1,4 +1,6 @@
-# token-diet v2.2.0 🌍 Green Edition
+# 🌱 token-diet v2.2.0
+
+**Track. Optimize. Achieve.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
@@ -89,7 +91,11 @@ TOTAL                 2436 →  1301   46.6%  (1135 tokens)
 ## Quickstart
 
 ```bash
-pip install git+https://github.com/Bugaga31/token-diet.git
+pip install git+https://github.com/Bugaga31/token-diet.git[server]
+
+# Start the proxy server + live dashboard
+token-diet serve
+# → http://localhost:8080 — live counter: tokens, $, CO2, ice cream
 ```
 
 ```python
