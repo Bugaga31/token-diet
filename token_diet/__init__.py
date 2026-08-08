@@ -58,6 +58,16 @@ from .green_calculator import (
     GreenCalculator,
     GreenMetrics,
 )
+from .ast_json_compressor import compress_json_ast
+from .ml_compressor import compress_ml
+from .model_router import (
+    RouteSavings,
+    RouterConfig,
+    RoutingDecision,
+    estimate_mixed_savings,
+    route_and_estimate,
+    route_query,
+)
 from .few_shot_selector import (
     Example,
     FewShotSelector,
@@ -158,6 +168,9 @@ __all__ = [
     "PromptBuilder",
     "PromptDistiller",
     "RegressionCase",
+    "RouteSavings",
+    "RouterConfig",
+    "RoutingDecision",
     "RequestProfile",
     "Scenario",
     "SectionMetrics",
@@ -178,6 +191,8 @@ __all__ = [
     "choose_language",
     "compare_llm_quality",
     "compress_json",
+    "compress_json_ast",
+    "compress_ml",
     "compress_prose_aggressive",
     "compress_retrieved_context",
     "compress_tool_output",
@@ -185,6 +200,7 @@ __all__ = [
     "compress_with_routing",
     "cosine_similarity",
     "count_tokens",
+    "estimate_mixed_savings",
     "deduplicate_chunks",
     "deterministic_judge",
     "estimate_complexity",
@@ -200,6 +216,8 @@ __all__ = [
     "prepare_request",
     "project_fields",
     "reduce_output",
+    "route_and_estimate",
+    "route_query",
     "sherlock_system_prompt",
     "structpack_roundtrip_safe",
     "translation_safe",

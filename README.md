@@ -1,4 +1,4 @@
-# 🌱 token-diet v2.2.0
+# <img src="assets/logo.svg" alt="token-diet" height="40"> token-diet
 
 **Track. Optimize. Achieve.**
 
