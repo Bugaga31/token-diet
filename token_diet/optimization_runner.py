@@ -569,3 +569,73 @@ class OptimizationRunner:
             gate=gate_result,
             breakpoints=breakpoints,
         )
+
+    def run_multi_pass(
+        self,
+        profile: RequestProfile,
+        max_passes: int = 3,
+        min_improvement: int = 10,
+    ) -> OptimizationReport:
+        """Staged pipeline: structural pass, then content pass.
+
+        Each pass evaluates against the ORIGINAL profile but targets
+        different sections so savings never overlap.
+        """
+        # Pass 1: structural (structpack, dedupe, blobs)
+        structural = self.run(profile)
+        baseline = structural.baseline_tokens
+        applied_structural = [p for p in structural.proposals if p.applicable
+                              and p.name in {"structpack", "dedupe_chunks", "blob_reference"}]
+        structural_savings = sum(p.savings_tokens for p in applied_structural)
+
+        # Build content-optimized profile (records packed, docs deduped)
+        content_profile = self._apply_optimizations(profile, applied_structural)
+
+        # Pass 2: content (prose, tools, questions, output)
+        content = self.run(content_profile)
+        content_proposals = [p for p in content.proposals if p.name not in
+                             {"structpack", "dedupe_chunks", "blob_reference"}]
+        content_savings = sum(p.savings_tokens for p in content_proposals if p.applicable)
+
+        total_savings = structural_savings + content_savings
+        all_proposals = applied_structural + content_proposals
+        all_rejected = structural.rejected + content.rejected
+
+        return OptimizationReport(
+            task_id=profile.task_id,
+            baseline_tokens=baseline,
+            optimized_tokens=baseline - min(total_savings, baseline - 1),
+            proposals=all_proposals,
+            rejected=all_rejected,
+            gate=structural.gate or content.gate,
+            breakpoints=structural.breakpoints + content.breakpoints,
+        )
+
+    def _apply_optimizations(
+        self, profile: RequestProfile, proposals: list[OptimizationProposal]
+    ) -> RequestProfile:
+        """Build a new profile with de-structural optimizations applied."""
+        new = RequestProfile(
+            task_id=profile.task_id,
+            system_prompt=profile.system_prompt,
+            tools=profile.tools,
+            history_text=profile.history_text,
+            records=profile.records,  # packed elsewhere
+            documents=list(profile.documents),
+            question=profile.question,
+            output_tokens=profile.output_tokens,
+            counter=profile.counter,
+        )
+        for p in proposals:
+            if p.name == "dedupe_chunks" and profile.documents:
+                deduped, _ = deduplicate_chunks(profile.documents)
+                new.documents = deduped
+            elif p.name == "compress_prose_aggressive" and profile.history_text:
+                new.history_text = compress_prose_aggressive(profile.history_text)
+            elif p.name == "compress_prose" and profile.history_text:
+                compressed, _, _ = compress_with_routing(profile.history_text)
+                new.history_text = compressed
+            elif p.name == "strip_tool_descriptions" and profile.tools:
+                compressed, _, _, _ = guarded_tool_schemas(profile.tools)
+                new.tools = compressed
+        return new
