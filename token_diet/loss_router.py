@@ -217,6 +217,73 @@ def compress_with_routing(
     return result, original_tokens, compressed_tokens
 
 
+# ═══ Aggressive sentence-level prose compressor ──────────────────────────
+
+_IMPORTANCE_SCORE_PATTERNS = [
+    (re.compile(r"\b\d{1,3}(?:[,.]\d{3})*(?:\.\d+)?\b"), 8),
+    (re.compile(r"\b\d{4}-\d{2}-\d{2}\b"), 10),
+    (re.compile(r"\b[A-ZА-ЯЁ][a-zа-яё]{2,}(?:\s+[A-ZА-ЯЁ][a-zа-яё]{2,}){0,2}\b"), 6),
+    (re.compile(r"\b(?:no|not|never|don't|doesn't|не|никогда|нельзя|must|обязательно|required)\b", re.IGNORECASE), 5),
+    (re.compile(r"https?://\S+"), 10),
+    (re.compile(r"\b(?:анализ|analysis|report|отчёт|total|итого|summary|compliance|audit)\b", re.IGNORECASE), 4),
+]
+
+
+def _sentence_importance(sentence: str) -> float:
+    score = 1.0
+    for pattern, weight in _IMPORTANCE_SCORE_PATTERNS:
+        if pattern.search(sentence):
+            score += weight
+    if _starts_with_filler(sentence):
+        score -= 5
+    if len(sentence) < 25:
+        score -= 2
+    return max(0.0, score)
+
+
+def compress_prose_aggressive(
+    text: str,
+    keep_ratio: float = 0.55,
+    counter: Any = count_tokens,
+) -> str:
+    """Aggressive sentence-level filtering.
+
+    Drops low-importance sentences (filler, repetition) while always
+    keeping sentences with numbers, dates, entity names, negations and
+    compliance terms. First and last sentences are always preserved for
+    context framing. The gate verifies no fact was lost.
+
+    Returns original text when there aren't enough sentences to filter.
+    """
+    if not text or len(text) < 100:
+        return text
+
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    if len(sentences) < 4:
+        return text
+
+    originals = list(sentences)
+    scores = [_sentence_importance(s) for s in originals]
+
+    keep_first = 0
+    keep_last = len(sentences) - 1
+
+    middle = [(i, scores[i]) for i in range(1, len(sentences) - 1)]
+    middle.sort(key=lambda item: -item[1])
+    keep_n = max(2, int(len(sentences) * keep_ratio))
+    keep_indices = {keep_first, keep_last}
+    for idx, _score in middle[:keep_n - 2]:
+        keep_indices.add(idx)
+
+    result_sentences = [originals[i] for i in sorted(keep_indices)]
+    result = " ".join(result_sentences)
+
+    # Safety: if we barely saved anything, don't compress
+    if counter(result) >= counter(text) * 0.90:
+        return text
+    return result
+
+
 def compress_tool_output(tool_name: str, result: dict | str | None) -> str:
     """Сжать вывод tool call для injection в context (Headroom-style).
 

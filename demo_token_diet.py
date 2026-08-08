@@ -48,7 +48,7 @@ from token_diet.equivalence_gate import (
     RegressionCase,
 )
 from token_diet.intelligence_booster import IntelligenceBooster
-from token_diet.loss_router import compress_with_routing, reduce_output
+from token_diet.loss_router import compress_prose_aggressive, compress_with_routing, reduce_output
 from token_diet.optimization_runner import (
     OptimizationRunner,
     RequestProfile,
@@ -141,6 +141,12 @@ def demo_components() -> dict[str, tuple[int, int, str]]:
     before = count_tokens(HISTORY)
     compressed, _b, after = compress_with_routing(HISTORY)
     rows["prose"] = (before, after, "filler phrases stripped")
+
+    # ── Aggressive prose ────────────────────────────────────────────────
+    before2 = count_tokens(HISTORY)
+    aggressive = compress_prose_aggressive(HISTORY)
+    after2 = count_tokens(aggressive)
+    rows["prose_aggressive"] = (before2, after2, "sentence-level filtering")
 
     # ── Output reduction ────────────────────────────────────────────────
     ai_answer = "Here is your summary:\n\nThe total is 42 blocked orders.\n\nLet me know if you need help.\n"
@@ -250,6 +256,37 @@ def demo_pipeline():
 # ═══════════════════════════════════════════════════════════════════════════════
 # 5. Intelligence Booster — reinvest savings into richer context
 # ═══════════════════════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5. Provider cache-hit simulation — how much the cache saves on repeat calls
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def demo_cache_simulator():
+    print("\n" + "─" * 70)
+    print("Provider cache-hit simulation")
+    print("─" * 70)
+
+    builder = PromptBuilder()
+    builder.add_static("You are a financial compliance analyst. Always verify numbers against source documents." * 4)
+    builder.add_static(canonical_json({"functions": [{"name": "search_orders"}]}))
+    builder.add_volatile(QUESTION)
+
+    static_tokens = sum(count_tokens(b["text"]) for b in builder.system_blocks())
+    volatile_tokens = count_tokens(builder.user_text())
+
+    prices = PRICES
+    for calls in [1, 3, 10, 50]:
+        # Call 1: cache_write (expensive) for static + input for volatile
+        cost1 = (static_tokens * prices.cache_write_per_million + volatile_tokens * prices.input_per_million) / 1_000_000
+        # Calls 2..N: cache_read (cheap!) for static + input for volatile
+        costN = cost1 + (calls - 1) * (static_tokens * prices.cache_read_per_million + volatile_tokens * prices.input_per_million) / 1_000_000
+        naive = calls * (static_tokens + volatile_tokens) * prices.input_per_million / 1_000_000
+        saved_pct = 100 * (naive - costN) / max(0.0001, naive)
+        print(f"  {calls:>3} calls: naive=${naive:.4f}  cached=${costN:.4f}  save {saved_pct:.0f}%")
+
+    print(f"  Cache-block: {static_tokens} static + {volatile_tokens} volatile tokens "
+          f"→ cache_read rate is {prices.cache_read_per_million} vs input {prices.input_per_million} (×10 cheaper)")
+
 
 def demo_intelligence_boost():
     print("\n" + "─" * 70)
@@ -370,7 +407,10 @@ def main() -> int:
         total_saved * PRICES.input_per_million / 1_000_000
     ))
     print("  Gate says: all critical facts preserved. Ship it.")
-    # Step 5: Intelligence booster — savings → richer context
+    # Step 5: Provider cache-hit simulation
+    demo_cache_simulator()
+
+    # Step 6: Intelligence booster — savings → richer context
     demo_intelligence_boost()
 
     print("=" * 70)

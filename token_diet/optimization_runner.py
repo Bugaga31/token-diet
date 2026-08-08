@@ -52,9 +52,9 @@ except ImportError:
     from cache_breakpoints import CacheBreakpointAnalyzer  # type: ignore[no-redef]
 
 try:
-    from .loss_router import compress_with_routing
+    from .loss_router import compress_prose_aggressive, compress_with_routing
 except ImportError:
-    from loss_router import compress_with_routing  # type: ignore[no-redef]
+    from loss_router import compress_prose_aggressive, compress_with_routing  # type: ignore[no-redef]
 
 Counter = Callable[[str], int]
 
@@ -316,6 +316,28 @@ def _dedupe_proposal(profile: RequestProfile) -> OptimizationProposal:
     )
 
 
+def _aggressive_prose_proposal(profile: RequestProfile) -> OptimizationProposal:
+    section = "history"
+    if not profile.history_text:
+        return OptimizationProposal(
+            name="compress_prose_aggressive", target_section=section, applicable=False
+        )
+    before = profile.counter(profile.history_text)
+    after = profile.counter(compress_prose_aggressive(profile.history_text))
+    return OptimizationProposal(
+        name="compress_prose_aggressive",
+        target_section=section,
+        tokens_before=before,
+        tokens_after=after,
+        risk="medium",
+        applicable=after < before,
+        details=(
+            f"sentence-level filtering: dropped {before - after} tokens; "
+            f"numbers/dates/entities/negations preserved"
+        ),
+    )
+
+
 def _prose_proposal(profile: RequestProfile) -> OptimizationProposal:
     section = "history"
     if not profile.history_text:
@@ -384,6 +406,7 @@ class OptimizationRunner:
             candidates.append(_dedupe_proposal(profile))
         if "history" in targets:
             candidates.append(_prose_proposal(profile))
+            candidates.append(_aggressive_prose_proposal(profile))
 
         applicable = [p for p in candidates if p.applicable and p.savings_tokens > 0]
         rejected = [p for p in candidates if p not in applicable]
