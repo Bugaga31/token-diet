@@ -30,7 +30,7 @@ if os.path.isdir(_TOKEN_DIET_DIR) and _TOKEN_DIET_DIR not in sys.path:
 
 # Import from the package — works after pip install or via sys.path.
 from token_diet.cache_breakpoints import CacheBreakpointAnalyzer
-from token_diet.context_memory import ContextManager, TranslationCache, choose_language
+from token_diet.context_memory import ContextManager, EventStore, TranslationCache, choose_language
 from token_diet.core import (
     BlobStore,
     ContextLedger,
@@ -47,6 +47,7 @@ from token_diet.equivalence_gate import (
     EquivalenceGate,
     RegressionCase,
 )
+from token_diet.intelligence_booster import IntelligenceBooster
 from token_diet.loss_router import compress_with_routing, reduce_output
 from token_diet.optimization_runner import (
     OptimizationRunner,
@@ -246,6 +247,70 @@ def demo_pipeline():
 # 5. Cache-breakpoint analysis
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5. Intelligence Booster — reinvest savings into richer context
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def demo_intelligence_boost():
+    print("\n" + "─" * 70)
+    print("Intelligence Booster — same budget, MORE context → better answer")
+    print("─" * 70)
+
+    blobs = BlobStore(preview_chars=100)
+    big_doc = "CRITICAL COMPLIANCE UPDATE Q3-2026: All blocked orders must be reviewed within 24 hours. Penalty for non-compliance is 0.5% of notional per day. " * 9
+    blobs.reference(big_doc, "compliance")
+
+    store = EventStore(path=None)
+    store.add("constraint", "Audit trail required for every blocked order", 0.95)
+    store.add("fact", "The compliance team runs checks at 09:00 UTC daily", 0.7)
+    store.add("permission", "Only senior traders can unblock orders", 0.85)
+
+    gate = EquivalenceGate(judge1=lambda b, a: (0.92, True), model_version="demo")
+    runner = OptimizationRunner(PRICES, blobs=blobs, gate=gate)
+    booster = IntelligenceBooster(
+        runner,
+        max_budget=3000,
+        extra_documents=[
+            ("compliance-v2", "COMPLIANCE UPDATE v2: Q4 2026 adds mandatory dual-approval for all blocked orders above $10,000. " * 9),
+            ("audit-log", "AUDIT CHECKLIST: 1) verify RMA status 2) check counterparty rating 3) confirm trade timestamp 4) validate settlement currency." * 4),
+        ],
+        event_store=store,
+        blobs=blobs,
+    )
+
+    profile = RequestProfile(
+        task_id="iq-boost",
+        system_prompt="You are a senior compliance analyst. Use all provided context.",
+        records=RECORDS,
+        documents=DOCUMENTS,
+        question=QUESTION,
+        output_tokens=150,
+    )
+
+    result = booster.boost(profile)
+    print(result.summary())
+
+    # Compare: plain profile vs boosted
+    plain_tokens = sum(count_tokens(t) for t in profile.section_texts().values())
+    plain_items = len(profile.documents) + (1 if profile.records else 0) + (1 if profile.history_text else 0)
+    plain_iq = plain_items / max(1, plain_tokens)
+
+    boosted = result.boosted_profile
+    boosted_tokens = sum(count_tokens(t) for t in boosted.section_texts().values())
+    boosted_items = (len(boosted.documents) + (1 if boosted.records else 0)
+                     + (1 if boosted.history_text else 0)
+                     + result.allocation.extra_memory_events
+                     + (1 if result.allocation.restored_blob_tokens > 0 else 0))
+    boosted_iq = boosted_items / max(1, boosted_tokens)
+
+    print(f"\n  Plain  profile: {plain_tokens} tokens, {plain_items} docs/items, "
+          f"IQ density: {plain_iq:.4f} items/token")
+    print(f"  Boosted profile: {boosted_tokens} tokens, {boosted_items} docs/items, "
+          f"IQ density: {boosted_iq:.4f} items/token")
+    print(f"  Gain: +{boosted_items - plain_items} items, "
+          f"IQ density ×{boosted_iq / max(0.0001, plain_iq):.1f}")
+
+
 def demo_cache_breakpoints():
     print("\n" + "─" * 70)
     print("CacheBreakpointAnalyzer")
@@ -305,6 +370,9 @@ def main() -> int:
         total_saved * PRICES.input_per_million / 1_000_000
     ))
     print("  Gate says: all critical facts preserved. Ship it.")
+    # Step 5: Intelligence booster — savings → richer context
+    demo_intelligence_boost()
+
     print("=" * 70)
     return 0
 
