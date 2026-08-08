@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -127,6 +127,25 @@ from .smart_multiplier import (
     compare_llm_quality,
 )
 from .tool_schema_compressor import guarded_tool_schemas
+from .agent_context import (
+    AgentContextResult,
+    CompressedTurn,
+    TurnKind,
+    classify_turn,
+    compress_agent_context,
+    render_compressed_context,
+)
+from .dynamic_ratio import (
+    ContentSegment,
+    DynamicRatioResult,
+    classify_and_compress,
+    dynamic_pipeline,
+)
+from .competitor_benchmark import (
+    CompetitorBenchmark,
+    BenchmarkEntry,
+    TEST_PROMPTS,
+)
 
 __all__ = [
     "__version__",
@@ -134,6 +153,8 @@ __all__ = [
     "SECTION_NAMES",
     "CALL_TYPES",
     "AdaptiveContext",
+    "AgentContextResult",
+    "BenchmarkEntry",
     "BlobCorruptionError",
     "BlobExpiredError",
     "BlobForbiddenError",
@@ -145,9 +166,13 @@ __all__ = [
     "BudgetGuard",
     "CacheBreakpointAnalyzer",
     "CacheReport",
+    "CompressedTurn",
+    "CompetitorBenchmark",
+    "ContentSegment",
     "ContextLedger",
     "ContextManager",
     "CriticalFact",
+    "DynamicRatioResult",
     "EquivalenceGate",
     "EventStore",
     "Example",
@@ -187,6 +212,9 @@ __all__ = [
     "Usage",
     "canonical_json",
     "check_critical_facts",
+    "classify_and_compress",
+    "classify_turn",
+    "compress_agent_context",
     "check_fact",
     "choose_language",
     "compare_llm_quality",
@@ -200,6 +228,7 @@ __all__ = [
     "compress_with_routing",
     "cosine_similarity",
     "count_tokens",
+    "dynamic_pipeline",
     "estimate_mixed_savings",
     "deduplicate_chunks",
     "deterministic_judge",
@@ -216,10 +245,13 @@ __all__ = [
     "prepare_request",
     "project_fields",
     "reduce_output",
+    "render_compressed_context",
     "route_and_estimate",
     "route_query",
     "sherlock_system_prompt",
     "structpack_roundtrip_safe",
+    "TEST_PROMPTS",
     "translation_safe",
+    "TurnKind",
     "unpack_records",
 ]
