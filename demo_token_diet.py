@@ -55,6 +55,7 @@ from token_diet.optimization_runner import (
     RequestProfile,
 )
 from token_diet.question_normalizer import normalize_question
+from token_diet.smart_multiplier import SmartMultiplier, compare_llm_quality
 from token_diet.tool_schema_compressor import guarded_tool_schemas
 
 # ── prices (GPT-4o-mini-ish) ────────────────────────────────────────────────
@@ -383,6 +384,25 @@ def demo_cache_breakpoints():
     print(f"  fingerprint: {__import__('token_diet.cache_breakpoints', fromlist=['fingerprint']).fingerprint(bad_static)}")
 
 
+def demo_smart_multiplier():
+    print("\n" + "─" * 70)
+    print("Smart Multiplier — 5× intelligence, lower cost")
+    print("─" * 70)
+    mult = SmartMultiplier(budget=4000)
+    result = mult.run()
+    print(f"  RAW: {result.scenarios[0].tokens}t, {result.scenarios[0].context_items} items, "
+          f"${result.scenarios[0].cost:.5f}")
+    print(f"  DIET: {result.scenarios[1].tokens}t, {result.scenarios[1].context_items} items, "
+          f"${result.scenarios[1].cost:.5f}")
+    print(f"  DIET×5: {result.scenarios[2].tokens}t, {result.scenarios[2].context_items} items, "
+          f"${result.scenarios[2].cost:.5f}")
+    budget_cost = result.budget * PRICES.input_per_million / 1_000_000
+    print(f"\n  → {result.multiplier_vs_raw:.1f}× more context in the same ${budget_cost:.4f} budget")
+    print(f"  → Gate: {result.scenarios[0].gate_pass}/{result.scenarios[1].gate_pass}/{result.scenarios[2].gate_pass}")
+    if result.scenarios[2].cost < result.scenarios[0].cost:
+        print(f"  → DIET×5 is CHEAPER than RAW by ${result.scenarios[0].cost - result.scenarios[2].cost:.5f}!")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -433,6 +453,9 @@ def main() -> int:
 
     # Step 6: Intelligence booster — savings → richer context
     demo_intelligence_boost()
+
+    # Step 7: Smart Multiplier — 5× intelligence at lower cost
+    demo_smart_multiplier()
 
     print("=" * 70)
     return 0

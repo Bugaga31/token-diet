@@ -64,8 +64,19 @@ from .equivalence_gate import (
     deterministic_judge,
     mean_ci,
 )
+from .intelligence_booster import (
+    BoostAllocation,
+    BoostedResult,
+    IntelligenceBooster,
+)
 from .json_compressor import compress_json, compress_tool_result as compress_tool_result_json
+from .llm_connector import (
+    LLMConnector,
+    LLMResult,
+    PRICE_TABLE,
+)
 from .loss_router import (
+    compress_prose_aggressive,
     compress_tool_output,
     compress_with_routing,
     reduce_output,
@@ -78,6 +89,14 @@ from .optimization_runner import (
     SectionMetrics,
     TaskMetrics,
 )
+from .question_normalizer import normalize_question
+from .smart_multiplier import (
+    MultiplierResult,
+    Scenario,
+    SmartMultiplier,
+    compare_llm_quality,
+)
+from .tool_schema_compressor import guarded_tool_schemas
 
 __all__ = [
     "__version__",
@@ -103,16 +122,23 @@ __all__ = [
     "EventStore",
     "GateResult",
     "MemoryEvent",
+    "IntelligenceBooster",
+    "LLMConnector",
+    "LLMResult",
+    "MultiplierResult",
     "OptimizationProposal",
     "OptimizationReport",
     "OptimizationRunner",
+    "PRICE_TABLE",
     "PriceTable",
     "PromptBuilder",
     "RegressionCase",
     "RequestProfile",
+    "Scenario",
     "SectionMetrics",
     "SelectionEntry",
     "SemanticCache",
+    "SmartMultiplier",
     "TaskMetrics",
     "TokenMeter",
     "TranslationCache",
@@ -122,7 +148,9 @@ __all__ = [
     "check_critical_facts",
     "check_fact",
     "choose_language",
+    "compare_llm_quality",
     "compress_json",
+    "compress_prose_aggressive",
     "compress_retrieved_context",
     "compress_tool_output",
     "compress_tool_result_json",
@@ -135,9 +163,11 @@ __all__ = [
     "extract_events",
     "fingerprint",
     "guarded_records",
+    "guarded_tool_schemas",
     "hash_text",
     "mean_ci",
     "never_translate",
+    "normalize_question",
     "pack_records",
     "prepare_request",
     "project_fields",
