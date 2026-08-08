@@ -1,12 +1,12 @@
-"""Measure real token savings of app.token_diet on a synthetic workload.
+"""Measure real token savings of token_diet on a synthetic workload.
 
-Run: ./venv/bin/python tests/token_diet/bench_token_diet.py
+Run (from repo root): PYTHONPATH=. python tests/bench_token_diet.py
 """
 
 import json
 import random
 
-from app.token_diet import (
+from token_diet import (
     BlobStore,
     ContextLedger,
     count_tokens,

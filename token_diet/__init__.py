@@ -1,5 +1,19 @@
 """token_diet: same information, fewer billed tokens."""
 
+# Keep in sync with `version` in pyproject.toml.
+__version__ = "1.0.1"
+
+from .context_memory import (
+    AdaptiveContext,
+    ContextManager,
+    EventStore,
+    MemoryEvent,
+    TranslationCache,
+    TranslationChoice,
+    choose_language,
+    extract_events,
+    translation_safe,
+)
 from .core import (
     STRUCTPACK_PREAMBLE,
     BlobStore,
@@ -23,28 +37,15 @@ from .core import (
     project_fields,
     unpack_records,
 )
-
-from .context_memory import (
-    AdaptiveContext,
-    ContextManager,
-    EventStore,
-    MemoryEvent,
-    TranslationCache,
-    TranslationChoice,
-    choose_language,
-    extract_events,
-    translation_safe,
-)
-
+from .json_compressor import compress_json
 from .loss_router import (
     compress_tool_output,
     compress_with_routing,
     reduce_output,
 )
 
-from .json_compressor import compress_json
-
 __all__ = [
+    "__version__",
     "STRUCTPACK_PREAMBLE",
     "AdaptiveContext",
     "BlobStore",

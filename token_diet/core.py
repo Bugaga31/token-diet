@@ -741,6 +741,11 @@ class SemanticCache:
         if self.embed:
             self._vectors.append((self.embed(question), now, answer))
 
+    def clear(self) -> None:
+        """Drop all cached answers and vectors."""
+        self._exact.clear()
+        self._vectors.clear()
+
 
 # ---------------------------------------------------------------------------
 # 7. Bounded conversation history

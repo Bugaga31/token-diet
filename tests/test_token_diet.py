@@ -1,4 +1,4 @@
-"""Round-trip, guard and budget tests for app.token_diet."""
+"""Round-trip, guard and budget tests for token_diet."""
 
 import json
 import random
@@ -6,7 +6,7 @@ import string
 
 import pytest
 
-from app.token_diet import (
+from token_diet import (
     BlobStore,
     BudgetGuard,
     ContextLedger,

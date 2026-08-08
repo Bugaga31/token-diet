@@ -1,5 +1,5 @@
 """Tests for loss-tolerance routing and output reduction."""
-from app.token_diet.loss_router import compress_tool_output, compress_with_routing, reduce_output
+from token_diet.loss_router import compress_tool_output, compress_with_routing, reduce_output
 
 
 def test_compress_prose_removes_filler():
@@ -35,7 +35,10 @@ def test_compress_preserves_code_blocks():
 
 def test_compress_preserves_urls():
     """URLs are zero-tolerance."""
-    text = "Check https://example.com/api/v1/data for more info. Furthermore, the data is interesting."
+    text = (
+        "Check https://example.com/api/v1/data for more info. "
+        "Furthermore, the data is interesting."
+    )
     result, _b, _a = compress_with_routing(text)
     assert "https://example.com/api/v1/data" in result
 

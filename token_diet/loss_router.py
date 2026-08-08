@@ -5,10 +5,9 @@
   then compress each class differently.
 
 Классы:
-  - zero_tolerance: код, stack traces, JSON, tool_use_id — verbatim (0% compression)
-  - low_tolerance: числа, тикеры, URL — verbatim
+  - zero_tolerance: код, stack traces, JSON, URL, числа — verbatim (0% compression)
   - high_tolerance: проза, описания, комментарии — агрессивное сжатие (~50%)
-  - opt_in: LLM-саммари (если доступен) — ещё больше
+  - skip: пустые фрагменты — выбрасываются
 
 Саммари: zero-tolerance (verbatim) + high-tolerance (compressed) → recompose.
 Если инварианты нарушены → fallback на original.
@@ -23,22 +22,15 @@ from .core import count_tokens
 
 # ═══ Классификатор сегментов ═══
 
-# Zero-tolerance: только то, что нельзя терять байт-в-байт
-# Числа 4+ цифр и URL — verbatim; код/JSON/stack — verbatim.
-# Тикеры НЕ считаем zero-tolerance: они часто шум в прозе ("SBER has")
-# и должны жить в high-tolerance сегментах. Конкретное число тикера
-# уже покрыто в другой ветке через явные числа.
+# Zero-tolerance: только то, что нельзя терять байт-в-байт.
+# Код/JSON/stack/URL — verbatim. Длинные числа (ID, таймстампы) тоже
+# защищены, чтобы их не потерять при сжатии окружающей прозы.
 _ZERO_TOLERANCE_PATTERNS = [
     re.compile(r"```[\s\S]*?```"),  # code blocks
     re.compile(r"\{[^}]{10,}\}"),  # JSON-like
     re.compile(r"https?://\S+"),  # URLs
     re.compile(r"traceback|stack\s*trace|Error:|Exception:", re.IGNORECASE),
     re.compile(r"tool_use_id|tool_call|function_call", re.IGNORECASE),
-]
-
-_HIGH_TOLERANCE_MARKERS = [
-    re.compile(r"^\s*(?:#|//|/\*|\*)", re.MULTILINE),  # comments
-    re.compile(r"^\s*(?:описание|comment|note|remark|внимание|note:)", re.IGNORECASE),
 ]
 
 
@@ -57,9 +49,10 @@ def _classify_segment(text: str) -> str:
         if pat.search(text):
             return "zero"
 
-    # Short segments — leave verbatim (числа, тикеры, имена)
+    # Short segments — leave verbatim (числа, тикеры, имена), кроме
+    # коротких предложений, начинающихся с filler-фразы ("Moreover,"...).
     if len(text) < 60:
-        return "zero"
+        return "high" if _starts_with_filler(text) else "zero"
 
     # Длинные prose (>=60 chars без zero-tolerance) → high-tolerance
     return "high"
@@ -67,19 +60,35 @@ def _classify_segment(text: str) -> str:
 
 # ═══ Compressor для high-tolerance сегментов ═══
 
-_FILLER_PATTERNS = [
+_FILLER_WORD_PATTERNS = [
     (re.compile(r"\b(?:Furthermore|Moreover|Additionally|In\s+addition|Однако|Кроме\s+того|Более\s+того|Тем\s+не\s+менее),?\s*", re.IGNORECASE), ""),
     (re.compile(r"\b(?:It\s+is\s+important\s+to\s+note|It\s+should\s+be\s+noted|Следует\s+отметить|Важно\s+отметить)\s+that\s*", re.IGNORECASE), ""),
     (re.compile(r"\b(?:As\s+mentioned\s+earlier|As\s+stated\s+before|Как\s+упоминалось\s+ранее|Как\s+было\s+сказано)\s*", re.IGNORECASE), ""),
     (re.compile(r"\b(?:Please\s+note|Please\s+be\s+aware|Обратите\s+внимание)\s*", re.IGNORECASE), ""),
     (re.compile(r"\b(?:In\s+conclusion|To\s+summarize|In\s+summary|В\s+заключение|Подводя\s+итог)\s*", re.IGNORECASE), ""),
+]
+
+_WHITESPACE_PATTERNS = [
     (re.compile(r"\s{2,}"), " "),  # multiple spaces
     (re.compile(r"\n{3,}"), "\n\n"),  # multiple newlines
 ]
 
+_FILLER_PATTERNS = _FILLER_WORD_PATTERNS + _WHITESPACE_PATTERNS
+
+
+def _starts_with_filler(text: str) -> bool:
+    """True if a segment leads with a removable filler phrase.
+
+    Short segments are normally verbatim (they are likely numbers, tickers,
+    names). But a short sentence that merely opens with "Moreover," or
+    "In conclusion," carries no information in that prefix — the README and
+    tests promise it gets stripped.
+    """
+    return any(pattern.match(text.lstrip()) for pattern, _replacement in _FILLER_WORD_PATTERNS)
+
 _REPETITIVE_PHRASES = [
     re.compile(r"\b(?:I|we|я|мы)\s+(?:will\s+now|теперь\s+будем|сейчас\s+будем)\s+", re.IGNORECASE),
-    re.compile(r"\b(?:Let\s+us| Давайте|Let\s+me|Позвольте\s+мне)\s+", re.IGNORECASE),
+    re.compile(r"\b(?:Let\s+us|Let\s+me|Давайте|Позвольте\s+мне)\s+", re.IGNORECASE),
 ]
 
 
@@ -208,7 +217,7 @@ def compress_tool_output(tool_name: str, result: dict | str | None) -> str:
     Для JSON данных: flatten + truncate
     Для текста: loss-tolerance routing
     """
-    from app.infrastructure.json_compressor import compress_json
+    from .json_compressor import compress_json
 
     if not result:
         return ""

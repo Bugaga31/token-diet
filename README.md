@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-281%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-81%20passed-brightgreen.svg)]()
 
 **The same information, fewer billed tokens.**
 
@@ -101,7 +101,7 @@ pip install token-diet
 from token_diet import (
     pack_records, compress_with_routing, reduce_output,
     compress_json, EventStore, AdaptiveContext, ContextManager,
-    extract_events,
+    extract_events, guarded_records,
 )
 
 # StructPack repeated JSON rows
@@ -165,7 +165,8 @@ token_diet/
 
 Started as the user's `token_diet_full.py` (a single-file proof-of-concept) and
 grew into a structured library that powers DarkBit's AI investment platform
-(`/home/ro/projects/darkbit`). Verified on 281 tests, ruff-clean, MIT licensed.
+(`/home/ro/projects/darkbit`). Verified by the included pytest suite and
+ruff-clean, MIT licensed.
 
 ## License
 

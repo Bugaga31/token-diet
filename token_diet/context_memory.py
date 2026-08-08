@@ -19,9 +19,10 @@ import json
 import logging
 import re
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import ClassVar
 
 from .core import count_tokens
 
@@ -75,8 +76,10 @@ class EventStore:
     ) -> str:
         if kind not in self._KINDS:
             raise ValueError(f"unknown kind: {kind}")
-        self.turn += 1
         text = text.strip()
+        if not text:
+            return ""
+        self.turn += 1
         key = hashlib.sha256(f"{kind}:{text.lower()}".encode()).hexdigest()[:20]
         now = time.time()
         self.events[key] = MemoryEvent(
