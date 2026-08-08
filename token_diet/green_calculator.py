@@ -170,6 +170,26 @@ class GreenCalculator:
 """
 
     @staticmethod
+    def human_impact(annual_savings_usd: float) -> str:
+        """What real things can people afford with the money saved?
+
+        Because token-diet is about people, not just tokens.
+        """
+        ice_cream = annual_savings_usd / 3.0
+        park_trips = annual_savings_usd / 10.0
+        pizza_nights = annual_savings_usd / 25.0
+        books = annual_savings_usd / 15.0
+        coffee_with_friends = annual_savings_usd / 5.0
+        return f"""Human Impact (${annual_savings_usd:,.0f}/year saved with token-diet)
+    {ice_cream:,.0f} ice creams
+    {park_trips:,.0f} trips to the park with family
+    {pizza_nights:,.0f} pizza nights with friends
+    {books:,.0f} books to read
+    {coffee_with_friends:,.0f} coffees with someone you love
+
+    It is not about tokens. It is about time, freedom, and the people that matter."""
+
+    @staticmethod
     def global_impact() -> str:
         """Show global impact if everyone used token-diet.
 

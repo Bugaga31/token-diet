@@ -177,6 +177,32 @@ print(GreenCalculator.global_impact())
 
 **token-diet is climate action.** Less energy → fewer data centers → healthier planet.
 
+## Why it matters — for people
+
+Money saved with token-diet isn't just a spreadsheet number. It's real life.
+
+```python
+from token_diet import GreenCalculator
+
+# Claude Opus: saves $946/year at 1K calls/day
+print(GreenCalculator.human_impact(946))
+```
+
+```
+Human Impact ($946/year saved with token-diet)
+    315 ice creams
+     94 trips to the park with family
+     37 pizza nights with friends
+     63 books to read
+    189 coffees with someone you love
+
+    It is not about tokens.
+    It is about time, freedom, and the people that matter.
+```
+
+> Чем меньше люди тратят на нейронки — тем больше у них остаётся на мороженое,
+> парк с семьёй, книги, кофе с друзьями. На то, на что раньше не хватало времени.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
