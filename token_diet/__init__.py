@@ -1,0 +1,82 @@
+"""token_diet: same information, fewer billed tokens."""
+
+from .core import (
+    STRUCTPACK_PREAMBLE,
+    BlobStore,
+    BudgetDecision,
+    BudgetGuard,
+    ContextLedger,
+    PriceTable,
+    PromptBuilder,
+    SemanticCache,
+    TokenMeter,
+    Usage,
+    canonical_json,
+    compress_retrieved_context,
+    cosine_similarity,
+    count_tokens,
+    deduplicate_chunks,
+    estimate_complexity,
+    guarded_records,
+    pack_records,
+    prepare_request,
+    project_fields,
+    unpack_records,
+)
+
+from .context_memory import (
+    AdaptiveContext,
+    ContextManager,
+    EventStore,
+    MemoryEvent,
+    TranslationCache,
+    TranslationChoice,
+    choose_language,
+    extract_events,
+    translation_safe,
+)
+
+from .loss_router import (
+    compress_tool_output,
+    compress_with_routing,
+    reduce_output,
+)
+
+from .json_compressor import compress_json
+
+__all__ = [
+    "STRUCTPACK_PREAMBLE",
+    "AdaptiveContext",
+    "BlobStore",
+    "BudgetDecision",
+    "BudgetGuard",
+    "ContextLedger",
+    "ContextManager",
+    "EventStore",
+    "MemoryEvent",
+    "PriceTable",
+    "PromptBuilder",
+    "SemanticCache",
+    "TokenMeter",
+    "TranslationCache",
+    "TranslationChoice",
+    "Usage",
+    "canonical_json",
+    "choose_language",
+    "compress_json",
+    "compress_retrieved_context",
+    "compress_tool_output",
+    "compress_with_routing",
+    "cosine_similarity",
+    "count_tokens",
+    "deduplicate_chunks",
+    "estimate_complexity",
+    "extract_events",
+    "guarded_records",
+    "pack_records",
+    "prepare_request",
+    "project_fields",
+    "reduce_output",
+    "translation_safe",
+    "unpack_records",
+]
