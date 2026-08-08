@@ -54,6 +54,10 @@ from .core import (
     structpack_roundtrip_safe,
     unpack_records,
 )
+from .green_calculator import (
+    GreenCalculator,
+    GreenMetrics,
+)
 from .few_shot_selector import (
     Example,
     FewShotSelector,
@@ -138,6 +142,8 @@ __all__ = [
     "Example",
     "FewShotSelector",
     "GateResult",
+    "GreenCalculator",
+    "GreenMetrics",
     "MemoryEvent",
     "IntelligenceBooster",
     "LLMConnector",

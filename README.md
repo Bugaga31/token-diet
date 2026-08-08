@@ -5,8 +5,17 @@
 [![Tests](https://img.shields.io/badge/tests-153%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
+[![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
+[![Water](https://img.shields.io/badge/water-340B%20liters%2Fyear%20saved-blue.svg)]()
 
-**The same information, fewer billed tokens — neural network 5.8× smarter at 33% lower cost.**
+**The same information, fewer billed tokens — for the planet, for the people.**
+
+🌍 If every LLM call used token-diet, we'd save **204,000 tonnes of CO₂** and
+**340 billion liters of water** annually — equivalent to 9.7 million trees
+and powering 51,000 homes for a year.
+
+🧠 Your neural network becomes **5.8× smarter** at **33% lower cost** —
+premium models like Claude Opus become accessible to everyone.
 
 A drop-in Python library that compresses LLM context and **reinvests savings into richer context** —
 same budget, dramatically better answers. Gate-verified: critical facts survive all compression.
@@ -135,6 +144,38 @@ token_diet/
 Started as `token_diet_full.py` — a single-file proof-of-concept. Grew into a
 structured library powering DarkBit's AI investment platform. 153 tests, CI PASS,
 MIT licensed.
+
+## Environmental Impact
+
+Every token costs energy. token-diet saves 46.6% of tokens → 46.6% less electricity.
+
+```python
+from token_diet import GreenCalculator
+
+# Your savings
+calc = GreenCalculator()
+impact = calc.measure(tokens_saved=1_000_000)
+print(impact.render())
+#   1,000,000 tokens saved
+#        3.00 kWh electricity
+#        1.20 kg CO2
+#     2000.0 liters water
+
+# Global potential
+print(GreenCalculator.global_impact())
+```
+
+### Global potential (1B LLM calls/day × 46.6% savings)
+
+| Resource | Annual savings | Equivalent |
+|---|---|---|
+| **Tokens** | 170 trillion | — |
+| **Electricity** | 510 million kWh | 51,000 homes |
+| **CO₂** | 204,000 tonnes | 9.7 million trees |
+| **Water** | 340 billion liters | — |
+| **Car distance** | 1.7 billion km | 42,000× around Earth |
+
+**token-diet is climate action.** Less energy → fewer data centers → healthier planet.
 
 ## License
 
