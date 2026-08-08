@@ -5,9 +5,10 @@
   then compress each class differently.
 
 Классы:
-  - zero_tolerance: код, stack traces, JSON, URL, числа — verbatim (0% compression)
+  - zero_tolerance: код, stack traces, JSON, tool_use_id — verbatim (0% compression)
+  - low_tolerance: числа, тикеры, URL — verbatim
   - high_tolerance: проза, описания, комментарии — агрессивное сжатие (~50%)
-  - skip: пустые фрагменты — выбрасываются
+  - opt_in: LLM-саммари (если доступен) — ещё больше
 
 Саммари: zero-tolerance (verbatim) + high-tolerance (compressed) → recompose.
 Если инварианты нарушены → fallback на original.
@@ -18,43 +19,63 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .core import count_tokens
+try:
+    from .core import count_tokens
+except ImportError:  # standalone use (tests, scripts with token-diet-lib on path)
+    from core import count_tokens  # type: ignore[no-redef]
 
 # ═══ Классификатор сегментов ═══
 
-# Zero-tolerance: только то, что нельзя терять байт-в-байт.
-# Код/JSON/stack/URL — verbatim. Длинные числа (ID, таймстампы) тоже
-# защищены, чтобы их не потерять при сжатии окружающей прозы.
 _ZERO_TOLERANCE_PATTERNS = [
     re.compile(r"```[\s\S]*?```"),  # code blocks
     re.compile(r"\{[^}]{10,}\}"),  # JSON-like
+    re.compile(r"\b\d{4,}\b"),  # long numbers (IDs, timestamps)
     re.compile(r"https?://\S+"),  # URLs
+    re.compile(r"\b[A-Z]{2,5}\b"),  # tickers
     re.compile(r"traceback|stack\s*trace|Error:|Exception:", re.IGNORECASE),
     re.compile(r"tool_use_id|tool_call|function_call", re.IGNORECASE),
+    # Code signatures even without fences: def/class/import lines. Without
+    # these, _compress_prose would collapse indentation inside code.
+    re.compile(r"^\s*(?:async\s+)?(?:def|class)\s+\w+\s*\(", re.MULTILINE),
+    re.compile(r"^\s*(?:import|from)\s+\S+", re.MULTILINE),
+]
+
+_HIGH_TOLERANCE_MARKERS = [
+    re.compile(r"^\s*(?:#|//|/\*|\*)", re.MULTILINE),  # comments
+    re.compile(r"^\s*(?:описание|comment|note|remark|внимание|note:)", re.IGNORECASE),
 ]
 
 
-def _classify_segment(text: str) -> str:
-    """Классифицировать сегмент текста по устойчивости к сжатию.
+def _starts_with_filler(text: str) -> bool:
+    """True if a segment leads with a removable filler phrase.
 
-    Логика: если в сегменте есть zero-tolerance контент → verbatim.
-    Иначе если длинный прозовый текст (>60 chars) → high-tolerance.
-    Иначе короткий verbatim (числа, имена).
+    Short segments are normally verbatim (they are likely numbers, tickers,
+    names). But a short sentence that merely opens with "Moreover," or
+    "In conclusion," carries no information in that prefix.
     """
+    cleaned = text.lstrip()
+    return any(pattern.match(cleaned) for pattern, _replacement in _FILLER_WORD_PATTERNS)
+
+
+def _classify_segment(text: str) -> str:
+    """Классифицировать сегмент текста по устойчивости к сжатию."""
     if not text or not text.strip():
         return "skip"
 
-    # Zero-tolerance контент → verbatim
+    # Code blocks, JSON, stack traces → verbatim
     for pat in _ZERO_TOLERANCE_PATTERNS:
         if pat.search(text):
             return "zero"
 
-    # Short segments — leave verbatim (числа, тикеры, имена), кроме
-    # коротких предложений, начинающихся с filler-фразы ("Moreover,"...).
+    # Short filler segments ("Moreover, ...") — compress normally.
     if len(text) < 60:
         return "high" if _starts_with_filler(text) else "zero"
 
-    # Длинные prose (>=60 chars без zero-tolerance) → high-tolerance
+    # Mid-length: verbatim (numbers, names, URLs without code/stack)
+    if len(text) < 100:
+        return "zero"
+
+    # Prose: длинный текст без кода → можно сжимать
     return "high"
 
 
@@ -75,20 +96,9 @@ _WHITESPACE_PATTERNS = [
 
 _FILLER_PATTERNS = _FILLER_WORD_PATTERNS + _WHITESPACE_PATTERNS
 
-
-def _starts_with_filler(text: str) -> bool:
-    """True if a segment leads with a removable filler phrase.
-
-    Short segments are normally verbatim (they are likely numbers, tickers,
-    names). But a short sentence that merely opens with "Moreover," or
-    "In conclusion," carries no information in that prefix — the README and
-    tests promise it gets stripped.
-    """
-    return any(pattern.match(text.lstrip()) for pattern, _replacement in _FILLER_WORD_PATTERNS)
-
 _REPETITIVE_PHRASES = [
     re.compile(r"\b(?:I|we|я|мы)\s+(?:will\s+now|теперь\s+будем|сейчас\s+будем)\s+", re.IGNORECASE),
-    re.compile(r"\b(?:Let\s+us|Let\s+me|Давайте|Позвольте\s+мне)\s+", re.IGNORECASE),
+    re.compile(r"\b(?:Let\s+us| Давайте|Let\s+me|Позвольте\s+мне)\s+", re.IGNORECASE),
 ]
 
 
@@ -110,7 +120,17 @@ def _compress_prose(text: str) -> str:
 # Идея из Headroom: trims what the model writes back (ceremony, restated code)
 
 _CEREMONY_PATTERNS = [
-    re.compile(r"^(?:Here\s+is|Вот|Вот\s+ваш|Ниже\s+приведён)\s+[^.]*\.\s*", re.IGNORECASE | re.MULTILINE),
+    # "Here is your code:" / "Here is your code." / "Вот ваш файл:" — cut ONLY
+    # when the line ends right after the intro (code/table follows on the NEXT
+    # line). Inline substance ("Here's the result: 42.") is left intact:
+    # [^:\n]{0,80} cannot cross the first colon, so the match fails when any
+    # content follows it on the same line.
+    re.compile(
+        r"^(?:here\s+is|here's|here\s+are|here\s+you\s+go|below\s+is|please\s+find|"
+        r"вот\s+ваш(?:а|е)?|ниже\s+привед(?:ён|ен)(?:а|о|ы)?)"
+        r"\s+[^:\n]{0,80}[:.]\s*$",
+        re.IGNORECASE | re.MULTILINE,
+    ),
     re.compile(r"^(?:I\s+hope|Надеюсь)\s+[^.]*\.\s*", re.IGNORECASE | re.MULTILINE),
     re.compile(r"^(?:Let\s+me\s+know|Дайте\s+знать|Если\s+есть\s+вопросы)[^.]*\.\s*", re.IGNORECASE | re.MULTILINE),
     re.compile(r"^(?:Sure!|Of\s+course!|Конечно!|Obviously!)\s*", re.IGNORECASE | re.MULTILINE),
@@ -161,22 +181,8 @@ def compress_with_routing(
 
     original_tokens = counter(text)
 
-    # Разбиваем на сегменты: сначала по параграфам, потом длинные строки тоже
-    # пробуем разбить по предложениям, чтобы не потерять prose в одном большом blob.
-    # Threshold: всё >120 chars с большой вероятностью — prose (для коротких чисел
-    # и имён verbatim не теряем — `_classify_segment` отдаёт их в zero anyway).
-    segments: list[str] = []
-    for chunk in re.split(r"(\n{2,})", text):
-        if not chunk or not chunk.strip():
-            continue
-        if len(chunk) <= 120:
-            segments.append(chunk)
-            continue
-        # Длинный chunk — разбиваем по предложениям
-        for sent in re.split(r"(?<=[.!?])\s+", chunk):
-            if sent.strip():
-                segments.append(sent)
-
+    # Разбиваем на сегменты (по параграфам / блокам)
+    segments = re.split(r"(\n{2,}|```[\s\S]*?```)", text)
     compressed_parts: list[str] = []
 
     for seg in segments:
@@ -217,7 +223,10 @@ def compress_tool_output(tool_name: str, result: dict | str | None) -> str:
     Для JSON данных: flatten + truncate
     Для текста: loss-tolerance routing
     """
-    from .json_compressor import compress_json
+    try:
+        from .json_compressor import compress_json
+    except ImportError:
+        from json_compressor import compress_json  # type: ignore[no-redef]
 
     if not result:
         return ""

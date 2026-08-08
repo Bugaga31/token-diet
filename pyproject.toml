@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "token-diet"
-version = "1.0.1"
+version = "2.0.0"
 description = "LLM context compression, memory, caching and language routing — lossless, reversible, drop-in."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -132,17 +132,36 @@ class PriceTable:
         ) / 1_000_000
 
 
-class TokenMeter:
-    """Measure cost per user-visible task, not per API call.
+SECTION_NAMES = (
+    "system_prompt",
+    "tools",
+    "history",
+    "retrieved_context",
+    "question",
+    "output",
+    "retry",
+    "judge",
+    "planner",
+)
 
-    Retries, tool calls, planner calls and judge calls share one task_id.
-    Otherwise a dashboard reports per-call cost and understates real spend.
+CALL_TYPES = ("main", "retry", "judge", "planner", "tool")
+
+
+class TokenMeter:
+    """Measure cost per user-visible result, not per API call.
+
+    Retries, tool calls, planner calls and judge calls share one task_id,
+    so the reported cost is the full spend on one user result instead of a
+    per-call figure that understates real spend. Input is additionally
+    broken down into named prompt sections and call types, which is what
+    makes the "most expensive section" visible to the OptimizationRunner.
     """
 
     def __init__(self, prices: PriceTable):
         self.prices = prices
         self.tasks: dict[str, Usage] = {}
         self.sections: dict[str, int] = {}
+        self.call_types: dict[str, int] = {}
 
     def record(self, task_id: str, response: Any) -> Usage:
         usage = getattr(response, "usage", None) or {}
@@ -162,6 +181,16 @@ class TokenMeter:
         self.tasks[task_id] = self.tasks.get(task_id, Usage()) + current
         return current
 
+    def record_call(self, task_id: str, call_type: str) -> None:
+        """Tag the next API call on this task as retry/judge/planner/tool/main.
+
+        The counters expose how much of the spend went to overhead (judges,
+        retries, planners) rather than the answer itself.
+        """
+        if call_type not in CALL_TYPES:
+            call_type = "main"
+        self.call_types[call_type] = self.call_types.get(call_type, 0) + 1
+
     def record_sections(
         self,
         sections: dict[str, str],
@@ -170,11 +199,24 @@ class TokenMeter:
         for name, text in sections.items():
             self.sections[name] = self.sections.get(name, 0) + counter(text)
 
+    def record_section_tokens(self, name: str, tokens: int) -> None:
+        """Record a section by precomputed token count (e.g. from provider usage)."""
+        self.sections[name] = self.sections.get(name, 0) + max(0, int(tokens))
+
     def total(self) -> Usage:
         result = Usage()
         for usage in self.tasks.values():
             result += usage
         return result
+
+    def section_report(self) -> str:
+        total = sum(self.sections.values())
+        if not total:
+            return "input by section: (none)"
+        largest = sorted(self.sections.items(), key=lambda item: item[1], reverse=True)
+        return "input by section: " + ", ".join(
+            f"{name}={tokens} ({100 * tokens / total:.1f}%)" for name, tokens in largest
+        )
 
     def report(self) -> str:
         total = self.total()
@@ -185,17 +227,18 @@ class TokenMeter:
         lines = [
             f"tasks: {len(self.tasks)}",
             f"total cost: ${cost:.4f}",
-            f"cost/task: ${cost / max(1, len(self.tasks)):.4f}",
+            f"cost/result: ${cost / max(1, len(self.tasks)):.4f}",
             f"input/output: {all_input}/{total.output_tokens}",
             f"cache hit: {100 * cached / max(1, all_input):.1f}%",
         ]
 
-        if self.sections:
-            largest = sorted(self.sections.items(), key=lambda item: item[1], reverse=True)
+        if self.call_types:
             lines.append(
-                "input by section: "
-                + ", ".join(f"{name}={tokens}" for name, tokens in largest)
+                "calls: "
+                + ", ".join(f"{name}={count}" for name, count in self.call_types.items())
             )
+
+        lines.append(self.section_report())
 
         return "\n".join(lines)
 
@@ -582,6 +625,22 @@ def guarded_records(records: list[dict[str, Any]]) -> tuple[str, str, int, int]:
     return packed, "structpack", before, after
 
 
+def structpack_roundtrip_safe(records: list[dict[str, Any]]) -> bool:
+    """True when pack -> unpack reproduces the input exactly.
+
+    This is the safety rule behind guarded_records: if StructPack cannot
+    round-trip a dataset (or even crashes on it), packing is disabled for
+    that dataset instead of risking silent data corruption.
+    """
+    packed = pack_records(records)
+    if packed is None:
+        return False
+    try:
+        return unpack_records(packed) == records
+    except Exception:
+        return False
+
+
 STRUCTPACK_PREAMBLE = (
     "Rows are pipe-delimited. Header contains column:type. "
     "#d lines expand repeated values. "
@@ -632,31 +691,125 @@ def deduplicate_chunks(chunks: list[str], threshold: float = 0.85) -> tuple[list
 # ---------------------------------------------------------------------------
 
 
+class BlobExpiredError(Exception):
+    """The blob's TTL elapsed; the stored body is no longer trustworthy."""
+
+
+class BlobNotFoundError(Exception):
+    """No blob with this handle exists (or it was cleaned up)."""
+
+
+class BlobCorruptionError(Exception):
+    """The stored body does not match its checksum; refuse to return it."""
+
+
+class BlobTooLargeError(Exception):
+    """The body exceeds the configured size limit."""
+
+
+class BlobForbiddenError(Exception):
+    """The caller's session/owner does not match the blob's owner."""
+
+
 class BlobStore:
     """Keep large tool results out of repeated conversation history.
 
-    The full body stays available via get(handle); the model sees a compact
-    reference until it explicitly asks for the body.
+    Every handle carries a size cap, an optional owner, a TTL and a full
+    sha256 checksum. get() refuses expired, corrupt, oversized and foreign
+    blobs with a clear error, so a stale or cross-session blob can never
+    leak context between users.
+
+    Behaviour change vs. the original store: get() raises on a missing
+    handle (it used to return ""). Use get_or_none() when the "" sentinel
+    behaviour is wanted.
     """
 
-    def __init__(self, preview_chars: int = 500):
+    def __init__(
+        self,
+        preview_chars: int = 500,
+        ttl_seconds: float | None = None,
+        max_bytes: int = 1_000_000,
+        default_owner: str | None = None,
+    ):
         self.preview_chars = preview_chars
+        self.ttl_seconds = ttl_seconds
+        self.max_bytes = max_bytes
+        self.default_owner = default_owner
         self._items: dict[str, str] = {}
+        self._meta: dict[str, dict[str, Any]] = {}
 
-    def put(self, body: str, kind: str = "blob") -> str:
-        digest = hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
-        handle = f"{kind}:{digest}"
+    def put(
+        self, body: str, kind: str = "blob", owner: str | None = None
+    ) -> str:
+        if len(body) > self.max_bytes:
+            raise BlobTooLargeError(
+                f"blob body is {len(body)} bytes, limit is {self.max_bytes}"
+            )
+
+        owner = owner or self.default_owner or ""
+        digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
+        prefix = f"{owner}:" if owner else ""
+        handle = f"{prefix}{kind}:{digest}"
+
         self._items[handle] = body
+        self._meta[handle] = {
+            "owner": owner,
+            "kind": kind,
+            "digest": digest,
+            "bytes": len(body),
+            "created_at": time.time(),
+        }
         return handle
 
-    def get(self, handle: str) -> str:
-        return self._items.get(handle, "")
+    def get(self, handle: str, owner: str | None = None) -> str:
+        meta = self._meta.get(handle)
+        if meta is None:
+            raise BlobNotFoundError(f"unknown blob handle: {handle}")
 
-    def reference(self, body: str, kind: str = "blob") -> str:
+        owner = owner or self.default_owner or ""
+        if meta["owner"] and meta["owner"] != owner:
+            raise BlobForbiddenError(
+                f"blob {handle} belongs to session '{meta['owner']}', "
+                f"not '{owner or '<anonymous>'}'"
+            )
+
+        if self.ttl_seconds is not None:
+            age = time.time() - meta["created_at"]
+            if age > self.ttl_seconds:
+                raise BlobExpiredError(
+                    f"blob {handle} expired {age - self.ttl_seconds:.0f}s ago "
+                    "(TTL={self.ttl_seconds:.0f}s); re-fetch the source"
+                )
+
+        body = self._items[handle]
+        if hashlib.sha256(body.encode("utf-8")).hexdigest() != meta["digest"]:
+            raise BlobCorruptionError(
+                f"blob {handle} failed checksum verification; refusing to return it"
+            )
+        return body
+
+    def get_or_none(self, handle: str, owner: str | None = None) -> str | None:
+        """Like get(), but returns None instead of raising on any failure."""
+        try:
+            return self.get(handle, owner)
+        except (
+            BlobNotFoundError,
+            BlobExpiredError,
+            BlobForbiddenError,
+            BlobCorruptionError,
+        ):
+            return None
+
+    def reference(self, body: str, kind: str = "blob", owner: str | None = None) -> str:
         if len(body) <= self.preview_chars:
             return body
 
-        handle = self.put(body, kind)
+        try:
+            handle = self.put(body, kind, owner)
+        except BlobTooLargeError:
+            # Never leak a full oversized body into the prompt; truncate instead.
+            return body[: self.preview_chars].rstrip()
+
         preview = body[: self.preview_chars].rstrip()
 
         return (
@@ -665,6 +818,24 @@ class BlobStore:
             f"[truncated; fetch {handle} for the full body]\n"
             f"</{handle}>"
         )
+
+    def cleanup(self) -> int:
+        """Drop expired blobs; returns how many were removed."""
+        if self.ttl_seconds is None:
+            return 0
+        now = time.time()
+        expired = [
+            handle
+            for handle, meta in self._meta.items()
+            if now - meta["created_at"] > self.ttl_seconds
+        ]
+        for handle in expired:
+            self._items.pop(handle, None)
+            self._meta.pop(handle, None)
+        return len(expired)
+
+    def __len__(self) -> int:
+        return len(self._items)
 
 
 # ---------------------------------------------------------------------------
