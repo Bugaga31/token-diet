@@ -28,10 +28,15 @@ try:
     from token_diet.core import count_tokens, PriceTable
     from token_diet.green_calculator import GreenCalculator, GreenMetrics
     from token_diet.optimization_runner import OptimizationRunner, RequestProfile
+    from token_diet.neural_scorer import NeuralScorer, strip_noise
+    from token_diet.loss_router import compress_with_routing
 except ImportError:
     from core import count_tokens, PriceTable
     from green_calculator import GreenCalculator, GreenMetrics
     from optimization_runner import OptimizationRunner, RequestProfile
+    NeuralScorer = None
+    strip_noise = None
+    compress_with_routing = None
 
 # ── Global state ──────────────────────────────────────────────────────────────
 
@@ -177,7 +182,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="footer">
-    🌍 token-diet v2.2.0 — For the planet. For the people.<br>
+    🌍 token-diet v2.4.0 — For the planet. For the people.<br>
     Saving tokens, energy, CO₂, water — one API call at a time.
   </div>
 </div>
@@ -226,11 +231,25 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
                 total_before += before
                 total_after += before
             elif role == "user":
-                # Compress user messages
-                from token_diet.loss_router import compress_with_routing
+                # Compress user messages with Neural Scorer + routing
                 try:
-                    compressed, _, after_t = compress_with_routing(content)
-                    after = after_t
+                    if strip_noise is not None:
+                        cleaned, before_t, after_t = strip_noise(content)
+                        if after_t < before_t:
+                            compressed = cleaned
+                            after = after_t
+                        elif compress_with_routing is not None:
+                            compressed, _, after_t = compress_with_routing(content)
+                            after = after_t
+                        else:
+                            compressed = content
+                            after = before
+                    elif compress_with_routing is not None:
+                        compressed, _, after_t = compress_with_routing(content)
+                        after = after_t
+                    else:
+                        compressed = content
+                        after = before
                     optimized.append({**msg, "content": compressed})
                 except Exception:
                     optimized.append(msg)
@@ -263,7 +282,7 @@ def create_app():
     app = FastAPI(
         title="token-diet",
         description="Track. Optimize. Achieve. — AI cost optimization proxy",
-        version="2.2.0",
+        version="2.4.0",
     )
 
     UPSTREAM_URL = os.environ.get("UPSTREAM_URL", "")
@@ -276,7 +295,7 @@ def create_app():
 
     @app.get("/health")
     async def health():
-        return {"status": "ok", "proxy_enabled": PROXY_ENABLED, "version": "2.2.0"}
+        return {"status": "ok", "proxy_enabled": PROXY_ENABLED, "version": "2.4.0"}
 
     @app.get("/v1/stats")
     async def stats():
@@ -361,7 +380,7 @@ def main():
 
     upstream = os.environ.get("UPSTREAM_URL", "")
     print(f"""
-🌱 token-diet v2.2.0 — Track. Optimize. Achieve.
+🌱 token-diet v2.4.0 — Track. Optimize. Achieve.
    Dashboard:  http://{args.host}:{args.port}
    API:        http://{args.host}:{args.port}/v1/chat/completions
    Stats:      http://{args.host}:{args.port}/v1/stats

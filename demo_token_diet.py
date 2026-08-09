@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Token Diet v2.0.0 — end-to-end demo.
+"""Token Diet v2.4.0 — end-to-end demo.
 
 Runs the full optimization pipeline on realistic data and prints:
   - tokens before / after per module
@@ -60,6 +60,8 @@ from token_diet.prompt_distiller import PromptDistiller
 from token_diet.sherlock_reasoner import SherlockReasoner, compress_reasoning
 from token_diet.smart_multiplier import SmartMultiplier, compare_llm_quality
 from token_diet.tool_schema_compressor import guarded_tool_schemas
+from token_diet.neural_scorer import NeuralScorer, strip_noise, score_prompt_sections
+from token_diet.agent_supervisor import AgentSupervisor, truncate_tool_result
 
 # ── prices (GPT-4o-mini-ish) ────────────────────────────────────────────────
 PRICES = PriceTable(
@@ -454,6 +456,64 @@ def demo_sherlock():
     print(f"  Verifier: score={check.score:.2f}, {'CLEAN' if check.is_clean else 'ISSUES FOUND'}")
 
 
+def demo_neural_scorer():
+    print("\n" + "━" * 70)
+    print("Neural Scorer — ML-grade noise detection (no GPU, <10ms)")
+    print("━" * 70)
+
+    scorer = NeuralScorer()
+
+    noisy_prompt = (
+        "Furthermore, it is important to note that we truly appreciate your patience. "
+        "The database migration completed at 03:00 UTC with zero data loss. "
+        "Additionally, we would like to thank you for your continued support. "
+        "The new indexes improved query performance by 340%."
+    )
+
+    before_t = count_tokens(noisy_prompt)
+    clean, _b, after_t = strip_noise(noisy_prompt)
+
+    print(f"  Before ({before_t}t): {noisy_prompt[:90]}...")
+    print(f"  After  ({after_t}t): {clean}")
+    print(f"  Saved: {before_t - after_t}t ({100*(before_t-after_t)//max(1,before_t)}%)")
+
+    # Show sentence-by-sentence scoring
+    print("\n  Sentence analysis:")
+    for chunk in score_prompt_sections(noisy_prompt):
+        bar = "█" * int(chunk.score * 20) + "░" * (20 - int(chunk.score * 20))
+        tag = "NOISE" if chunk.is_noise else "SIGNAL"
+        print(f"    [{bar}] {tag} ({chunk.score:.2f}) {chunk.text[:70]}...")
+
+
+def demo_agent_supervisor():
+    print("\n" + "━" * 70)
+    print("Agent Supervisor — runtime loop detection (LLM-free)")
+    print("━" * 70)
+
+    sv = AgentSupervisor()
+    sv.start_session()
+
+    # Simulate an agent that loops on the same tool call
+    print("  Simulating agent with tool-call loop...")
+    for i in range(5):
+        alerts = sv.observe_turn("user", f"Step {i+1}", 3)
+        alerts += sv.observe_tool_call("search_web", {"query": "weather"}, result_tokens=50)
+        if alerts:
+            for a in alerts:
+                print(f"    ⚠️  [{a.severity.upper()}] {a.loop_type}: {a.details}")
+                print(f"        → {a.suggestion}")
+
+    summary = sv.summary()
+    print(f"\n  Session: {summary['total_turns']} turns, {summary['total_tokens']} tokens, "
+          f"{summary['alerts']} alerts, terminated={summary['terminated']}")
+
+    # Truncate tool result
+    long_result = "line " * 3000
+    truncated, was_cut = truncate_tool_result(long_result, max_tokens=500)
+    print(f"\n  Tool result truncation: {len(long_result.split())} words → "
+          f"{len(truncated.split())} words (truncated={was_cut})")
+
+
 def demo_smart_multiplier():
     print("\n" + "─" * 70)
     print("Smart Multiplier — 5× intelligence, lower cost")
@@ -479,7 +539,7 @@ def demo_smart_multiplier():
 
 def main() -> int:
     print("=" * 70)
-    print("  Token Diet v2.0.0 — end-to-end demo")
+    print("  Token Diet v2.4.0 — end-to-end demo")
     print("=" * 70)
 
     # Step 1: component benchmarks
@@ -532,6 +592,12 @@ def main() -> int:
 
     # Step 9: Sherlock Reasoner — smarter at same/lower cost
     demo_sherlock()
+
+    # Step 10: Neural Scorer — ML-grade noise detection
+    demo_neural_scorer()
+
+    # Step 11: Agent Supervisor — runtime loop detection
+    demo_agent_supervisor()
 
     print("=" * 70)
     return 0

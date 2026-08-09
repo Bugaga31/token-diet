@@ -24,6 +24,7 @@ try:
     from .ast_json_compressor import compress_json_ast
     from .ml_compressor import compress_ml
     from .question_normalizer import normalize_question
+    from .neural_scorer import strip_noise
 except ImportError:
     from core import count_tokens  # type: ignore[no-redef]
     from loss_router import (  # type: ignore[no-redef]
@@ -175,6 +176,52 @@ def _compress_retrieval(text: str) -> tuple[str, int, int]:
     return result, before, min(after, before)
 
 
+def _compress_neural(text: str) -> tuple[str, int, int]:
+    """Neural Scorer: statistical noise detection (no GPU, <10ms)."""
+    result, before, after = strip_noise(text)
+    return result, before, min(after, before)
+
+
+def _compress_llmlingua_style(text: str) -> tuple[str, int, int]:
+    """LLMLingua-2 style approximation: density-based sentence ranking.
+
+    LLMLingua-2 uses a small LM (e.g. LLaMA-7B) to compute sentence perplexity.
+    Our budget approximation: score sentences by content-word density
+    (content words with len>3 / total words), keep top 70%.
+    This is a heuristic proxy — real LLMLingua-2 would be more accurate
+    but requires GPU + model loading.
+    """
+    import re
+    before = count_tokens(text)
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+    if len(sentences) <= 2:
+        return text, before, before
+
+    # Score: content words (len>3, not function word) / total
+    function_words = {
+        "the", "a", "an", "is", "are", "was", "were", "be", "been",
+        "of", "in", "to", "for", "with", "on", "at", "by", "from",
+        "and", "but", "or", "nor", "not", "so", "if", "than", "that",
+        "this", "these", "those", "it", "its", "he", "she", "they",
+        "we", "you", "me", "him", "her", "us", "them", "my", "your",
+        "has", "have", "had", "do", "does", "did", "will", "would",
+    }
+    scored = []
+    for s in sentences:
+        words = s.lower().split()
+        content = sum(1 for w in words if len(w) > 3 and w not in function_words)
+        density = content / max(1, len(words))
+        scored.append((s, density))
+
+    # Keep top 70% by density
+    scored.sort(key=lambda x: -x[1])
+    keep_n = max(2, int(len(scored) * 0.7))
+    kept = sorted(scored[:keep_n], key=lambda x: sentences.index(x[0]))
+    result = " ".join(s for s, _ in kept)
+    after = count_tokens(result)
+    return result, before, min(after, before)
+
+
 # ── Benchmark runner ─────────────────────────────────────────────────────────
 
 
@@ -286,6 +333,38 @@ class CompetitorBenchmark:
                         savings_pct=100 * (before - simple_tokens) / max(1, before),
                         time_ms=0,
                         method="simple-dedup",
+                    )
+                )
+
+                # ── Neural Scorer baseline ──
+                nn_text, _, nn_after = _compress_neural(prompt["text"])
+                nn_save = 100 * (before - nn_after) / max(1, before)
+                entries.append(
+                    BenchmarkEntry(
+                        name=f"{desc}",
+                        description=desc,
+                        category=ptype,
+                        tokens_before=before,
+                        tokens_after=nn_after,
+                        savings_pct=max(0, nn_save),
+                        time_ms=0,
+                        method="neural-scorer",
+                    )
+                )
+
+                # ── LLMLingua-style baseline ──
+                ll_text, _, ll_after = _compress_llmlingua_style(prompt["text"])
+                ll_save = 100 * (before - ll_after) / max(1, before)
+                entries.append(
+                    BenchmarkEntry(
+                        name=f"{desc}",
+                        description=desc,
+                        category=ptype,
+                        tokens_before=before,
+                        tokens_after=ll_after,
+                        savings_pct=max(0, ll_save),
+                        time_ms=0,
+                        method="llmlingua-style",
                     )
                 )
 

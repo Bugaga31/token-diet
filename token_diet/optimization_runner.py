@@ -61,6 +61,11 @@ try:
 except ImportError:
     from loss_router import compress_prose_aggressive, compress_with_routing  # type: ignore[no-redef]
 
+try:
+    from .neural_scorer import strip_noise
+except ImportError:
+    strip_noise = None  # type: ignore[assignment]
+
 Counter = Callable[[str], int]
 
 
@@ -396,6 +401,35 @@ def _cache_hit_proposal(profile: RequestProfile, cache: SemanticCache | None) ->
     return OptimizationProposal(name="semantic_cache", target_section=section, applicable=False, details="cache MISS")
 
 
+def _neural_noise_proposal(profile: RequestProfile) -> OptimizationProposal:
+    """Neural Scorer: ML-grade noise detection without GPU.
+
+    Classifies every sentence as signal/noise using n-gram entropy,
+    filler patterns, semantic density, and positional heuristics.
+    Drops only high-confidence noise sentences.
+    """
+    section = "history"
+    if not profile.history_text or strip_noise is None:
+        return OptimizationProposal(
+            name="neural_noise_filter", target_section=section, applicable=False,
+            details="Neural Scorer not available" if strip_noise is None else "no history text"
+        )
+    _, before, after = strip_noise(profile.history_text)
+    return OptimizationProposal(
+        name="neural_noise_filter",
+        target_section=section,
+        tokens_before=before,
+        tokens_after=after,
+        risk="low",
+        applicable=after < before and (before - after) >= 3,
+        details=(
+            f"Neural Scorer: dropped {before - after} noise tokens "
+            f"via statistical classification (filler + entropy + density)"
+            if after < before else "no noise detected"
+        ),
+    )
+
+
 def _prose_proposal(profile: RequestProfile) -> OptimizationProposal:
     section = "history"
     if not profile.history_text:
@@ -465,6 +499,7 @@ class OptimizationRunner:
             candidates.append(_blob_proposal(profile))
             candidates.append(_dedupe_proposal(profile))
         if "history" in targets:
+            candidates.append(_neural_noise_proposal(profile))
             candidates.append(_prose_proposal(profile))
             candidates.append(_aggressive_prose_proposal(profile))
         if "tools" in targets:
