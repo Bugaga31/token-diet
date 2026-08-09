@@ -358,12 +358,21 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="token-diet — Track. Optimize. Achieve.")
-    parser.add_argument("command", nargs="?", default="serve", help="Command: serve")
+    parser.add_argument("command", nargs="?", default="serve",
+                       help="Command: serve | setup | detect")
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8080, help="Port (default: 8080)")
     parser.add_argument("--upstream-url", default="", help="Upstream OpenAI-compatible API URL")
     parser.add_argument("--upstream-key", default="", help="Upstream API key")
     args = parser.parse_args()
+
+    # Route to setup if requested
+    if args.command in ("setup", "detect", "list"):
+        from token_diet.auto_setup import main as setup_main
+        import sys as _sys
+        _sys.argv = ["token-diet-setup", args.command]
+        setup_main()
+        return
 
     if args.upstream_url:
         os.environ["UPSTREAM_URL"] = args.upstream_url

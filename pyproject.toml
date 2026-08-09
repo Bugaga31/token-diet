@@ -28,6 +28,7 @@ Repository = "https://github.com/Bugaga31/token-diet"
 
 [project.scripts]
 token-diet = "token_diet.server:main"
+token-diet-setup = "token_diet.auto_setup:main"
 
 [project.optional-dependencies]
 server = ["fastapi", "uvicorn", "httpx"]

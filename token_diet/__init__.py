@@ -166,6 +166,15 @@ from .obsidian_memory import (
     RetrievalResult,
     estimate_memory_savings,
 )
+from .auto_setup import (
+    ToolConfig,
+    TOOLS,
+    configure_all,
+    detect_tools,
+    detect_and_report,
+    generate_shell_config,
+    write_shell_config,
+)
 
 __all__ = [
     "__version__",
