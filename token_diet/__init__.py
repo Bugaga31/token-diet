@@ -146,6 +146,20 @@ from .competitor_benchmark import (
     BenchmarkEntry,
     TEST_PROMPTS,
 )
+from .neural_scorer import (
+    NeuralScorer,
+    ScoredChunk,
+    score_prompt_sections,
+    strip_noise,
+)
+from .agent_supervisor import (
+    AgentSupervisor,
+    AgentTurn,
+    LoopAlert,
+    SupervisorState,
+    supervised_agent_loop,
+    truncate_tool_result,
+)
 
 __all__ = [
     "__version__",
@@ -250,8 +264,18 @@ __all__ = [
     "route_query",
     "sherlock_system_prompt",
     "structpack_roundtrip_safe",
+    "AgentSupervisor",
+    "AgentTurn",
+    "LoopAlert",
+    "NeuralScorer",
+    "ScoredChunk",
+    "SupervisorState",
     "TEST_PROMPTS",
+    "score_prompt_sections",
+    "strip_noise",
+    "supervised_agent_loop",
     "translation_safe",
+    "truncate_tool_result",
     "TurnKind",
     "unpack_records",
 ]
