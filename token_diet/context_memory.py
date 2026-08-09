@@ -1,7 +1,7 @@
 """Token Diet — расширенный модуль: event memory, adaptive context, language router.
 
 Идея из /home/ro/token_diet_full.py (автор: пользователь).
-Версия для DarkBit — интегрирована с существующим token_diet/core.py.
+EventStore with versioning, hybrid ranking, and adaptive context.
 
 Компоненты (включая доработки по ревью #4 и #8):
   - EventStore: персистентная event-память с ВЕРСИОНИРОВАНИЕМ, разрешением

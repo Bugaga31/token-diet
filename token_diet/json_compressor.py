@@ -5,7 +5,7 @@
   - content-aware compression: понимает структуру данных
   - reversible: можно восстановить original (с потерей None/empty ключей)
 
-Применение в DarkBit:
+JSON compression utilities.
   - tool results (market data, portfolio, search results) → compressed
   - research context в дебатах → меньше токенов, быстрее ответ
   - не трогает текст HTML — только структурированные данные

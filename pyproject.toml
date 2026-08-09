@@ -9,7 +9,7 @@ description = "Track. Optimize. Achieve. — AI cost optimization for the planet
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{name = "DarkBit", email = "admin@darkbit.local"}]
+authors = [{name = "token-diet", email = "hello@token-diet.dev"}]
 keywords = ["llm", "token-compression", "context-engineering", "prompt-caching", "agent-memory"]
 classifiers = [
     "Development Status :: 4 - Beta",

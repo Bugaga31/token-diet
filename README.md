@@ -214,8 +214,7 @@ token_diet/
 ## Origin
 
 Started as `token_diet_full.py` — a single-file proof-of-concept. Grew into a
-structured library powering DarkBit's AI investment platform. 153 tests, CI PASS,
-MIT licensed.
+structured library. 307 tests, CI PASS, MIT licensed.
 
 ## Environmental Impact
 
@@ -275,32 +274,15 @@ Human Impact ($946/year saved with token-diet)
 > Чем меньше люди тратят на нейронки — тем больше у них остаётся на мороженое,
 > парк с семьёй, книги, кофе с друзьями. На то, на что раньше не хватало времени.
 
-## Use with anymodel.org — double the savings
-
-token-diet compresses prompts BEFORE they reach the API. Services like
-[anymodel.org](https://anymodel.org) provide models at wholesale prices
-($0.10/M flat rate vs $35/M vendor pricing). **Combine them**:
-
-```
-your prompt → token-diet (46.6% compression) → anymodel ($0.10/M)
-                                         = ~73% total savings vs direct vendor
-```
-
-| Layer | Savings |
-|---|---|
-| Vendor → anymodel | ~97% (volume pricing) |
-| anymodel + token-diet | +46.6% (token compression) |
-| **Combined vs vendor direct** | **~98.5% cheaper** |
-
 ## 🌍 token-diet Foundation
 
 *Coming soon.*
 
-> Мы строим фонд, который направит сэкономленные ресурсы на восстановление
-> планеты и поддержку людей. Каждый сэкономленный токен — это шаг к чистой
-> энергии, зелёным дата-центрам и доступному ИИ для всех.
+> Every token saved is a step toward cleaner energy, greener data centers,
+> and AI that's truly accessible to everyone. The foundation will redirect
+> saved resources into planetary restoration and human support.
 >
-> Следите за новостями.
+> Stay tuned.
 
 ---
 
