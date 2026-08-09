@@ -21,6 +21,11 @@ from token_diet.agent_context import compress_agent_context, render_compressed_c
 from token_diet.ast_json_compressor import compress_json_ast
 from token_diet.neural_scorer import strip_noise
 from token_diet.green_calculator import GreenCalculator
+from token_diet.pattern_collapse import (
+    collapse_json_text,
+    semantic_dedup,
+    CCRStore,
+)
 
 
 # ── Test prompts ─────────────────────────────────────────────────────────────
@@ -99,19 +104,29 @@ TEST_PROMPTS = {
 
 
 def _compress_json_full(text: str) -> tuple[str, int, int]:
-    """JSON: AST compression + JSON flatten fallback."""
+    """JSON: Pattern Collapse + AST compression + JSON flatten fallback."""
     before = count_tokens(text)
     try:
         data = json.loads(text)
+        if isinstance(data, list) and len(data) > 10:
+            # Pattern collapse first (SmartCrusher-style)
+            collapsed = collapse_json_text(text, max_examples=3, total_max=10)
+            ca = count_tokens(collapsed)
+            if ca < before:
+                return collapsed, before, ca
+        # Then try AST compression
         result, _, after = compress_json_ast(data)
         if after < before:
             return result, before, after
     except Exception:
         pass
-    # Fallback: JSON compressor
-    result = compress_json(json.loads(text))
-    after = count_tokens(result)
-    return result, before, after
+    # Fallback
+    try:
+        result = compress_json(json.loads(text))
+        after = count_tokens(result)
+        return result, before, after
+    except Exception:
+        return text, before, before
 
 
 def _compress_prose_full(text: str) -> tuple[str, int, int]:
@@ -123,7 +138,7 @@ def _compress_prose_full(text: str) -> tuple[str, int, int]:
 
 
 def _compress_agent_full(history: list[dict]) -> tuple[str, int, int]:
-    """Agent: compress prose in user/assistant turns, keep code/tools."""
+    """Agent: compress prose turns, keep code/tool calls verbatim."""
     full_text = "\n\n".join(m["content"] for m in history)
     before = count_tokens(full_text)
 
@@ -131,14 +146,28 @@ def _compress_agent_full(history: list[dict]) -> tuple[str, int, int]:
     for msg in history:
         content = msg["content"]
         role = msg["role"]
-        if role in ("user",) and len(content) > 20:
-            # Compress only long user prose
+
+        if role == "user" and len(content.split()) > 5:
+            # Compress long user messages — strip filler
             c, _, _ = compress_with_routing(content)
             compressed.append({"role": role, "content": c})
-        elif role == "assistant" and "```" not in content and "<tool_call>" not in content:
-            # Compress assistant prose (not code blocks or tool calls)
-            c, _, _ = compress_with_routing(content)
-            compressed.append({"role": role, "content": c})
+        elif role == "assistant":
+            if "```" in content or "<tool_call>" in content:
+                # Code/tool calls: keep verbatim
+                compressed.append(msg)
+            elif len(content.split()) > 8:
+                # Prose-only assistant: compress filler
+                c, _, _ = compress_with_routing(content)
+                compressed.append({"role": role, "content": c})
+            else:
+                compressed.append(msg)
+        elif role == "tool":
+            # Tool results: keep short results, summarize long ones
+            if len(content) > 200:
+                c = content[:150].rstrip() + "\n[... truncated ...]"
+                compressed.append({"role": role, "content": c})
+            else:
+                compressed.append(msg)
         else:
             compressed.append(msg)
 
@@ -148,16 +177,25 @@ def _compress_agent_full(history: list[dict]) -> tuple[str, int, int]:
 
 
 def _compress_retrieval_full(text: str) -> tuple[str, int, int]:
-    """Retrieval: dedup near-duplicate documents + prose compression."""
+    """Retrieval: semantic dedup + exact dedup + prose compression."""
     before = count_tokens(text)
-    # Split into documents and dedup
     docs = re.split(r'\n\n+', text)
-    deduped, dropped = deduplicate_chunks(docs)
+
+    # Try semantic dedup with low threshold (word-level n-grams)
+    deduped, dropped = semantic_dedup(docs, threshold=0.15, ngram_size=3)
+    # Also try exact-match dedup (shingle-based)
+    deduped2, dropped2 = deduplicate_chunks(deduped, threshold=0.7)
+    total_dropped = dropped + dropped2
+
     # Compress each remaining doc
     compressed = []
-    for doc in deduped:
+    for doc in deduped2:
         c, _, _ = compress_with_routing(doc)
         compressed.append(c if c.strip() else doc)
+
+    if total_dropped > 0:
+        compressed.append(f"[{total_dropped} near-duplicate documents removed]")
+
     result = "\n\n".join(compressed)
     after = count_tokens(result)
     return result, before, min(after, before)
@@ -170,11 +208,16 @@ def _compress_neural(text: str) -> tuple[str, int, int]:
 
 
 def _compress_headroom_real(text: str, ptype: str) -> tuple[str, int, int]:
-    """Headroom-style: type-aware compression."""
+    """Headroom-style: type-aware compression with pattern collapse."""
     before = count_tokens(text)
     if ptype == "json":
         try:
             data = json.loads(text)
+            if isinstance(data, list) and len(data) > 10:
+                collapsed = collapse_json_text(text, max_examples=3, total_max=10)
+                ca = count_tokens(collapsed)
+                if ca < before:
+                    return collapsed, before, ca
             result = compress_json(data)
             after = count_tokens(result)
             return result, before, after
@@ -186,11 +229,16 @@ def _compress_headroom_real(text: str, ptype: str) -> tuple[str, int, int]:
 
 
 def _compress_llmlingua_real(text: str, ptype: str) -> tuple[str, int, int]:
-    """LLMLingua-style: iterative content-word pruning on prose, JSON flatten on json."""
+    """LLMLingua-style: pattern collapse on JSON, density scoring on prose."""
     before = count_tokens(text)
     if ptype == "json":
         try:
             data = json.loads(text)
+            if isinstance(data, list) and len(data) > 10:
+                collapsed = collapse_json_text(text, max_examples=3, total_max=10)
+                ca = count_tokens(collapsed)
+                if ca < before:
+                    return collapsed, before, ca
             result = compress_json(data)
             after = count_tokens(result)
             return result, before, after
