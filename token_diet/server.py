@@ -101,6 +101,13 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
 
             # ── User message: full intelligence pipeline ──
             elif role == "user":
+                # Noise filter — strip garbage first
+                try:
+                    from token_diet.noise_filter import filter_noise
+                    result = filter_noise(content, aggressive=True)
+                    content = result.cleaned
+                except Exception:
+                    pass
                 try:
                     from token_diet.promptology import (
                         rewrite_user_prompt, reframe_positive,
