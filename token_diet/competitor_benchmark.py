@@ -32,6 +32,11 @@ from token_diet.promptology import (
     optimize_prompt,
 )
 from token_diet.tfidf_scorer import compress_retrieval_tfidf as _compress_retrieval_tfidf
+from token_diet.intelligence_optimizer import (
+    inject_reasoning_blueprint,
+    merge_tokens,
+    score_prompt,
+)
 
 
 # ── Test prompts ─────────────────────────────────────────────────────────────
@@ -243,15 +248,17 @@ def _compress_neural(text: str) -> tuple[str, int, int]:
 
 
 def _compress_promptology(text: str) -> tuple[str, int, int]:
-    """Promptology: rewrite verbose prompts into compact structured form."""
+    """Promptology: rewrite + intelligence optimizer."""
     try:
         data = json.loads(text)
         system = data.get("system", "")
         user = data.get("user", "")
         result_obj = optimize_prompt(system=system, user=user)
         before = result_obj.tokens_before
-        after = result_obj.tokens_after
-        combined = result_obj.system_after + "\n" + result_obj.user_after
+        # Apply intelligence optimizer on top
+        combined = result_obj.system_after + "\n" + inject_reasoning_blueprint(result_obj.user_after)
+        combined = merge_tokens(combined)
+        after = count_tokens(combined)
         return combined, before, after
     except Exception:
         before = count_tokens(text)

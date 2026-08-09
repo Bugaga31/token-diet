@@ -85,7 +85,7 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
                 except Exception:
                     pass
 
-            # ── User message: rewrite + reframe + language adapt ──
+            # ── User message: full intelligence pipeline ──
             elif role == "user":
                 try:
                     from token_diet.promptology import (
@@ -96,6 +96,18 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
                     content = reframe_positive(content)
                     content = remove_russian_filler(content)
                     content = adapt_for_language(content, "Russian")
+                except Exception:
+                    pass
+                # Self-Discover reasoning blueprint
+                try:
+                    from token_diet.intelligence_optimizer import inject_reasoning_blueprint
+                    content = inject_reasoning_blueprint(content)
+                except Exception:
+                    pass
+                # Token Merger
+                try:
+                    from token_diet.intelligence_optimizer import merge_tokens
+                    content = merge_tokens(content)
                 except Exception:
                     pass
                 # Loss-router compression
