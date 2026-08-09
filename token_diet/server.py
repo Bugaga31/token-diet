@@ -74,6 +74,20 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
         content = msg.get("content", "")
         role = msg.get("role", "")
 
+        # Handle tool definitions
+        if role == "tool_definitions" or (isinstance(content, list) and all(
+            isinstance(t, dict) and ("function" in t or "type" in t) for t in content[:1]
+            if isinstance(content, list)
+        )):
+            try:
+                from token_diet.compression_arsenal import compress_tool_definitions
+                if isinstance(content, list):
+                    tools_json = json.dumps(content)
+                    content = compress_tool_definitions(tools_json)
+                    content = json.loads(content)  # Parse back to list
+            except Exception:
+                pass
+
         if isinstance(content, str) and content:
             before = count_tokens(content)
 
@@ -108,6 +122,12 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
                 try:
                     from token_diet.intelligence_optimizer import merge_tokens
                     content = merge_tokens(content)
+                except Exception:
+                    pass
+                # Caveman grammar stripper
+                try:
+                    from token_diet.compression_arsenal import strip_grammar_caveman
+                    content = strip_grammar_caveman(content)
                 except Exception:
                     pass
                 # Loss-router compression
