@@ -4,9 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-307%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-324%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 [![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
 [![Water](https://img.shields.io/badge/water-340B%20liters%2Fyear%20saved-blue.svg)]()
@@ -54,7 +54,14 @@ TOTAL                 6448    4953         3256       50%        34%
 
 **token-diet 2× cheaper than raw prompts, 1.5× cheaper than naive compression. All Gate PASS.**
 
-## What's inside (v2.5.1)
+## What's inside (v2.7.0)
+
+### 🆕 v2.7.0 — InvestmentAnalyzer (lessons learned live on MOEX)
+- **`investment_analyzer.py`** — Honest, trap-aware market analysis. Zero neural models, zero hallucinated "guarantees".
+  - **Dividend-calendar trap detection** — ex-div dates are gap-down traps (T & Akron on 10.08.2026: AVOID).
+  - **Already-priced-in detection** — a stock that FELL on a record report is not a buy (Yandex: AVOID).
+  - **Smart Committee** (reverse-engineered from DarkBit) — weighted multi-role votes → honest consensus.
+  - **Honesty cap** — confidence never exceeds 75%. It's a probability, not a promise.
 
 ### 🆕 v2.5.1 — Pure CLI proxy + multi-tool quickstart
 - **server.py** — No dashboard, no HTML. Just `token-diet serve` → proxy on :8080.
@@ -208,13 +215,14 @@ token_diet/
 ├── intelligence_booster.py  # Reinvest savings → richer context
 ├── smart_multiplier.py      # 5× intelligence proof
 ├── llm_connector.py         # Real API (DeepSeek/OpenAI/Anthropic) + simulation
+├── investment_analyzer.py   # Dividend-calendar traps, priced-in news, honest verdicts
 └── __init__.py              # Public API
 ```
 
 ## Origin
 
 Started as `token_diet_full.py` — a single-file proof-of-concept. Grew into a
-structured library. 307 tests, CI PASS, MIT licensed.
+structured library. 324 tests, CI PASS, MIT licensed.
 
 ## Environmental Impact
 

@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "2.5.0"
+__version__ = "2.7.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -175,6 +175,19 @@ from .auto_setup import (
     generate_shell_config,
     write_shell_config,
 )
+from .investment_analyzer import (
+    CommitteeVerdict,
+    CommitteeVote,
+    DividendEvent,
+    InvestmentAnalyzer,
+    InvestmentVerdict,
+    NewsItem,
+    PricedInAssessment,
+    assess_news_from_snippets,
+    assess_news_priced_in,
+    build_events_from_calendar_rows,
+    parse_date,
+)
 
 __all__ = [
     "__version__",
@@ -281,14 +294,24 @@ __all__ = [
     "structpack_roundtrip_safe",
     "AgentSupervisor",
     "AgentTurn",
+    "CommitteeVerdict",
+    "CommitteeVote",
+    "DividendEvent",
+    "InvestmentAnalyzer",
+    "InvestmentVerdict",
     "LoopAlert",
     "NeuralScorer",
+    "NewsItem",
     "ObsidianMemoryStore",
     "ObsidianNote",
+    "PricedInAssessment",
     "RetrievalResult",
     "ScoredChunk",
     "SupervisorState",
     "TEST_PROMPTS",
+    "assess_news_from_snippets",
+    "assess_news_priced_in",
+    "build_events_from_calendar_rows",
     "estimate_memory_savings",
     "score_prompt_sections",
     "strip_noise",
