@@ -4,9 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-337%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-385%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-2.7.1-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-2.9.0-blue.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 [![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
 [![Water](https://img.shields.io/badge/water-340B%20liters%2Fyear%20saved-blue.svg)]()
@@ -54,7 +54,27 @@ TOTAL                 6448    4953         3256       50%        34%
 
 **token-diet 2× cheaper than raw prompts, 1.5× cheaper than naive compression. All Gate PASS.**
 
-## What's inside (v2.8.0)
+## What's inside (v2.9.0)
+
+### 🆕 v2.9.0 — Cognition Arsenal: intelligence without new weights
+Reverse-engineered from the research literature (ToT, Multi-Agent Debate, Decomposed Reasoning) — all algorithmic, zero neural models, works with ANY provider:
+
+- **`cognition_arsenal.py`** — four techniques, verified live on DeepSeek:
+  - **Tree-of-Thoughts** (Yao et al. 2023) — branch multiple reasoning paths, self-score each, backtrack. Live: confidence 1.00, correct answer.
+  - **Multi-Agent Debate** (Liang et al. 2023) — independent agents propose, critique each other, converge. Live: all agents correct, cross-critique catches nothing to fix.
+  - **Decomposed Reasoning** (Khot et al. 2023) — split a hard question into sub-questions, solve each, assemble. Honest fallback if decomposition fails.
+  - **`CognitiveRouter`** — **the optimization**: picks the cheapest strategy that actually helps THIS question. Simple → **0 extra tokens**. Hard → spends reasoning tokens only where they pay off. Maximizes **IQ-per-token**, not raw IQ.
+- **Live proof**: servers-probability problem — RAW and Router both answered correctly (0.98); Router chose `refine` by measured complexity, didn't overspend.
+
+```python
+from token_diet import cognitive_solve, tree_of_thoughts, multi_agent_debate, assess_complexity
+
+# Just call it — the router decides how much cognition is worth it
+answer, plan, stats = cognitive_solve(
+    "Compare Python vs Rust for web servers...", llm_call, budget_tokens=2000)
+print(plan.strategy, stats["calls"], stats["confidence"])
+# → "tot" 9 0.85  (complex question: searches reasoning paths)
+```
 
 ### 🆕 v2.8.0 — The organism: feed → analysis → memory
 - **`telegram_market_feed.py`** — live market feed from curated Telegram channels (RF market "kitchen": Bank of Russia, MOEX, Minfin, Smart-lab, MarketTwits, RDV, Kogan, RBK…). Fetches messages (Telethon, optional), detects MOEX tickers (company names + literal tickers, with false-positive filter), converts to `NewsItem` and feeds straight into `InvestmentAnalyzer`. Degrades gracefully offline.
@@ -242,13 +262,14 @@ token_diet/
 ├── smart_multiplier.py      # 5× intelligence proof
 ├── llm_connector.py         # Real API (DeepSeek/OpenAI/Anthropic) + simulation
 ├── investment_analyzer.py   # Dividend-calendar traps, priced-in news, honest verdicts
+├── cognition_arsenal.py     # ToT, Multi-Agent Debate, Decomposed, CognitiveRouter
 └── __init__.py              # Public API
 ```
 
 ## Origin
 
 Started as `token_diet_full.py` — a single-file proof-of-concept. Grew into a
-structured library. 337 tests, CI PASS, MIT licensed.
+structured library. 385 tests, CI PASS, MIT licensed.
 
 ## Environmental Impact
 

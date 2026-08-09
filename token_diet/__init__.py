@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "2.8.0"
+__version__ = "2.9.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -210,13 +210,37 @@ from .telegram_market_feed import (
     parse_message,
 )
 from .obsidian_vault import ObsidianVault
+from .cognition_arsenal import (
+    CognitionPlan,
+    DebateResult,
+    DecomposedResult,
+    ThoughtNode,
+    TotResult,
+    assess_complexity,
+    choose_cognition_strategy,
+    cognitive_solve,
+    decompose_and_solve,
+    multi_agent_debate,
+    tree_of_thoughts,
+)
 
 __all__ = [
     "__version__",
+    "CognitionPlan",
+    "DebateResult",
+    "DecomposedResult",
     "FeedMessage",
     "MARKET_CHANNELS",
     "ObsidianVault",
     "RawMessage",
+    "ThoughtNode",
+    "TotResult",
+    "assess_complexity",
+    "choose_cognition_strategy",
+    "cognitive_solve",
+    "decompose_and_solve",
+    "multi_agent_debate",
+    "tree_of_thoughts",
     "STRUCTPACK_PREAMBLE",
     "TICKER_ALIASES",
     "TelegramMarketFeed",
