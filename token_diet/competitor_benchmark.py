@@ -26,6 +26,11 @@ from token_diet.pattern_collapse import (
     semantic_dedup,
     CCRStore,
 )
+from token_diet.promptology import (
+    rewrite_system_prompt,
+    rewrite_user_prompt,
+    optimize_prompt,
+)
 
 
 # ── Test prompts ─────────────────────────────────────────────────────────────
@@ -96,6 +101,29 @@ TEST_PROMPTS = {
             "Document 5: Total Q4 revenue: $12.3B (+15% YoY). Cloud: $5.1B (+28% YoY). "
             "Enterprise: $4.2B (+8% YoY). Consumer: $3.0B (+5% YoY)."
         ),
+    },
+    "verbose_prompt": {
+        "type": "promptology",
+        "description": "Verbose system+user prompt (persona bloat + filler)",
+        "text": json.dumps({
+            "system": (
+                "You are an elite senior software architect with over 20 years of experience "
+                "in distributed systems and cloud infrastructure. You must always be polite and "
+                "courteous to the user. Remember to be professional at all times. "
+                "If you don't know the answer, say so. "
+                "Additionally, it is important to note that you should explain everything in detail. "
+                "Furthermore, let's think about this step by step. "
+                "First, analyze the problem. Second, break it down. Third, provide a solution. "
+                "Please note that all code must be production-ready. "
+                "You MUST validate all inputs. Do NOT trust user data. "
+                "Only use approved libraries."
+            ),
+            "user": (
+                "Hey, I was wondering if you could help me with something? "
+                "Could you please write a Python function that calculates "
+                "Fibonacci sequence up to n terms? Thank you in advance!"
+            ),
+        }),
     },
 }
 
@@ -207,6 +235,22 @@ def _compress_neural(text: str) -> tuple[str, int, int]:
     return result, before, min(after, before)
 
 
+def _compress_promptology(text: str) -> tuple[str, int, int]:
+    """Promptology: rewrite verbose prompts into compact structured form."""
+    try:
+        data = json.loads(text)
+        system = data.get("system", "")
+        user = data.get("user", "")
+        result_obj = optimize_prompt(system=system, user=user)
+        before = result_obj.tokens_before
+        after = result_obj.tokens_after
+        combined = result_obj.system_after + "\n" + result_obj.user_after
+        return combined, before, after
+    except Exception:
+        before = count_tokens(text)
+        return text, before, before
+
+
 def _compress_headroom_real(text: str, ptype: str) -> tuple[str, int, int]:
     """Headroom-style: type-aware compression with pattern collapse."""
     before = count_tokens(text)
@@ -314,6 +358,8 @@ class CompetitorBenchmark:
                 _, before, after = _compress_agent_full(prompt["text"])
             elif ptype == "retrieval":
                 _, before, after = _compress_retrieval_full(prompt["text"])
+            elif ptype == "promptology":
+                _, before, after = _compress_promptology(prompt["text"])
             else:
                 before = count_tokens(prompt["text"])
                 after = before
