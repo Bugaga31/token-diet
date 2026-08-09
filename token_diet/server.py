@@ -108,6 +108,13 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
                     content = result.cleaned
                 except Exception:
                     pass
+                # Intelligence Amplifier — adaptive reasoning + output structure
+                try:
+                    from token_diet.intelligence_amplifier import amplify_intelligence
+                    amp = amplify_intelligence(content)
+                    content = amp.amplified_query
+                except Exception:
+                    pass
                 try:
                     from token_diet.promptology import (
                         rewrite_user_prompt, reframe_positive,
