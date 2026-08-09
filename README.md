@@ -54,7 +54,28 @@ TOTAL                 6448    4953         3256       50%        34%
 
 **token-diet 2× cheaper than raw prompts, 1.5× cheaper than naive compression. All Gate PASS.**
 
-## What's inside (v2.7.1)
+## What's inside (v2.8.0)
+
+### 🆕 v2.8.0 — The organism: feed → analysis → memory
+- **`telegram_market_feed.py`** — live market feed from curated Telegram channels (RF market "kitchen": Bank of Russia, MOEX, Minfin, Smart-lab, MarketTwits, RDV, Kogan, RBK…). Fetches messages (Telethon, optional), detects MOEX tickers (company names + literal tickers, with false-positive filter), converts to `NewsItem` and feeds straight into `InvestmentAnalyzer`. Degrades gracefully offline.
+- **`obsidian_vault.py`** — persistent memory as Obsidian-compatible markdown notes (`write` / `read` / `search` / `context_for_prompt`). The model retrieves durable facts instead of holding a private cache — cheaper AND more consistent.
+- **End-to-end organism test** — `tests/test_organism_pipeline.py` proves the whole body works as ONE pipeline: feed → trap-aware verdicts → memory → prompt context.
+- **Russian morphology fix** in `investment_analyzer.py` — news signals now match case forms (`рекорде`, `разочаровал`), not just dictionary stems.
+
+```python
+from token_diet import TelegramMarketFeed, InvestmentAnalyzer, ObsidianVault
+
+feed = TelegramMarketFeed(session_path="~/.telegram-mcp/telegram_live.session")
+raw = await feed.fetch_latest(limit=5)          # live news from 19 channels
+verdicts = analyzer.analyze_batch(["PLZL", "T"]) # trap-aware verdicts
+vault = ObsidianVault("~/Documents/Obsidian")    # persistent memory
+vault.write("Вердикт", verdicts[0].render())    # remember
+ctx = vault.context_for_prompt("рынок РФ")       # feed memory to the model
+```
+
+### 🆕 v2.7.2 — Telegram session security (your account is your own)
+- `.gitignore` blocks `*.session`, `.env`, `TELEGRAM_*`, `*.tdata*` — credentials can never be committed.
+- `find_local_telegram_sessions()` / `link_local_telegram_session()` — use your own session, outside any repo, chmod 0600, never printed.
 
 ### 🆕 v2.7.1 — Telegram MCP integration (chigwell/telegram-mcp)
 - **`token-diet setup` now also registers Telegram** — 80+ MCP tools (chats, messages, media, contacts, events) into every MCP client: `~/.mcp.json`, `~/.claude.json`, `~/.cursor/mcp.json`.

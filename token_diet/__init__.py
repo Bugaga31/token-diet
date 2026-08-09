@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "2.7.2"
+__version__ = "2.8.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -198,10 +198,32 @@ from .investment_analyzer import (
     build_events_from_calendar_rows,
     parse_date,
 )
+from .telegram_market_feed import (
+    FeedMessage,
+    MARKET_CHANNELS,
+    RawMessage,
+    TICKER_ALIASES,
+    TelegramMarketFeed,
+    compact_digest,
+    detect_tickers,
+    feed_to_news_items,
+    parse_message,
+)
+from .obsidian_vault import ObsidianVault
 
 __all__ = [
     "__version__",
+    "FeedMessage",
+    "MARKET_CHANNELS",
+    "ObsidianVault",
+    "RawMessage",
     "STRUCTPACK_PREAMBLE",
+    "TICKER_ALIASES",
+    "TelegramMarketFeed",
+    "compact_digest",
+    "detect_tickers",
+    "feed_to_news_items",
+    "parse_message",
     "SECTION_NAMES",
     "CALL_TYPES",
     "AdaptiveContext",
