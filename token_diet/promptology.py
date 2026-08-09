@@ -624,6 +624,33 @@ def inject_analogical_prompting(prompt: str, max_analogies: int = 3) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 2j. ACTION BIAS INJECTOR — prevent hesitation after compression
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_ACTION_BIAS_INSTRUCTION = (
+    "PRIORITY: Execute commands immediately. Do not explain why. "
+    "Do not ask for confirmation. Do not list alternatives. "
+    "Default to action, not explanation. If the user says 'do X', do X now."
+)
+
+
+def inject_action_bias(prompt: str) -> str:
+    """Inject action bias to counteract compression-induced hesitation.
+
+    When prompts are compressed and wrapped in XML constraints, models
+    tend to become more cautious and explanatory. This counters that
+    by injecting a direct action directive at the END of the prompt
+    (highest attention position per U-curve).
+
+    Lesson learned: compression preserves content but can shift tone
+    from imperative to advisory. This fixes it.
+    """
+    if "execute immediately" not in prompt.lower():
+        return prompt + "\n\n" + _ACTION_BIAS_INSTRUCTION
+    return prompt
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 3. Full Prompt Pipeline — rewrite entire prompt (system + user + examples)
 # ═══════════════════════════════════════════════════════════════════════════════
 

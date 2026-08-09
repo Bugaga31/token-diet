@@ -91,11 +91,12 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
         if isinstance(content, str) and content:
             before = count_tokens(content)
 
-            # ── System prompt: full promptology rewrite ──
+            # ── System prompt: rewrite + action bias ──
             if role == "system":
                 try:
-                    from token_diet.promptology import rewrite_system_prompt
+                    from token_diet.promptology import rewrite_system_prompt, inject_action_bias
                     content = rewrite_system_prompt(content)
+                    content = inject_action_bias(content)
                 except Exception:
                     pass
 
