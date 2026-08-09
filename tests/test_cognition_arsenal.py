@@ -81,13 +81,18 @@ def test_router_scales_with_complexity():
 
 
 def test_router_respects_budget():
-    # Complex question, low budget → ToT (cheaper) not decompose
+    # Complex question (c>=5): low budget → ToT, big budget → debate
     hard_q = ("Analyze the risks and trade-offs of multiple candidate "
               "architectures, evaluate the failure modes, calculate the "
-              "expected cost of each option, and decide which to adopt.")
+              "expected cost of each option, decide which to adopt, and "
+              "assess the regulatory compliance implications of the plan")
+    assert assess_complexity(hard_q) >= 5
     low = choose_cognition_strategy(hard_q, budget_tokens=200)
+    mid = choose_cognition_strategy(hard_q, budget_tokens=900)
     high = choose_cognition_strategy(hard_q, budget_tokens=2000)
-    assert low.strategy != "decompose" or high.strategy != "decompose"
+    assert low.strategy == "tot"
+    assert mid.strategy == "decompose"
+    assert high.strategy == "debate"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

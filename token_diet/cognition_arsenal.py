@@ -22,11 +22,12 @@ is a callable `llm_call(prompt) -> str` so it works with ANY provider.
 from __future__ import annotations
 
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from .core import count_tokens
-from .reasoning import self_consistency_merge
+from .reasoning import normalize_answer, self_consistency_merge
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. TREE-OF-THOUGHTS — search over reasoning paths
@@ -63,8 +64,8 @@ _SCORE_PROMPT = (
 
 
 def _parse_score(text: str) -> float:
-    """Extract a 0-1 score from a model response."""
-    m = re.search(r"(0(?:\.\d+)?|1(?:\.0+)?|\.\d+)", text)
+    """Extract a 0-1 score from a model response (accepts bare 0, 1, .5)."""
+    m = re.search(r"(0(?:\.\d+)?|1(?:\.0*)?|\.\d+)", text)
     if not m:
         return 0.5
     try:
@@ -99,6 +100,9 @@ def tree_of_thoughts(
             return _parse_score(llm_call(_SCORE_PROMPT.format(
                 problem=problem, thought=thought)))
 
+    if branches < 1:
+        raise ValueError("branches must be >= 1")
+
     root = ThoughtNode(text=problem, depth=0)
     calls_made = 0
 
@@ -126,7 +130,7 @@ def tree_of_thoughts(
                 best_child = child
 
         # Expand the single best child (greedy beam of width 1 at next level)
-        assert best_child is not None
+        assert best_child is not None  # branches >= 1 guarantees a child
         return expand(best_child)
 
     best = expand(root)
@@ -188,8 +192,6 @@ def multi_agent_debate(
         agents: number of independent agents (2-5 sensible).
         rounds: debate rounds after the initial proposals.
     """
-    from .reasoning import normalize_answer
-
     n = max(2, min(agents, 5))
     answers: list[str] = []
 
@@ -213,12 +215,16 @@ def multi_agent_debate(
             ).strip())
         answers = new_answers
 
-    # Agreement: fraction of agents whose normalized answer matches the winner
-    normed = [normalize_answer(a) for a in answers]
-    from collections import Counter
+    # Agreement: fraction of agents whose normalized answer matches the winner.
+    # Empty answers never count as agreement (avoids fake consensus on blanks).
+    non_empty = [a for a in answers if a.strip()]
+    if not non_empty:
+        return DebateResult(answers=answers, final_answer="",
+                            rounds=rounds, agreement=0.0)
+    normed = [normalize_answer(a) for a in non_empty]
     counts = Counter(normed)
     winner_norm, top_count = counts.most_common(1)[0]
-    final = answers[normed.index(winner_norm)]
+    final = non_empty[normed.index(winner_norm)]
     agreement = top_count / n
 
     return DebateResult(answers=answers, final_answer=final,
@@ -374,7 +380,10 @@ def choose_cognition_strategy(
     if c == 4:
         return CognitionPlan("tot", c, _STRATEGY_COST["tot"],
                              "very hard — search multiple reasoning paths")
-    # c >= 5
+    # c >= 5: escalate with budget
+    if budget_tokens >= 1200:
+        return CognitionPlan("debate", c, _STRATEGY_COST["debate"],
+                             "critical — multi-agent debate for hallucination-prone problems")
     if budget_tokens >= 700:
         return CognitionPlan("decompose", c, _STRATEGY_COST["decompose"],
                              "complex — decompose then assemble; budget allows it")
@@ -444,8 +453,8 @@ def cognitive_solve(
     if plan.strategy == "tot":
         res = tree_of_thoughts(question, counted, branches=2, max_depth=2)
         stats["confidence"] = res.confidence
-        stats["calls"] += res.calls_made - stats["calls"]
-        stats["extra_tokens"] += count_tokens(res.best.text)
+        # `counted` already tracked every judge + generation call
+        stats["calls"] = res.calls_made
         return res.best.text, plan, stats
 
     if plan.strategy == "debate":
