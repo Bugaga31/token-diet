@@ -421,6 +421,209 @@ def adapt_for_language(prompt: str, target_language: str = "Russian") -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 2f. RUSSIAN FILLER REMOVER — Russian-specific bloat patterns
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Russian filler words (research: Russian needs 2.2-3x more tokens than English!)
+_RUSSIAN_FILLER = [
+    re.compile(r'\b(?:конечно|разумеется|безусловно|несомненно|очевидно),?\s*', re.IGNORECASE),
+    re.compile(r'\b(?:пожалуй|вероятно|возможно|наверное|кажется),?\s*', re.IGNORECASE),
+    re.compile(r'\b(?:очень|весьма|крайне|чрезвычайно|абсолютно|совершенно)\s+', re.IGNORECASE),
+    re.compile(r'\b(?:просто|всего лишь|только лишь|всего-навсего)\s+', re.IGNORECASE),
+    re.compile(r'\b(?:я бы хотел|я хотел бы|мне хотелось бы|я бы попросил|будьте добры|будьте любезны)\s+', re.IGNORECASE),
+    re.compile(r'\b(?:не могли бы вы|не мог бы ты|можно ли|разрешите)\s+', re.IGNORECASE),
+    re.compile(r'\b(?:кстати|между прочим|в принципе|вообще|собственно|так сказать)\s*,?\s*', re.IGNORECASE),
+    re.compile(r'\b(?:в общем|в целом|итак|таким образом|следовательно)\s*,?\s*', re.IGNORECASE),
+]
+
+# Russian verbose introductions — replace with direct imperative
+_RUSSIAN_INTRO = [
+    (re.compile(r'^(?:я бы хотел|я хочу|мне нужно|мне необходимо|мне требуется)\s+(?:попросить|узнать|выяснить|понять)\s*,?\s*', re.IGNORECASE), ''),
+    (re.compile(r'^(?:не могли бы вы|можешь ли ты|ты можешь)\s+(?:помочь|объяснить|рассказать|написать|сделать)\s*,?\s*', re.IGNORECASE), ''),
+]
+
+
+def remove_russian_filler(text: str) -> str:
+    """Remove Russian-specific filler words and verbose intros.
+
+    Russian needs 2.2-3x MORE tokens than English for the same meaning.
+    Removing filler is CRITICAL for Russian users — every saved token
+    is worth 2-3x more than in English.
+    """
+    result = text
+    # Remove filler words
+    for pattern in _RUSSIAN_FILLER:
+        result = pattern.sub('', result)
+    # Replace verbose intros
+    for pattern, replacement in _RUSSIAN_INTRO:
+        result = pattern.sub(replacement, result)
+    # Clean up double spaces and punctuation
+    result = re.sub(r'  +', ' ', result)
+    result = re.sub(r',\s*,', ',', result)
+    result = result.strip()
+    return result if result else text
+
+
+def russian_token_penalty(text: str) -> dict:
+    """Estimate the Russian token penalty vs English equivalent.
+
+    Returns dict with:
+    - tokens_ru: actual token count in Russian
+    - multiplier: estimated 2.5x penalty (conservative)
+    - tokens_if_english: estimated tokens if text were in English
+    - savings_if_english: how many tokens you'd save by using English
+    """
+    from token_diet.core import count_tokens
+    tokens_ru = count_tokens(text)
+    # Conservative 2.5x multiplier (research range: 2.2-3.0x)
+    multiplier = 2.5
+    tokens_if_english = int(tokens_ru / multiplier)
+    return {
+        'tokens_actual': tokens_ru,
+        'multiplier': multiplier,
+        'tokens_if_english': tokens_if_english,
+        'waste': tokens_ru - tokens_if_english,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2g. CHAIN-OF-DRAFT ENFORCER + OUTPUT SHAPER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_CHAIN_OF_DRAFT_INSTRUCTION = (
+    "Use Chain-of-Draft: reason in dense shorthand like [Calc: X = Y + Z]. "
+    "No conversational prose in reasoning steps."
+)
+
+_OUTPUT_SHAPER_INSTRUCTION = (
+    "Be direct. Omit conversational filler, introductions, and conclusions. "
+    "Output only the answer. Do not restate the prompt."
+)
+
+_MINIFIED_CODE_INSTRUCTION = (
+    "Output code without explanatory comments or verbose formatting. "
+    "Minimize whitespace. Focus on logic, not readability."
+)
+
+
+def inject_chain_of_draft(prompt: str) -> str:
+    """Inject Chain-of-Draft instruction for minimal-token reasoning.
+
+    Instead of "First, I need to calculate the total..." (high tokens),
+    the model uses "[Calc: 5 * unit = total]" (low tokens).
+
+    Research: saves up to 60% on reasoning tokens vs prose CoT.
+    """
+    if "chain-of-draft" not in prompt.lower() and "[Calc:" not in prompt:
+        return prompt + "\n\n" + _CHAIN_OF_DRAFT_INSTRUCTION
+    return prompt
+
+
+def inject_output_shaper(
+    prompt: str,
+    mode: str = "direct",
+) -> str:
+    """Inject output constraints for minimum-token responses.
+
+    Modes:
+    - "direct": no filler, no intro, no conclusion
+    - "code": minified code, no comments
+    - "bullet": bullet points, max 10 words each
+    """
+    instructions = {
+        "direct": _OUTPUT_SHAPER_INSTRUCTION,
+        "code": _MINIFIED_CODE_INSTRUCTION,
+        "bullet": "Answer as bullet points, max 10 words each. No prose.",
+    }
+    instruction = instructions.get(mode, _OUTPUT_SHAPER_INSTRUCTION)
+    return prompt + "\n\n" + instruction
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2h. CACHE-AWARE PROMPT BUILDER + SANDWICH RULE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def build_cache_aware_prompt(
+    static_system: str = "",
+    static_tools: str = "",
+    static_examples: str = "",
+    semi_static_context: str = "",
+    volatile_query: str = "",
+    model: str = "auto",
+) -> str:
+    """Build a prompt optimized for provider caching.
+
+    Golden rule (Anthropic + OpenAI caching):
+    - Static content at BEGINNING → cached, 90% discount on reads
+    - Semi-static in middle → may change between sessions
+    - Volatile at END → changes every request, no cache impact
+
+    Also applies SANDWICH RULE: repeat critical constraints at end
+    for U-shaped attention curve (beginning + end get most attention).
+    """
+    parts = []
+
+    # Layer 1: Static — cacheable, never changes between requests
+    if static_system:
+        parts.append(static_system)
+    if static_tools:
+        parts.append(static_tools)
+    if static_examples:
+        parts.append(static_examples)
+
+    # Layer 2: Semi-static — changes rarely (e.g., per session)
+    if semi_static_context:
+        parts.append(semi_static_context)
+
+    # Layer 3: Volatile — changes every request
+    if volatile_query:
+        # Extract key constraints from static_system for sandwich rule
+        constraints = []
+        constraint_re = re.compile(
+            r'\b(?:must|required|do not|only|обязательно|нельзя)\b[^.!]*[.!]',
+            re.IGNORECASE,
+        )
+        for m in constraint_re.finditer(static_system):
+            c = m.group().strip()
+            if c and len(c) < 100:
+                constraints.append(c)
+
+        if constraints:
+            sandwich = "Key constraints: " + "; ".join(constraints[:3])
+            parts.append(sandwich + "\n\n" + volatile_query)
+        else:
+            parts.append(volatile_query)
+
+    return "\n\n".join(parts)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2i. ANALOGICAL PROMPTING INJECTOR
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_ANALOGICAL_PROMPTING_INSTRUCTION = (
+    "Before solving, recall 3 relevantly similar problems from your knowledge, "
+    "outline their solutions briefly, then solve using those analogies."
+)
+
+
+def inject_analogical_prompting(prompt: str, max_analogies: int = 3) -> str:
+    """Inject analogical prompting instruction.
+
+    Instead of static few-shot examples (which may be irrelevant to the
+    specific query), the model self-generates relevant analogies from its
+    parametric knowledge, then uses them to solve the target problem.
+
+    Research (Yasunaga et al., ICLR 2024): outperforms static few-shot
+    because analogies are dynamically tailored to the query.
+    """
+    if "analog" not in prompt.lower() and "recall" not in prompt.lower():
+        return _ANALOGICAL_PROMPTING_INSTRUCTION + "\n\n" + prompt
+    return prompt
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 3. Full Prompt Pipeline — rewrite entire prompt (system + user + examples)
 # ═══════════════════════════════════════════════════════════════════════════════
 
