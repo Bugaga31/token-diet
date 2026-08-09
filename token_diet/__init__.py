@@ -112,7 +112,7 @@ from .prompt_distiller import (
     SectionStats,
 )
 from .question_normalizer import normalize_question
-from .server import DASHBOARD_HTML, ServerStats, create_app, main as serve_main
+from .server import ServerStats, create_app, main as serve_main
 from .sherlock_reasoner import (
     SelfVerifier,
     SherlockReasoner,

@@ -54,7 +54,11 @@ TOTAL                 6448    4953         3256       50%        34%
 
 **token-diet 2× cheaper than raw prompts, 1.5× cheaper than naive compression. All Gate PASS.**
 
-## What's inside (v2.5.0)
+## What's inside (v2.5.1)
+
+### 🆕 v2.5.1 — Pure CLI proxy + multi-tool quickstart
+- **server.py** — No dashboard, no HTML. Just `token-diet serve` → proxy on :8080.
+- **README** — Copy-paste commands for Claude Code, OpenCode, Cursor, Hermes, Buffy, OpenAI SDK, OpenRouter, Ollama.
 
 ### 🆕 v2.5.0 — ObsidianMemoryStore + Auto-Setup
 - **`obsidian_memory.py`** — Linked-note knowledge base with [[wikilinks]], graph traversal, backlinks. Replaces context bloat with targeted retrieval (up to 85% token savings).
@@ -101,38 +105,70 @@ TOTAL                 2436 →  1301   46.6%  (1135 tokens)
 
 ```bash
 pip install git+https://github.com/Bugaga31/token-diet.git[server]
+token-diet setup   # Auto-detect + configure all tools
+token-diet serve   # Start proxy (pure CLI, no dashboard)
+```
 
-# Start the proxy server + live dashboard
-token-diet serve
-# → http://localhost:8080 — live counter: tokens, $, CO2, ice cream
+### Claude Code
+```bash
+source ~/.token-diet/config.sh
+claude
+# All requests compress automatically — 40% fewer tokens
+```
+
+### OpenCode
+```bash
+source ~/.token-diet/config.sh
+opencode
+# OPENAI_BASE_URL → localhost:8080/v1
+```
+
+### Cursor
+```bash
+source ~/.token-diet/config.sh
+# Cursor Settings → OpenAI API Base → http://localhost:8080/v1
+```
+
+### Hermes
+```bash
+source ~/.token-diet/config.sh
+hermes
+# ~/.hermes/config.json auto-configured
+```
+
+### Buffy / Freebuff
+```bash
+source ~/.token-diet/config.sh
+# ~/.buffy/config.json auto-configured
+```
+
+### OpenAI SDK
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:8080/v1", api_key="...")
+# All requests compressed
+```
+
+### OpenRouter
+```bash
+source ~/.token-diet/config.sh
+# OPENROUTER_BASE_URL → localhost:8080
+```
+
+### Ollama
+```bash
+source ~/.token-diet/config.sh
+# Ollama → token-diet → upstream API
 ```
 
 ```python
-from token_diet import (
-    # Core compression
-    guarded_records, compress_with_routing, reduce_output,
-    compress_prose_aggressive, normalize_question, guarded_tool_schemas,
-    # Full pipeline
-    OptimizationRunner, RequestProfile, EquivalenceGate,
-    # Intelligence
-    SmartMultiplier, IntelligenceBooster,
-    # Real API
-    LLMConnector,
-)
+# Python API
+from token_diet import OptimizationRunner, RequestProfile, EquivalenceGate
+from token_diet import SmartMultiplier, IntelligenceBooster, LLMConnector
 
-# Run the full demo
-# python3 demo_token_diet.py
-
-# Run competitive benchmark
-# python3 benchmark_compete.py
-
-# Run real DeepSeek benchmark
-# DEEPSEEK_API_KEY=sk-... python3 real_benchmark.py
-
-# Pro-tip: any LLM → smarter + cheaper
-conn = LLMConnector.from_env()  # auto-detect DeepSeek/OpenAI/Anthropic
-result = conn.ask("Your prompt here")
-print(f"Cost: ${result.cost:.6f}, Tokens: {result.usage.input_tokens}")
+# Run demo: python3 demo_token_diet.py
+# Run benchmark: python3 -m token_diet.competitor_benchmark
+# Real API: DEEPSEEK_API_KEY=sk-... python3 real_benchmark.py
 ```
 
 ## Architecture
