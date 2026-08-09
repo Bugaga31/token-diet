@@ -306,6 +306,7 @@ class TestBenchmark:
         assert "token-diet" in report
         assert "WINNER" in report
         assert "COST" in report
+        assert "ENVIRONMENT" in report
 
     def test_json_report_generates(self):
         benchmark = CompetitorBenchmark()
@@ -314,6 +315,7 @@ class TestBenchmark:
         data = json.loads(report)
         assert "summary" in data
         assert "tests" in data
+        assert "winner" in data["summary"]
         assert data["summary"]["total_before"] > 0
 
     def test_entry_savings_positive(self):
