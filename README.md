@@ -103,10 +103,31 @@ TOTAL                 2436 →  1301   46.6%  (1135 tokens)
 
 ## Quickstart
 
+**Linux / macOS:**
 ```bash
+curl -sSL https://raw.githubusercontent.com/Bugaga31/token-diet/main/install.sh | bash
+```
+
+**Windows PowerShell:**
+```powershell
+irm https://raw.githubusercontent.com/Bugaga31/token-diet/main/install.ps1 | iex
+```
+
+**Windows CMD:**
+```cmd
+curl -sSL https://raw.githubusercontent.com/Bugaga31/token-diet/main/install.bat -o install.bat && install.bat
+```
+
+**Manual pip:**
+```bash
+# Linux/macOS (use single quotes — zsh-safe):
+pip install 'git+https://github.com/Bugaga31/token-diet.git[server]' --break-system-packages
+
+# Windows:
 pip install git+https://github.com/Bugaga31/token-diet.git[server]
-token-diet setup   # Auto-detect + configure all tools
-token-diet serve   # Start proxy (pure CLI, no dashboard)
+
+token-diet setup
+token-diet serve
 ```
 
 ### Claude Code
