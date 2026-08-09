@@ -62,6 +62,7 @@ _stats = ServerStats()
 
 
 def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int]:
+    """Apply FULL pipeline: promptology + loss_router + pattern_collapse."""
     if not messages:
         return messages, 0
 
@@ -71,27 +72,48 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
 
     for msg in messages:
         content = msg.get("content", "")
+        role = msg.get("role", "")
+
         if isinstance(content, str) and content:
             before = count_tokens(content)
-            role = msg.get("role", "")
 
-            if role == "user":
+            # ── System prompt: full promptology rewrite ──
+            if role == "system":
+                try:
+                    from token_diet.promptology import rewrite_system_prompt
+                    content = rewrite_system_prompt(content)
+                except Exception:
+                    pass
+
+            # ── User message: rewrite + reframe + language adapt ──
+            elif role == "user":
+                try:
+                    from token_diet.promptology import (
+                        rewrite_user_prompt, reframe_positive,
+                        remove_russian_filler, adapt_for_language,
+                    )
+                    content = rewrite_user_prompt(content)
+                    content = reframe_positive(content)
+                    content = remove_russian_filler(content)
+                    content = adapt_for_language(content, "Russian")
+                except Exception:
+                    pass
+                # Loss-router compression
                 try:
                     from token_diet.loss_router import compress_with_routing
-                    compressed, _, after_t = compress_with_routing(content)
-                    after = after_t
-                    optimized.append({**msg, "content": compressed})
+                    content, _, _ = compress_with_routing(content)
                 except Exception:
-                    optimized.append(msg)
-                    after = before
-                total_before += before
-                total_after += after
-            else:
-                optimized.append(msg)
-                total_before += before
-                total_after += before
+                    pass
+
+            after = count_tokens(content)
+            optimized.append({**msg, "content": content})
+            total_before += before
+            total_after += after
         else:
             optimized.append(msg)
+            if isinstance(content, str):
+                total_before += count_tokens(content)
+                total_after += count_tokens(content)
 
     saved = max(0, total_before - total_after)
     return optimized, saved
@@ -109,7 +131,7 @@ def create_app():
         print("pip install fastapi uvicorn httpx")
         sys.exit(1)
 
-    app = FastAPI(title="token-diet", version="2.5.1")
+    app = FastAPI(title="token-diet", version="2.5.9")
 
     UPSTREAM_URL = os.environ.get("UPSTREAM_URL", "")
     UPSTREAM_KEY = os.environ.get("UPSTREAM_KEY", "")
@@ -205,7 +227,7 @@ def main():
 
     upstream = os.environ.get("UPSTREAM_URL", "")
     mode = upstream if upstream else "simulation"
-    print(f"token-diet :{args.port}  upstream={mode}  v2.5.1")
+    print(f"token-diet :{args.port}  upstream={mode}  v2.5.9")
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 

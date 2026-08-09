@@ -31,6 +31,7 @@ from token_diet.promptology import (
     rewrite_user_prompt,
     optimize_prompt,
 )
+from token_diet.tfidf_scorer import compress_retrieval_tfidf as _compress_retrieval_tfidf
 
 
 # ── Test prompts ─────────────────────────────────────────────────────────────
@@ -205,17 +206,23 @@ def _compress_agent_full(history: list[dict]) -> tuple[str, int, int]:
 
 
 def _compress_retrieval_full(text: str) -> tuple[str, int, int]:
-    """Retrieval: semantic dedup + exact dedup + prose compression."""
+    """Retrieval: TF-IDF scoring + semantic dedup + prose compression."""
     before = count_tokens(text)
-    docs = re.split(r'\n\n+', text)
 
-    # Try semantic dedup with low threshold (word-level n-grams)
+    # Query for TF-IDF scoring (extract key terms from first doc title)
+    first_line = text.split('\n')[0] if '\n' in text else text[:100]
+    query = re.sub(r'Document \d+:\s*', '', first_line)[:80]
+
+    # TF-IDF compression first (LLMLingua-2 secret weapon)
+    tfidf_result = _compress_retrieval_tfidf(text, query=query, keep_ratio=0.5)
+
+    # Then semantic dedup on remaining
+    docs = re.split(r'\n\n+', tfidf_result)
     deduped, dropped = semantic_dedup(docs, threshold=0.15, ngram_size=3)
-    # Also try exact-match dedup (shingle-based)
     deduped2, dropped2 = deduplicate_chunks(deduped, threshold=0.7)
     total_dropped = dropped + dropped2
 
-    # Compress each remaining doc
+    # Prose compression on each doc
     compressed = []
     for doc in deduped2:
         c, _, _ = compress_with_routing(doc)
