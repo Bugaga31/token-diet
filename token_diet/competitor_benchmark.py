@@ -37,6 +37,12 @@ from token_diet.intelligence_optimizer import (
     merge_tokens,
     score_prompt,
 )
+from token_diet.compression_arsenal import (
+    strip_grammar_caveman,
+    collapse_logs,
+    compress_tool_definitions,
+    compress_by_self_information,
+)
 
 
 # ── Test prompts ─────────────────────────────────────────────────────────────
@@ -164,9 +170,10 @@ def _compress_json_full(text: str) -> tuple[str, int, int]:
 
 
 def _compress_prose_full(text: str) -> tuple[str, int, int]:
-    """Prose: aggressive sentence filtering."""
+    """Prose: Caveman + aggressive routing."""
     before = count_tokens(text)
-    result = compress_prose_aggressive(text)
+    result = strip_grammar_caveman(text)
+    result = compress_prose_aggressive(result)
     after = count_tokens(result)
     return result, before, after
 
@@ -211,8 +218,11 @@ def _compress_agent_full(history: list[dict]) -> tuple[str, int, int]:
 
 
 def _compress_retrieval_full(text: str) -> tuple[str, int, int]:
-    """Retrieval: TF-IDF scoring + semantic dedup + prose compression."""
+    """Retrieval: Self-info scoring + TF-IDF + semantic dedup + prose compression."""
     before = count_tokens(text)
+
+    # Self-information scoring first (Selective Context)
+    text = compress_by_self_information(text, keep_ratio=0.5)
 
     # Query for TF-IDF scoring (extract key terms from first doc title)
     first_line = text.split('\n')[0] if '\n' in text else text[:100]
