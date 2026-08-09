@@ -160,6 +160,12 @@ from .agent_supervisor import (
     supervised_agent_loop,
     truncate_tool_result,
 )
+from .obsidian_memory import (
+    ObsidianMemoryStore,
+    ObsidianNote,
+    RetrievalResult,
+    estimate_memory_savings,
+)
 
 __all__ = [
     "__version__",
@@ -268,9 +274,13 @@ __all__ = [
     "AgentTurn",
     "LoopAlert",
     "NeuralScorer",
+    "ObsidianMemoryStore",
+    "ObsidianNote",
+    "RetrievalResult",
     "ScoredChunk",
     "SupervisorState",
     "TEST_PROMPTS",
+    "estimate_memory_savings",
     "score_prompt_sections",
     "strip_noise",
     "supervised_agent_loop",
