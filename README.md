@@ -6,7 +6,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
 [![Tests](https://img.shields.io/badge/tests-385%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-2.9.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-2.9.1-blue.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 [![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
 [![Water](https://img.shields.io/badge/water-340B%20liters%2Fyear%20saved-blue.svg)]()
