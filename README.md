@@ -4,8 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-193%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-307%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 [![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
 [![Water](https://img.shields.io/badge/water-340B%20liters%2Fyear%20saved-blue.svg)]()
@@ -53,7 +54,15 @@ TOTAL                 6448    4953         3256       50%        34%
 
 **token-diet 2× cheaper than raw prompts, 1.5× cheaper than naive compression. All Gate PASS.**
 
-## What's inside
+## What's inside (v2.5.0)
+
+### 🆕 v2.5.0 — ObsidianMemoryStore + Auto-Setup
+- **`obsidian_memory.py`** — Linked-note knowledge base with [[wikilinks]], graph traversal, backlinks. Replaces context bloat with targeted retrieval (up to 85% token savings).
+- **`auto_setup.py`** — `token-diet setup` detects and configures Claude Code, OpenCode, Cursor, Continue.dev, Hermes, Buffy, OpenAI SDK, OpenRouter, Ollama — all in one command.
+
+### 🆕 v2.4.0 — Neural Scorer + Agent Supervisor
+- **`neural_scorer.py`** — ML-grade noise detection without GPU. Classifies sentences as signal/noise via entropy + filler + density.
+- **`agent_supervisor.py`** — Runtime loop detection for multi-agent systems. Detects tool repeats, token growth, circular reasoning.
 
 ### v2.1.0 — SmartMultiplier + Real API
 - **`smart_multiplier.py`** — Prove 5.8× intelligence gain: reinvest savings into docs/records/memory
@@ -225,6 +234,18 @@ your prompt → token-diet (46.6% compression) → anymodel ($0.10/M)
 | Vendor → anymodel | ~97% (volume pricing) |
 | anymodel + token-diet | +46.6% (token compression) |
 | **Combined vs vendor direct** | **~98.5% cheaper** |
+
+## 🌍 token-diet Foundation
+
+*Coming soon.*
+
+> Мы строим фонд, который направит сэкономленные ресурсы на восстановление
+> планеты и поддержку людей. Каждый сэкономленный токен — это шаг к чистой
+> энергии, зелёным дата-центрам и доступному ИИ для всех.
+>
+> Следите за новостями.
+
+---
 
 ## License
 

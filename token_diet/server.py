@@ -182,7 +182,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   </div>
 
   <div class="footer">
-    🌍 token-diet v2.4.0 — For the planet. For the people.<br>
+    🌍 token-diet v2.5.0 — For the planet. For the people.<br>
     Saving tokens, energy, CO₂, water — one API call at a time.
   </div>
 </div>
@@ -282,7 +282,7 @@ def create_app():
     app = FastAPI(
         title="token-diet",
         description="Track. Optimize. Achieve. — AI cost optimization proxy",
-        version="2.4.0",
+        version="2.5.0",
     )
 
     UPSTREAM_URL = os.environ.get("UPSTREAM_URL", "")
