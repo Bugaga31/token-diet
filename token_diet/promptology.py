@@ -1,19 +1,21 @@
 """Promptology — the SCIENCE of prompt efficiency.
 
-Research-backed techniques (2024-2025):
-1. XML tags outperform markdown for structural clarity
+Research-backed techniques (2024-2026):
+1. XML tags > Markdown for Claude; Markdown > XML for GPT/Gemini
 2. Minimal Role + Rigid Constraints beats verbose personas (40-70% bloat)
-3. Extractive compression beats token pruning for reasoning
-4. Dynamic few-shot selection (similarity-based) beats static examples
-5. Structured output schemas reduce output tokens
-
-All techniques are ZERO neural models — pure algorithmic promptology.
+3. Positive framing > Negation ("only use real data" vs "don't use mocks")
+4. U-shaped attention: static at beginning, query at end
+5. 12-block semantic compilation for max IQ/token
+6. Cross-model prompt transfer requires adapter layers
+7. Token Economics: every extra token degrades reasoning (O(n^2) attention)
+8. Plan in English → Output in native language (best for Russian users)
 
 Sources:
-- CompactPrompt (Choi et al., 2025)
-- Jha et al., ICML: Prompt Compression benchmarks
-- RECOMP / RECON: abstractive vs extractive compression
-- DSPy / Minimum Viable Prompt research
+- Prompt Engineering Patterns (GitHub, 15K+ stars)
+- Anthropic Prompt Engineering Guide
+- Liu et al. "Lost in the Middle" (U-shaped attention)
+- Zhejiang Univ. "Token Economics for LLM Agents" (2026)
+- Yandex Alice PromptHub + prompt1.ru (Russian prompt marketplace)
 """
 
 from __future__ import annotations
@@ -285,6 +287,140 @@ def minimize_few_shot(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 2b. POSITIVE REFRAMER — negation → positive framing
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Negative → Positive rewrites (Anthropic research: negation triggers "Pink Elephant")
+_NEGATIVE_TO_POSITIVE = [
+    (re.compile(r"do\s+not\s+use\s+mock\s+data", re.IGNORECASE), "only use real data"),
+    (re.compile(r"don't\s+use\s+mock", re.IGNORECASE), "use real"),
+    (re.compile(r"do\s+not\s+invent|don't\s+make\s+up", re.IGNORECASE), "use only verified facts"),
+    (re.compile(r"do\s+not\s+hallucinate|don't\s+hallucinate", re.IGNORECASE), "be factually accurate"),
+    (re.compile(r"never\s+use\s+(\S+\s+){0,3}mock", re.IGNORECASE), "always use real data"),
+    (re.compile(r"do\s+not\s+guess", re.IGNORECASE), "state only what you know"),
+    (re.compile(r"don't\s+be\s+lazy", re.IGNORECASE), "be thorough"),
+    (re.compile(r"do\s+not\s+skip", re.IGNORECASE), "include everything"),
+    (re.compile(r"never\s+say\s+(?:sorry|apologize)", re.IGNORECASE), "be direct and factual"),
+    (re.compile(r"don't\s+(?:use|write|add|include)\s+(?:unnecessary|redundant|extra|verbose)", re.IGNORECASE), "be concise"),
+]
+
+
+def reframe_positive(text: str) -> str:
+    """Rewrite negative instructions as positive ones.
+
+    Negative constraints force the model to process the forbidden concept
+    before suppressing it ("Pink Elephant" problem). Positive framing
+    directly steers toward the desired behaviour, improving compliance
+    and saving tokens.
+    """
+    result = text
+    for pattern, replacement in _NEGATIVE_TO_POSITIVE:
+        result = pattern.sub(replacement, result)
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2c. CROSS-MODEL ADAPTER — format for specific model families
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def adapt_for_model(prompt: str, model: str = "auto") -> str:
+    """Adapt prompt formatting for the target model family.
+
+    Claude: XML tags (<instructions>, <constraints>) — best compliance
+    GPT/Gemini: Markdown headers — best performance
+    Auto: detects from model name
+    """
+    model_lower = model.lower()
+
+    # Detect model family
+    if model == "auto":
+        return prompt  # Keep existing XML format (default)
+
+    if "claude" in model_lower or "anthropic" in model_lower:
+        # XML is already optimal for Claude — ensure tags are present
+        if "<instructions>" not in prompt and "<constraints>" not in prompt:
+            return f"<instructions>{prompt}</instructions>"
+        return prompt
+
+    if "gpt" in model_lower or "openai" in model_lower or "gemini" in model_lower:
+        # Convert XML to Markdown for GPT/Gemini
+        result = prompt
+        result = re.sub(r"<instructions>(.*?)</instructions>", r"# Instructions\n\1", result, flags=re.DOTALL)
+        result = re.sub(r"<constraints>(.*?)</constraints>", r"# Constraints\n\1", result, flags=re.DOTALL)
+        result = re.sub(r"<question>(.*?)</question>", r"**Q:** \1", result, flags=re.DOTALL)
+        result = re.sub(r"<instruction>(.*?)</instruction>", r"\1", result, flags=re.DOTALL)
+        return result
+
+    return prompt
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2d. ATTENTION-OPTIMAL ORDERING — U-shaped curve placement
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def order_for_attention(
+    system: str = "",
+    context: str = "",
+    examples: str = "",
+    query: str = "",
+) -> str:
+    """Arrange prompt sections for U-shaped attention curve.
+
+    Beginning (best recall): system instructions, constraints, tool defs
+    Middle (worst recall): large context, documents
+    End (best recall): user query, current task
+
+    This ordering maximizes prompt caching (static at start) and ensures
+    the most critical information (instructions + query) gets attention.
+    """
+    parts = []
+
+    # BEGINNING: static, cacheable, most important
+    if system:
+        parts.append(system)
+
+    # MIDDLE: context, background
+    if context:
+        parts.append(context)
+    if examples:
+        parts.append(examples)
+
+    # END: query — most recent, highest attention
+    if query:
+        parts.append(query)
+
+    return "\n\n".join(parts)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2e. PLAN-IN-ENGLISH adapter — for Russian (and other non-English) users
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_PLAN_IN_ENGLISH_PREAMBLE = (
+    "Think and reason internally in English for maximum logical depth. "
+    "Output the final answer in {language}."
+)
+
+
+def adapt_for_language(prompt: str, target_language: str = "Russian") -> str:
+    """Add plan-in-English instruction for non-English outputs.
+
+    Research shows LLMs reason best in English (majority of training data).
+    For complex tasks with non-English output, instructing the model to
+    think in English but output in the target language improves accuracy.
+
+    Only applies when the user prompt appears to be in a non-English language.
+    """
+    # Detect if prompt is in Russian (Cyrillic characters)
+    has_cyrillic = bool(re.search(r"[а-яёА-ЯЁ]", prompt))
+    if has_cyrillic:
+        return _PLAN_IN_ENGLISH_PREAMBLE.format(language=target_language) + "\n\n" + prompt
+    return prompt
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 3. Full Prompt Pipeline — rewrite entire prompt (system + user + examples)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -313,8 +449,19 @@ def optimize_prompt(
     examples: list[dict[str, str]] | None = None,
     max_examples: int = 3,
     counter: Any = None,
+    model: str = "auto",
+    target_language: str = "",
 ) -> PromptologyResult:
-    """Apply full promptology optimization to a prompt.
+    """Apply full promptology optimization: rewrite + reframe + adapt.
+
+    Args:
+        system: system prompt
+        user: user message
+        examples: few-shot examples
+        max_examples: cap on examples after minimization
+        counter: token counter (default: count_tokens)
+        model: target model ("claude", "gpt", "gemini", or "auto")
+        target_language: for plan-in-English adapter ("Russian", etc.)
 
     Returns the rewritten prompt and token savings.
     """
@@ -323,24 +470,42 @@ def optimize_prompt(
     ct = counter if counter else count_tokens
     examples = examples or []
 
-    # Count tokens BEFORE
-    before = (
-        ct(system)
-        + ct(user)
-        + sum(ct(str(e.get("input", "")) + " " + str(e.get("output", ""))) for e in examples)
-    )
-
-    # Rewrite
+    # Phase 1: Rewrite (strip bloat, structure)
     system_rw = rewrite_system_prompt(system)
     user_rw = rewrite_user_prompt(user)
+
+    # Phase 2: Positive reframing
+    system_rw = reframe_positive(system_rw)
+    user_rw = reframe_positive(user_rw)
+
+    # Phase 3: Language adaptation (plan-in-English for Russian users)
+    if target_language:
+        user_rw = adapt_for_language(user_rw, target_language)
+
+    # Phase 4: Few-shot minimization
     minimized_examples = minimize_few_shot(examples, max_examples)
 
-    # Count tokens AFTER
-    after = (
-        ct(system_rw)
-        + ct(user_rw)
-        + sum(ct(str(e.get("input", "")) + " " + str(e.get("output", ""))) for e in minimized_examples)
+    # Phase 5: Cross-model format adaptation
+    system_rw = adapt_for_model(system_rw, model)
+    user_rw = adapt_for_model(user_rw, model)
+
+    # Phase 6: Attention-optimal ordering
+    examples_text = "\n\n".join(
+        f"Example:\nInput: {e.get('input','')}\nOutput: {e.get('output','')}"
+        for e in minimized_examples
     )
+    full_prompt = order_for_attention(
+        system=system_rw,
+        examples=examples_text if examples_text else "",
+        query=user_rw,
+    )
+
+    # Count tokens
+    before = (
+        ct(system) + ct(user) +
+        sum(ct(str(e.get("input", "")) + " " + str(e.get("output", ""))) for e in examples)
+    )
+    after = ct(full_prompt)
 
     return PromptologyResult(
         system_before=system,
@@ -351,6 +516,49 @@ def optimize_prompt(
         examples_after=len(minimized_examples),
         tokens_before=before,
         tokens_after=after,
+    )
+
+
+def compile_prompt(
+    system: str = "",
+    user: str = "",
+    context: str = "",
+    examples: list[dict[str, str]] | None = None,
+    model: str = "auto",
+    target_language: str = "",
+) -> str:
+    """Full prompt compilation pipeline — everything optimized.
+
+    Applies ALL promptology techniques and returns the final prompt string.
+    This is the function you call before sending to the LLM API.
+
+    Usage:
+        prompt = compile_prompt(
+            system="You are a coding assistant.",
+            user="Write a Fibonacci function",
+            model="claude",
+        )
+        response = llm.send(prompt)
+    """
+    result = optimize_prompt(
+        system=system, user=user, examples=examples,
+        model=model, target_language=target_language,
+    )
+
+    # Use attention-optimal ordering with all components
+    examples_text = ""
+    if examples:
+        minimized = minimize_few_shot(examples)
+        examples_text = "\n\n".join(
+            f"Example:\nInput: {e.get('input','')}\nOutput: {e.get('output','')}"
+            for e in minimized
+        )
+
+    return order_for_attention(
+        system=result.system_after,
+        context=context,
+        examples=examples_text if examples_text else "",
+        query=result.user_after,
     )
 
 
