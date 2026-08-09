@@ -11,3 +11,24 @@ venv/
 *.log
 .coverage
 htmlcov/
+
+# ─────────────────────────────────────────────────────────────
+# 🔒 Telegram credentials & sessions — NEVER commit these.
+# A .session file or TELEGRAM_SESSION_STRING grants full access
+# to a Telegram account. These patterns must stay ignored forever.
+# ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.session
+*_telethon.session
+*session*.session
+TELEGRAM_*
+*.tdata*
+*tdata.zip
+221099698*
+*.jsonl.bak
+incoming_feed.jsonl
+aliases.json
+.telegram-mcp/
+mcp_errors.log

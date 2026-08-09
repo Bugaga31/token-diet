@@ -529,6 +529,94 @@ def configure_telegram_mcp() -> dict[str, Any]:
     return report
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Local Telegram session linking (private — never touches the repository)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Patterns of existing Telethon file sessions we may reuse locally.
+_SESSION_GLOB = "*_telethon.session"
+_SESSION_GLOB_ALT = "*.session"
+
+
+def find_local_telegram_sessions(home: str | Path | None = None) -> list[Path]:
+    """Find existing Telethon session files in the user's home directory.
+
+    These are the user's OWN login sessions (e.g. ``221099698_telethon.session``).
+    We never read their contents here and we never copy them into the repo — we
+    only point telegram-mcp at the one the user chooses.
+    """
+    home_path = Path(home or Path.home())
+    found: list[Path] = []
+    for pattern in (_SESSION_GLOB, _SESSION_GLOB_ALT):
+        for p in home_path.glob(pattern):
+            if p.is_file() and p.suffix == ".session" and p not in found:
+                found.append(p)
+    return sorted(found)
+
+
+def link_local_telegram_session(
+    session_path: str | Path | None = None,
+    label: str = "default",
+) -> dict[str, Any]:
+    """Point telegram-mcp at an EXISTING local Telethon session (private).
+
+    Behaviour:
+    1. If ``session_path`` is not given, pick the first ``*_telethon.session``
+       found in the home directory.
+    2. Copy the session file into ``~/.telegram-mcp/`` (OUTSIDE any git repo)
+       under a stable name so telegram-mcp can find it.
+    3. Write ``TELEGRAM_SESSION_NAME`` into ``~/.telegram-mcp/.env``.
+
+    Safety guarantees:
+    - The session file is NEVER copied into the token-diet repository.
+    - The session content is NEVER printed or logged.
+    - ``TELEGRAM_SESSION_STRING`` is never used — the session stays a file.
+    """
+    if session_path is None:
+        candidates = find_local_telegram_sessions()
+        if not candidates:
+            return {"ok": False, "reason": "нет локальных Telethon-сессий (*_telethon.session)"}
+        session_path = candidates[0]
+    src = Path(session_path).expanduser().resolve()
+    if not src.is_file() or src.suffix != ".session":
+        return {"ok": False, "reason": f"файл сессии не найден или не .session: {src}"}
+
+    target_dir = Path(TELEGRAM_MCP_DIR).expanduser()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"telegram_{label}.session"
+    try:
+        import shutil as _shutil
+
+        _shutil.copy2(src, target)
+        os.chmod(target, 0o600)  # owner-only: session = full account access
+    except OSError as exc:
+        return {"ok": False, "reason": f"не удалось скопировать сессию: {exc}"}
+
+    env_path = target_dir / ".env"
+    session_name = target.name
+    existing = ""
+    if env_path.exists():
+        existing = env_path.read_text(encoding="utf-8")
+    lines: list[str] = []
+    # prefer TELEGRAM_SESSION_NAME; keep API_ID/HASH untouched
+    if "TELEGRAM_SESSION_NAME=" not in existing:
+        lines.append(f"TELEGRAM_SESSION_NAME={session_name}")
+    if lines:
+        with open(env_path, "a", encoding="utf-8") as fh:
+            if existing and not existing.endswith("\n"):
+                fh.write("\n")
+            fh.write("\n".join(lines) + "\n")
+
+    return {
+        "ok": True,
+        "label": label,
+        "session_file": str(target),
+        "session_name": session_name,
+        "env_file": str(env_path),
+        "note": "сессия хранится только локально, вне git-репозитория",
+    }
+
+
 def configure_ollama() -> bool:
     """Configure Ollama to use token-diet as a proxy layer.
 
