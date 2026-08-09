@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "2.7.0"
+__version__ = "2.7.1"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -167,12 +167,20 @@ from .obsidian_memory import (
     estimate_memory_savings,
 )
 from .auto_setup import (
+    MCP_CONFIG_FILES,
+    TELEGRAM_MCP_DIR,
+    TELEGRAM_MCP_REPO,
     ToolConfig,
     TOOLS,
     configure_all,
+    configure_telegram_mcp,
     detect_tools,
     detect_and_report,
     generate_shell_config,
+    get_telegram_mcp_env,
+    install_telegram_mcp,
+    register_telegram_mcp,
+    telegram_mcp_installed,
     write_shell_config,
 )
 from .investment_analyzer import (

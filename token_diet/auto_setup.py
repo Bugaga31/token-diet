@@ -147,6 +147,16 @@ TOOLS: list[ToolConfig] = [
         shell_snippet="# Ollama local models can be proxied through token-diet:\n# export OLLAMA_HOST=http://localhost:8080",
         docs_url="https://ollama.com",
     ),
+    ToolConfig(
+        name="telegram-mcp",
+        display_name="Telegram MCP (chigwell/telegram-mcp)",
+        env_var="TELEGRAM_API_ID",
+        proxy_path="",
+        key_env_var="TELEGRAM_API_HASH",
+        detect_cmd="python3 -c 'import telethon' 2>/dev/null",
+        shell_snippet="# Telegram MCP: 80+ tools for chats, messages, media, contacts\n# Register MCP server in ~/.mcp.json / ~/.claude.json (see docs_url)",
+        docs_url="https://github.com/chigwell/telegram-mcp",
+    ),
 ]
 
 
@@ -378,6 +388,147 @@ export OPENROUTER_API_KEY=${{OPENROUTER_API_KEY:-your-key-here}}
     return True
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Telegram MCP (chigwell/telegram-mcp)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TELEGRAM_MCP_REPO = "https://github.com/chigwell/telegram-mcp.git"
+TELEGRAM_MCP_DIR = "~/.telegram-mcp"
+
+# MCP client config files that should receive the telegram-mcp server entry
+MCP_CONFIG_FILES = [
+    "~/.mcp.json",       # generic MCP registry (Claude Code, many clients)
+    "~/.claude.json",    # Claude Code
+    "~/.cursor/mcp.json",  # Cursor
+]
+
+
+def telegram_mcp_env_path() -> Path:
+    """Path to the telegram-mcp .env file (may not exist yet)."""
+    return Path(TELEGRAM_MCP_DIR).expanduser() / ".env"
+
+
+def telegram_mcp_installed() -> bool:
+    """True if telegram-mcp repo was cloned to the expected location."""
+    return (Path(TELEGRAM_MCP_DIR).expanduser() / "main.py").exists()
+
+
+def get_telegram_mcp_env() -> dict[str, str]:
+    """Read TELEGRAM_API_ID / TELEGRAM_API_HASH from env or the .env file."""
+    env: dict[str, str] = {}
+    env_path = telegram_mcp_env_path()
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip().strip('"').strip("'")
+            if key in ("TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_SESSION_STRING"):
+                env[key] = value
+    # environment wins over file
+    for key in ("TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_SESSION_STRING"):
+        if os.environ.get(key):
+            env[key] = os.environ[key].strip()
+    return env
+
+
+def install_telegram_mcp(repo: str = TELEGRAM_MCP_REPO) -> bool:
+    """Clone chigwell/telegram-mcp into ~/.telegram-mcp (idempotent).
+
+    Returns True when the repo is present afterwards. Never touches credentials.
+    """
+    target = Path(TELEGRAM_MCP_DIR).expanduser()
+    if telegram_mcp_installed():
+        return True
+    target.mkdir(parents=True, exist_ok=True)
+    try:
+        subprocess.run(
+            ["git", "clone", "--depth", "1", repo, str(target)],
+            capture_output=True, text=True, timeout=120,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return telegram_mcp_installed()
+
+
+def _merge_mcp_server(config_path: Path, server_entry: dict) -> bool:
+    """Add the telegram-mcp server entry to an MCP client config, preserving
+    any existing servers. Returns True if the file changed."""
+    if not config_path.exists():
+        data: dict = {}
+    else:
+        try:
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            data = {}
+    servers = data.setdefault("mcpServers", {})
+    if servers.get("telegram-mcp") == server_entry:
+        return False
+    servers["telegram-mcp"] = server_entry
+    try:
+        config_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+        return True
+    except OSError:
+        return False
+
+
+def register_telegram_mcp() -> dict[str, str]:
+    """Register telegram-mcp in all supported MCP client configs.
+
+    Uses `uv --directory <repo> run main.py` — the same command the
+    project's own claude_desktop_config.json ships with.
+    """
+    target = Path(TELEGRAM_MCP_DIR).expanduser()
+    uv_bin = shutil.which("uv") or "uv"
+    entry = {
+        "command": uv_bin,
+        "args": ["--directory", str(target), "run", "main.py"],
+    }
+    results: dict[str, str] = {}
+    for path_str in MCP_CONFIG_FILES:
+        path = Path(path_str).expanduser()
+        if path.parent.name == ".cursor":
+            path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            changed = _merge_mcp_server(path, entry)
+        except OSError:
+            changed = False
+        results[path_str] = "registered" if changed else "already" if path.exists() else "skipped"
+    return results
+
+
+def configure_telegram_mcp() -> dict[str, Any]:
+    """Full Telegram MCP setup: install repo, write .env from env vars, register.
+
+    Returns a report dict. Does NOT print or store session strings.
+    """
+    report: dict[str, Any] = {"repo": False, "env": [], "clients": {}}
+
+    report["repo"] = install_telegram_mcp()
+
+    env = get_telegram_mcp_env()
+    env_path = telegram_mcp_env_path()
+    if env:
+        existing = ""
+        if env_path.exists():
+            existing = env_path.read_text(encoding="utf-8")
+        lines = []
+        for key in ("TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_SESSION_STRING"):
+            if key in env and f"{key}=" not in existing:
+                lines.append(f"{key}={env[key]}")
+                report["env"].append(key)
+        if lines:
+            env_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(env_path, "a", encoding="utf-8") as fh:
+                if existing and not existing.endswith("\n"):
+                    fh.write("\n")
+                fh.write("\n".join(lines) + "\n")
+
+    report["clients"] = register_telegram_mcp()
+    return report
+
+
 def configure_ollama() -> bool:
     """Configure Ollama to use token-diet as a proxy layer.
 
@@ -450,6 +601,7 @@ def configure_all() -> dict[str, Any]:
         "openrouter": (configure_openrouter, "~/.openrouter/config.sh"),
         "ollama": (configure_ollama, "~/.ollama/token-diet.conf"),
         "continue": (configure_continue_dev, "~/.continue/config.json"),
+        "telegram-mcp": (configure_telegram_mcp, "~/.telegram-mcp/.env"),
     }
 
     for tool in detected:
@@ -518,6 +670,7 @@ def list_tools() -> str:
         "openrouter": ("~/.openrouter/config.sh", Path.home() / ".openrouter" / "config.sh"),
         "ollama": ("~/.ollama/token-diet.conf", Path.home() / ".ollama" / "token-diet.conf"),
         "continue": ("~/.continue/config.json", Path.home() / ".continue" / "config.json"),
+        "telegram-mcp": ("~/.telegram-mcp/.env", Path.home() / ".telegram-mcp" / ".env"),
         "claude-code": (None, Path.home() / ".token-diet" / "config.sh"),
         "opencode": (None, Path.home() / ".token-diet" / "config.sh"),
         "cursor": (None, Path.home() / ".token-diet" / "config.sh"),

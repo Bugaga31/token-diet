@@ -4,9 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-324%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-337%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-2.7.1-blue.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 [![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
 [![Water](https://img.shields.io/badge/water-340B%20liters%2Fyear%20saved-blue.svg)]()
@@ -54,7 +54,12 @@ TOTAL                 6448    4953         3256       50%        34%
 
 **token-diet 2× cheaper than raw prompts, 1.5× cheaper than naive compression. All Gate PASS.**
 
-## What's inside (v2.7.0)
+## What's inside (v2.7.1)
+
+### 🆕 v2.7.1 — Telegram MCP integration (chigwell/telegram-mcp)
+- **`token-diet setup` now also registers Telegram** — 80+ MCP tools (chats, messages, media, contacts, events) into every MCP client: `~/.mcp.json`, `~/.claude.json`, `~/.cursor/mcp.json`.
+- **`configure_telegram_mcp()`** — clones the repo to `~/.telegram-mcp`, writes `.env` from `TELEGRAM_API_ID`/`TELEGRAM_API_HASH`, registers the server with `uv --directory ... run main.py`.
+- **Safety**: existing MCP servers are preserved, `.env` never overwritten, session strings never printed.
 
 ### 🆕 v2.7.0 — InvestmentAnalyzer (lessons learned live on MOEX)
 - **`investment_analyzer.py`** — Honest, trap-aware market analysis. Zero neural models, zero hallucinated "guarantees".
@@ -222,7 +227,7 @@ token_diet/
 ## Origin
 
 Started as `token_diet_full.py` — a single-file proof-of-concept. Grew into a
-structured library. 324 tests, CI PASS, MIT licensed.
+structured library. 337 tests, CI PASS, MIT licensed.
 
 ## Environmental Impact
 
