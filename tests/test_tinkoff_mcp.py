@@ -45,9 +45,10 @@ def test_parse_sse_empty():
 
 # ── write-tool protection ────────────────────────────────────────────────
 
-def test_write_tools_blocked_by_default():
-    mcp = TinkoffMCP(token="fake-token")
-    assert not mcp.available or True  # token set
+def test_write_tools_blocked_by_default(monkeypatch):
+    monkeypatch.setattr("token_diet.tinkoff_mcp.get_token", lambda *a, **k: "fake-token")
+    mcp = TinkoffMCP()
+    assert mcp.available
     for tool in ("invest_create_order", "invest_create_stoporder",
                  "invest_cancel_order", "invest_transfer_broker_accounts"):
         res = mcp.call(tool, {})
@@ -55,12 +56,14 @@ def test_write_tools_blocked_by_default():
         assert "allow_trading" in res["error"]
 
 
-def test_no_token_graceful():
-    mcp = TinkoffMCP(token=None)
-    # no token in env here; either way call() must not raise
+def test_no_token_graceful(monkeypatch):
+    monkeypatch.setattr("token_diet.tinkoff_mcp.get_token", lambda *a, **k: None)
+    mcp = TinkoffMCP()
+    assert not mcp.available
+    # call() with no token must not raise and must return error dict
     res = mcp.call("invest_get_news", {})
     assert isinstance(res, dict)
-    assert "error" in res or "data" in res or "text" in res
+    assert "error" in res
 
 
 # ── extract_content ──────────────────────────────────────────────────────
@@ -112,7 +115,9 @@ def test_invest_hub_full_picture_mcp_enabled_never_raises():
 
 # ── status ───────────────────────────────────────────────────────────────
 
-def test_status_no_token():
-    mcp = TinkoffMCP(token=None)
+def test_status_no_token(monkeypatch):
+    monkeypatch.setattr("token_diet.tinkoff_mcp.get_token", lambda *a, **k: None)
+    mcp = TinkoffMCP()
     st = mcp.status()
     assert "available" in st
+    assert st["available"] is False

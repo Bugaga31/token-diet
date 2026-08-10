@@ -30,7 +30,6 @@ For the people. For the planet. Honesty is cheaper than regret.
 from __future__ import annotations
 
 import json
-import re
 import ssl
 import urllib.request
 import urllib.error
@@ -158,7 +157,16 @@ class TinkoffMCP:
 
     # ── список инструментов ──────────────────────────────────────────────
     def list_tools(self) -> list[dict]:
-        """Полный список инструментов MCP-сервера (с пагинацией)."""
+        """Полный список инструментов MCP-сервера (с пагинацией).
+
+        Возвращает [] на сбой — никогда не бросает (как и call()).
+        """
+        try:
+            return self._list_tools_unsafe()
+        except Exception:
+            return []
+
+    def _list_tools_unsafe(self) -> list[dict]:
         sid = self._ensure_session()
         tools: list[dict] = []
         cursor: str | None = None
@@ -276,7 +284,7 @@ class TinkoffMCP:
         """Первый брокерский счёт (для удобных обёрток)."""
         r = self.call("invest_list_broker_accounts", {})
         data = r.get("data") or {}
-        accounts = data.get("accounts") or data.get("brokerAccounts") or []
+        accounts = data.get("accounts") or []
         if isinstance(accounts, list) and accounts:
             first = accounts[0]
             if isinstance(first, dict):

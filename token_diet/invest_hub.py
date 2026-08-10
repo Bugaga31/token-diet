@@ -32,6 +32,7 @@ from .market_intelligence import generate_signal, estimate_price_range, aggregat
 from .trading_robot import run_strategies, backtest
 from .investment_analyzer import InvestmentAnalyzer, CommitteeVote, NewsItem
 from .date_anchor import full_date_context
+from .telegram_market_feed import detect_tickers
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -132,6 +133,22 @@ class InvestHub:
         if not isinstance(items, list):
             items = []
 
+        from datetime import datetime as _dt
+
+        def _fmt_date(v) -> str:
+            """Unix epoch или ISO-строка → читаемая дата."""
+            if v is None:
+                return ""
+            try:
+                epoch = int(v)
+                if 10**8 < epoch < 10**11:  # секунды
+                    return _dt.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M")
+                if 10**11 <= epoch < 10**14:  # миллисекунды
+                    return _dt.fromtimestamp(epoch / 1000).strftime("%Y-%m-%d %H:%M")
+            except (TypeError, ValueError, OSError):
+                pass
+            return str(v)[:19]
+
         out = []
         for it in items:
             if not isinstance(it, dict):
@@ -141,14 +158,15 @@ class InvestHub:
                 continue
             # фильтр по тикеру: название компании или сам тикер в заголовке
             if ticker:
-                from .telegram_market_feed import detect_tickers
                 found = detect_tickers(title)
                 if ticker.upper() not in found and ticker.upper() not in title.upper():
                     continue
             out.append({
                 "channel": "T-Invest (официально)",
                 "text": title,
-                "published": str(it.get("epochSecond") or it.get("date") or ""),
+                "published": _fmt_date(
+                    it.get("epochSecond") or it.get("ts") or it.get("date")
+                ),
             })
         return {"enabled": True, "messages": out[:limit], "source": "mcp"}
 
@@ -619,7 +637,9 @@ class InvestHub:
                 if mcp_news.get("messages"):
                     picture["news"] = mcp_news
 
-        if include_mcp:
+        if include_mcp and "position" not in picture:
+            # MCP-портфель — только если REST-портфель не дал позиций
+            # (дублировать не нужно, MCP-вызовы медленнее)
             brief = self.mcp_portfolio_brief()
             if brief.get("enabled") and "error" not in brief:
                 picture["mcp_portfolio"] = brief
