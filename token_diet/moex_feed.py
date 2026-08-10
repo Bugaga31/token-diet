@@ -126,8 +126,14 @@ class MoexFeed:
     def get_candles(
         self, ticker: str, days: int = 30,
         interval: str = "day",
+        skip_weekends: bool = True,
     ) -> list[MoexCandle]:
-        """Historical candles (1 day / 10 min / hour / month)."""
+        """Historical candles (1 day / 10 min / hour / month).
+
+        Args:
+            skip_weekends: фильтровать внебиржевые свечи выходных дней
+                (OsEngine-style: OTC-свечи искажают расчёт индикаторов)
+        """
         # ISS interval codes: 1min=1, 10min=10, 1hour=60, 1day=24, 1week=7, 1month=31
         iv_map = {"1min": "1", "10min": "10", "hour": "60", "day": "24",
                   "week": "7", "month": "31"}
@@ -157,6 +163,9 @@ class MoexFeed:
                 close=_as_float(row.get("close")),
                 volume=_as_float(row.get("volume")),
             ))
+        if skip_weekends:
+            from .date_anchor import filter_trading_days
+            candles = filter_trading_days(candles)
         return candles
 
     # ── dividends ───────────────────────────────────────────────────────

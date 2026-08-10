@@ -289,6 +289,7 @@ from .date_anchor import (
     date_anchor_block,
     days_until,
     describe_horizon,
+    filter_trading_days,
     format_date_iso,
     format_date_ru,
     format_date_short,

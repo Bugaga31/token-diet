@@ -189,6 +189,53 @@ def inject_date_anchor(system_prompt: str = "", d: date | None = None) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Фильтрация свечей — выходные/внебиржевые (OsEngine-style!
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_CANDLE = Any  # duck-typed: any object with .time (date/datetime)
+
+
+def filter_trading_days(
+    candles: list[_CANDLE],
+    skip_weekends: bool = True,
+    skip_holidays: bool = True,
+    holidays: set[date] | None = None,
+) -> list[_CANDLE]:
+    """Оставить только торговые дни из списка свечей.
+
+    Фильтрует:
+    - субботу и воскресенье (OTC-свечи, которые искажают индикаторы)
+    - российские праздники (MOEX не торгует)
+
+    Это то, что OsEngine рекомендует в статье на Smart-Lab:
+    «По выходным Т-Инвестиции проводят внебиржевые торги [...]
+    отрезаем исторические данные по выходным, чтобы они не влияли на
+    расчёт индикаторов».
+
+    Usage:
+        clean = filter_trading_days(candles)
+        # теперь MACD, RSI, MA cross считаются без шума выходных
+    """
+    if not skip_weekends and not skip_holidays:
+        return list(candles)
+
+    h = (holidays if holidays is not None else RUS_HOLIDAYS_2026) if skip_holidays else set()
+    filtered = []
+    for c in candles:
+        dt = c.time
+        if isinstance(dt, datetime):
+            d = dt.date()
+        else:
+            d = dt
+        if skip_weekends and d.weekday() >= 5:
+            continue
+        if skip_holidays and d in h:
+            continue
+        filtered.append(c)
+    return filtered
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Полезные расчёты для финансов
 # ═══════════════════════════════════════════════════════════════════════════════
 

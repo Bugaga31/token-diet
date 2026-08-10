@@ -321,8 +321,14 @@ class TinkoffInvest:
         days: int = 30,
         interval: Any = None,
         figi: str | None = None,
+        skip_weekends: bool = True,
     ) -> list[TinkoffCandle]:
-        """Исторические свечи (по умолчанию 30 дней, дневной интервал)."""
+        """Исторические свечи (по умолчанию 30 дней, дневной интервал).
+
+        Args:
+            skip_weekends: фильтровать внебиржевые свечи выходных дней
+                (OsEngine-style: OTC-свечи искажают расчёт индикаторов)
+        """
         if not self.available:
             return []
         figi = figi or self.find_figi(ticker)
@@ -353,6 +359,9 @@ class TinkoffInvest:
                             close=c.close.units + c.close.nano / 1e9,
                             volume=float(c.volume),
                         ))
+                    if skip_weekends:
+                        from .date_anchor import filter_trading_days
+                        candles = filter_trading_days(candles)
                     return candles
             except Exception:
                 pass
@@ -390,9 +399,10 @@ class TinkoffInvest:
                     close=_quotation_to_float(c.get("close")),
                     volume=float(c.get("volume", 0)),
                 ))
+        if skip_weekends:
+            from .date_anchor import filter_trading_days
+            candles = filter_trading_days(candles)
         return candles
-
-    # ── сигнал ───────────────────────────────────────────────────────────
     def get_signal(
         self,
         ticker: str,
