@@ -36,7 +36,7 @@ def test_gitignore_blocks_session_files():
 def test_gitignore_blocks_tdata_and_account_json():
     content = REPO_GITIGNORE.read_text()
     assert "*.tdata*" in content
-    assert "221099698*" in content
+    assert "*_telethon.session" in content
 
 
 def test_no_session_or_env_files_are_tracked():
@@ -56,12 +56,12 @@ def test_no_session_or_env_files_are_tracked():
 
 
 def test_find_sessions_only_matches_dot_session(tmp_path):
-    (tmp_path / "221099698_telethon.session").write_bytes(b"\x00" * 16)
+    (tmp_path / "12345678_telethon.session").write_bytes(b"\x00" * 16)
     (tmp_path / "notes.txt").write_text("not a session")
     (tmp_path / "session_notes.txt").write_text("also not a session")
     found = find_local_telegram_sessions(tmp_path)
     assert len(found) == 1
-    assert found[0].name == "221099698_telethon.session"
+    assert found[0].name == "12345678_telethon.session"
 
 
 def test_find_sessions_empty_home(tmp_path):
@@ -82,7 +82,7 @@ def test_link_copies_into_telegram_mcp_dir_not_repo(tmp_path, monkeypatch):
         str(fake_tg),
     )
 
-    session_src = fake_home / "221099698_telethon.session"
+    session_src = fake_home / "12345678_telethon.session"
     session_src.write_bytes(b"FAKE_SESSION_CONTENT_NEVER_LEAKS")
 
     result = link_local_telegram_session(session_src)
@@ -112,9 +112,9 @@ def test_link_auto_discovers_session_in_home(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(
         "token_diet.auto_setup.find_local_telegram_sessions",
-        lambda home=None: [fake_home / "221099698_telethon.session"],
+        lambda home=None: [fake_home / "12345678_telethon.session"],
     )
-    (fake_home / "221099698_telethon.session").write_bytes(b"x")
+    (fake_home / "12345678_telethon.session").write_bytes(b"x")
 
     result = link_local_telegram_session()
     assert result["ok"] is True

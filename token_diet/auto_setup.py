@@ -541,7 +541,7 @@ _SESSION_GLOB_ALT = "*.session"
 def find_local_telegram_sessions(home: str | Path | None = None) -> list[Path]:
     """Find existing Telethon session files in the user's home directory.
 
-    These are the user's OWN login sessions (e.g. ``221099698_telethon.session``).
+    These are the user's OWN login sessions (e.g. ``<api_id>_telethon.session``).
     We never read their contents here and we never copy them into the repo — we
     only point telegram-mcp at the one the user chooses.
     """

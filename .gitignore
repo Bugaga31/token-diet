@@ -26,7 +26,8 @@ htmlcov/
 TELEGRAM_*
 *.tdata*
 *tdata.zip
-221099698*
+*_telethon.session
+*_telethon(1).session
 *.jsonl.bak
 incoming_feed.jsonl
 aliases.json
