@@ -167,6 +167,23 @@ BUILTIN_PATTERNS: list[AntiPattern] = [
         severity=1.0,
     ),
 
+    AntiPattern(
+        pattern_id="NEVER_SUGGEST_SELLING_OWNER_ASSETS",
+        category="NEVER",
+        description=(
+            "УРОК ОТ ВЛАДЕЛЬЦА (severity 1.0): НИКОГДА не предлагай продавать "
+            "активы владельца (акции Полюса и т.п.) без его явного приказа. "
+            "Владелец расценивает это как попытку ввести его в долги и запретил "
+            "это категорически. Продажа его позиций = нарушение доверия."
+        ),
+        condition="продать полюс продать акции продать позицию sell plzl sell shares",
+        alternative=(
+            "Не предлагай продажу активов. Ищи новые деньги, не трогая то, "
+            "что уже есть. Только если владелец САМ прикажет продать — выполнить."
+        ),
+        severity=1.0,
+    ),
+
     # ── General AI assistant lessons ──
     AntiPattern(
         pattern_id="NEVER_OVEREXPLAIN",
