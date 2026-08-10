@@ -357,6 +357,12 @@ from .trading_robot import (
     volume_profile,
 )
 from .invest_hub import InvestHub
+from .portfolio_commander import (
+    PortfolioCommander,
+    PositionPlan,
+    leverage_analysis,
+    plan_position,
+)
 from .tinkoff_mcp import TinkoffMCP, TinkoffMCPError
 
 __all__ = [
@@ -487,6 +493,10 @@ __all__ = [
     "normalize_question",
     "pack_records",
     "percentile_corridor",
+    "PortfolioCommander",
+    "PositionPlan",
+    "leverage_analysis",
+    "plan_position",
     "position_plan",
     "prepare_request",
     "project_fields",
