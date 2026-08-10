@@ -271,26 +271,49 @@ def compact_digest(messages: list[RawMessage], max_lines: int = 12) -> str:
 # 4. Live Telegram fetch (optional dependency: telethon)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Стандартные места для JSON-кредов Telegram (проверяются автоматически)
+_CREDENTIALS_CANDIDATES = [
+    "~/221099698.json",
+    "~/.telegram-mcp/credentials.json",
+    "~/.telegram-mcp/telegram.json",
+    "~/.telegram/credentials.json",
+]
+
+
 def _load_credentials(credentials_path: str | None = None) -> tuple[int, str] | None:
     """Load (api_id, api_hash) from a local JSON or env vars. Never prints them.
 
-    Precedence: credentials_path JSON -> TELEGRAM_API_ID/TELEGRAM_API_HASH env.
+    Precedence:
+      1. credentials_path JSON (если задан)
+      2. TELEGRAM_API_ID / TELEGRAM_API_HASH env vars
+      3. автоматический поиск JSON-кредов в стандартных местах
+         (~/221099698.json и др. — формат telethon: app_id/app_hash)
+
     Returns None if nothing usable is found (module still works offline).
     """
     import os
 
+    candidates: list[str] = []
     if credentials_path:
+        candidates.append(credentials_path)
+    candidates += _CREDENTIALS_CANDIDATES
+
+    for path in candidates:
         try:
+            expanded = os.path.expanduser(path)
+            if not os.path.exists(expanded):
+                continue
             import json
 
-            with open(credentials_path, encoding="utf-8") as fh:
+            with open(expanded, encoding="utf-8") as fh:
                 d = json.load(fh)
             api_id = int(d.get("app_id", d.get("api_id", 0)))
             api_hash = d.get("app_hash", d.get("api_hash", ""))
             if api_id and api_hash:
                 return api_id, api_hash
-        except (OSError, ValueError, TypeError):
-            pass
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            continue
+
     try:
         api_id = int(os.environ.get("TELEGRAM_API_ID", "0"))
         api_hash = os.environ.get("TELEGRAM_API_HASH", "")

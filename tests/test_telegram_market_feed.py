@@ -11,6 +11,8 @@ from token_diet.telegram_market_feed import (
     MARKET_CHANNELS,
     RawMessage,
     TelegramMarketFeed,
+    _CREDENTIALS_CANDIDATES,
+    _load_credentials,
     compact_digest,
     detect_tickers,
     feed_to_news_items,
@@ -127,6 +129,44 @@ def test_feed_negative_news_avoids():
     )
     v = analyzer.analyze("SBER")
     assert v.action == "avoid"
+
+
+# ── credentials auto-discovery ─────────────────────────────────────────────
+
+def test_credential_candidates_include_home_json():
+    # стандартные места для JSON-кредов должны включать ~/221099698.json
+    assert any("221099698.json" in c for c in _CREDENTIALS_CANDIDATES)
+
+
+def test_load_credentials_missing_path_returns_none(monkeypatch):
+    monkeypatch.delenv("TELEGRAM_API_ID", raising=False)
+    monkeypatch.delenv("TELEGRAM_API_HASH", raising=False)
+    monkeypatch.setattr("token_diet.telegram_market_feed._CREDENTIALS_CANDIDATES", [
+        "/nonexistent/creds1.json",
+        "/nonexistent/creds2.json",
+    ])
+    assert _load_credentials() is None
+
+
+def test_load_credentials_explicit_json(tmp_path):
+    import json
+
+    f = tmp_path / "creds.json"
+    f.write_text(json.dumps({"app_id": 12345, "app_hash": "abc123"}))
+    assert _load_credentials(str(f)) == (12345, "abc123")
+
+
+def test_load_credentials_env_fallback(monkeypatch, tmp_path):
+    import json
+
+    f = tmp_path / "creds.json"
+    f.write_text(json.dumps({"app_id": 999, "app_hash": "x"}))
+    # даже если candidates пуст, env должен сработать
+    monkeypatch.setattr("token_diet.telegram_market_feed._CREDENTIALS_CANDIDATES", [])
+    monkeypatch.setenv("TELEGRAM_API_ID", "424242")
+    monkeypatch.setenv("TELEGRAM_API_HASH", "hash_env")
+    assert _load_credentials(str(f)) == (999, "x")
+    assert _load_credentials() == (424242, "hash_env")
 
 
 # ── Offline / graceful degradation ──────────────────────────────────────────

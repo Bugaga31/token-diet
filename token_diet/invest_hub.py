@@ -395,8 +395,12 @@ class InvestHub:
         return out
 
     # ── новости и сентимент (Telegram) ────────────────────────────────────
-    def news(self, ticker: str, limit: int = 5) -> dict[str, Any]:
-        """Свежие сообщения каналов про тикер + агрегированный сентимент."""
+    def news(self, ticker: str, limit: int = 8) -> dict[str, Any]:
+        """Свежие сообщения каналов про тикер + агрегированный сентимент.
+
+        Сканирует больше сообщений на канал (limit), чтобы не пропустить
+        тикер, которого нет в первых 2-3 постах каждого канала.
+        """
         ticker = ticker.upper()
         feed = self._get_feed()
         if feed is None:
