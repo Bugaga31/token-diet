@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "2.9.0"
+__version__ = "3.0.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -223,13 +223,47 @@ from .cognition_arsenal import (
     multi_agent_debate,
     tree_of_thoughts,
 )
+from .rapid_context import (
+    ContextClass,
+    RapidContext,
+    classify,
+    decide_action,
+    quick_action,
+)
+from .decisive_agent import (
+    Decision,
+    DecisiveAgent,
+    decide,
+    strip_fluff,
+)
+from .focus_keeper import (
+    FocusKeeper,
+    FocusReport,
+    Goal,
+    TangentAlert,
+    analyze_focus,
+)
+from .mistake_learner import (
+    AntiPattern,
+    MistakeAlert,
+    MistakeLearner,
+    check_action,
+    learn_from,
+)
 
 __all__ = [
     "__version__",
+    "AntiPattern",
     "CognitionPlan",
+    "ContextClass",
     "DebateResult",
+    "Decision",
+    "DecisiveAgent",
     "DecomposedResult",
     "FeedMessage",
+    "FocusKeeper",
+    "FocusReport",
+    "Goal",
     "MARKET_CHANNELS",
     "ObsidianVault",
     "RawMessage",
@@ -376,4 +410,14 @@ __all__ = [
     "truncate_tool_result",
     "TurnKind",
     "unpack_records",
+    "TangetAlert",
+    "RapidContext",
+    "analyze_focus",
+    "check_action",
+    "classify",
+    "decide",
+    "decide_action",
+    "learn_from",
+    "quick_action",
+    "strip_fluff",
 ]
