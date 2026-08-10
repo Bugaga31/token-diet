@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.2.0"
+__version__ = "3.3.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -270,6 +270,19 @@ from .market_intelligence import (
     estimate_price_range,
     generate_signal,
     score_sentiment,
+)
+from .intelligence_chain import (
+    ChainResult,
+    GitTaskTracker,
+    IntelligenceChain,
+    MemoryHooks,
+    ModelPrompt,
+    VerificationResult,
+    format_for_model,
+    inject_methodology,
+    remember,
+    smart_prompt,
+    verify_command,
 )
 
 __all__ = [
