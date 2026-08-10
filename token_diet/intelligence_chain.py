@@ -39,6 +39,12 @@ try:
 except ImportError:
     HAS_OBSIDIAN = False
 
+try:
+    from .date_anchor import inject_date_anchor, full_date_context
+    HAS_DATE_ANCHOR = True
+except ImportError:
+    HAS_DATE_ANCHOR = False
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Methodology — как Superpowers, но для любой модели
@@ -519,9 +525,11 @@ class IntelligenceChain:
         model: str = "auto",
         vault_path: str = "~/Documents/Obsidian",
         methodology_mode: str = "full",
+        anchor_date: bool = True,
     ):
         self.model = model
         self.methodology_mode = methodology_mode
+        self.anchor_date = anchor_date
         self.hooks = MemoryHooks(vault_path=vault_path)
         self.tracker = GitTaskTracker()
 
@@ -537,6 +545,10 @@ class IntelligenceChain:
         """
         # Step 1: Inject methodology
         enhanced_system = inject_methodology(system, self.methodology_mode)
+
+        # Step 1.5: Inject date anchor (never let the model guess the date)
+        if self.anchor_date and HAS_DATE_ANCHOR:
+            enhanced_system = inject_date_anchor(enhanced_system)
 
         # Step 2: Retrieve memory context
         mem_ctx = self.hooks.context_for_task(task)

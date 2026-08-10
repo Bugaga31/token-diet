@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.3.0"
+__version__ = "3.3.1"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -283,6 +283,26 @@ from .intelligence_chain import (
     remember,
     smart_prompt,
     verify_command,
+)
+from .date_anchor import (
+    RUS_HOLIDAYS_2026,
+    date_anchor_block,
+    days_until,
+    describe_horizon,
+    format_date_iso,
+    format_date_ru,
+    format_date_short,
+    full_date_context,
+    inject_date_anchor,
+    is_trading_day,
+    is_weekend,
+    n_trading_days_ahead,
+    next_trading_day,
+    now,
+    today,
+    trading_days_between,
+    trading_days_until,
+    weekday_ru,
 )
 
 __all__ = [
