@@ -337,6 +337,19 @@ from .moex_feed import (
     next_dividends,
     top_by_yield,
 )
+from .trading_robot import (
+    BacktestResult,
+    IntervalSignal,
+    MaCrossSignal,
+    Trade,
+    VolumeProfileResult,
+    backtest,
+    interval_strategy,
+    ma_cross,
+    run_on_tinkoff,
+    run_strategies,
+    volume_profile,
+)
 
 __all__ = [
     "__version__",
