@@ -352,6 +352,7 @@ from .trading_robot import (
     volume_profile,
 )
 from .invest_hub import InvestHub
+from .tinkoff_mcp import TinkoffMCP, TinkoffMCPError
 
 __all__ = [
     "__version__",
@@ -417,6 +418,8 @@ __all__ = [
     "MemoryEvent",
     "IntelligenceBooster",
     "InvestHub",
+    "TinkoffMCP",
+    "TinkoffMCPError",
     "LLMConnector",
     "LLMResult",
     "MultiplierResult",

@@ -88,14 +88,91 @@ class InvestHub:
         session_path: str = "~/.telegram-mcp/telegram_live.session",
         credentials_path: str | None = None,
         news_enabled: bool = True,
+        mcp_enabled: bool = True,
     ):
         self.token = token or get_token()
         self.tinkoff = TinkoffInvest(self.token)
         self.moex = MoexFeed()
         self._news_enabled = news_enabled
+        self._mcp_enabled = mcp_enabled
+        self._mcp = None
         self._feed = None
         self._session_path = session_path
         self._credentials_path = credentials_path
+
+    # ── ленивый MCP-клиент ────────────────────────────────────────────────
+    def _get_mcp(self):
+        """TinkoffMCP (официальный MCP-сервер Т-Инвестиций).
+
+        Даёт то, чего нет в REST: официальные новости, прогнозы аналитиков,
+        торговые сигналы, сделки инсайдеров. None если отключён.
+        """
+        if not self._mcp_enabled:
+            return None
+        if self._mcp is None:
+            from .tinkoff_mcp import TinkoffMCP
+            self._mcp = TinkoffMCP(self.token)
+        return self._mcp
+
+    # ── официальные новости через MCP ─────────────────────────────────────
+    def mcp_news(self, ticker: str | None = None, limit: int = 10) -> dict[str, Any]:
+        """Официальные новости Т-Инвестиций (MCP), опционально фильтр по тикеру."""
+        mcp = self._get_mcp()
+        if mcp is None:
+            return {"enabled": False}
+        res = _safe(lambda: mcp.news(limit=limit), None)
+        if not res or "error" in res:
+            return {"enabled": True, "messages": [],
+                    "error": (res or {}).get("error", "MCP недоступен")}
+
+        data = res.get("data") or {}
+        items = data.get("items") or data.get("news") or []
+        if isinstance(data, list):
+            items = data
+        if not isinstance(items, list):
+            items = []
+
+        out = []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            title = str(it.get("title") or it.get("headline") or "")[:200]
+            if not title:
+                continue
+            # фильтр по тикеру: название компании или сам тикер в заголовке
+            if ticker:
+                from .telegram_market_feed import detect_tickers
+                found = detect_tickers(title)
+                if ticker.upper() not in found and ticker.upper() not in title.upper():
+                    continue
+            out.append({
+                "channel": "T-Invest (официально)",
+                "text": title,
+                "published": str(it.get("epochSecond") or it.get("date") or ""),
+            })
+        return {"enabled": True, "messages": out[:limit], "source": "mcp"}
+
+    # ── сводка портфеля через MCP ─────────────────────────────────────────
+    def mcp_portfolio_brief(self) -> dict[str, Any]:
+        """Сжатая сводка портфеля из официального MCP (доходность, средства)."""
+        mcp = self._get_mcp()
+        if mcp is None:
+            return {"enabled": False}
+        pf = _safe(lambda: mcp.portfolio(), None)
+        if not pf or "error" in pf:
+            return {"enabled": True, "error": (pf or {}).get("error", "MCP портфель недоступен")}
+        data = pf.get("data") or {}
+        out: dict[str, Any] = {"enabled": True}
+        if "expectedYield" in data and isinstance(data["expectedYield"], dict):
+            out["expected_yield_pct"] = data["expectedYield"].get("value")
+        if "totalAmountPortfolio" in data and isinstance(data["totalAmountPortfolio"], dict):
+            v = data["totalAmountPortfolio"]
+            out["total_rub"] = v.get("value")
+        if "dailyYield" in data and isinstance(data["dailyYield"], dict):
+            out["daily_yield_rub"] = data["dailyYield"].get("value")
+        if "dailyYieldRelative" in data and isinstance(data["dailyYieldRelative"], dict):
+            out["daily_yield_pct"] = data["dailyYieldRelative"].get("value")
+        return out
 
     # ── ленивый Telegram-фид ──────────────────────────────────────────────
     def _get_feed(self):
@@ -490,6 +567,7 @@ class InvestHub:
         days: int = 90,
         include_news: bool = True,
         include_orderbook: bool = True,
+        include_mcp: bool = True,
     ) -> dict[str, Any]:
         """ВСЁ по одной бумаге одним вызовом.
 
@@ -535,6 +613,16 @@ class InvestHub:
             news = self.news(ticker)
             if news.get("messages"):
                 picture["news"] = news
+            else:
+                # Telegram молчит по тикеру — пробуем официальные новости MCP
+                mcp_news = self.mcp_news(ticker, limit=5)
+                if mcp_news.get("messages"):
+                    picture["news"] = mcp_news
+
+        if include_mcp:
+            brief = self.mcp_portfolio_brief()
+            if brief.get("enabled") and "error" not in brief:
+                picture["mcp_portfolio"] = brief
 
         # Вердикт: если новости уже тянули — передаём их, чтобы не фетчить
         # Telegram второй раз (и не фетчить вовсе при include_news=False).
@@ -665,6 +753,12 @@ class InvestHub:
                 lines.append(f"  стена продажи: {w['ask']['price']:.2f}₽ × {w['ask']['quantity']} шт")
             if w.get("bid"):
                 lines.append(f"  стена покупки: {w['bid']['price']:.2f}₽ × {w['bid']['quantity']} шт")
+
+        mpf = pic.get("mcp_portfolio")
+        if mpf and mpf.get("enabled") and "error" not in mpf:
+            lines.append("MCP портфель: " + ", ".join(
+                f"{k}={v}" for k, v in mpf.items() if k != "enabled" and v is not None
+            ))
 
         return "\n".join(lines)
 
