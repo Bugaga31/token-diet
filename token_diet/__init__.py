@@ -351,6 +351,7 @@ from .trading_robot import (
     run_strategies,
     volume_profile,
 )
+from .invest_hub import InvestHub
 
 __all__ = [
     "__version__",
@@ -415,6 +416,7 @@ __all__ = [
     "GreenMetrics",
     "MemoryEvent",
     "IntelligenceBooster",
+    "InvestHub",
     "LLMConnector",
     "LLMResult",
     "MultiplierResult",
