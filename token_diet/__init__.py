@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.3.1"
+__version__ = "3.4.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -303,6 +303,17 @@ from .date_anchor import (
     trading_days_between,
     trading_days_until,
     weekday_ru,
+)
+from .tinkoff_invest import (
+    KNOWN_FIGI,
+    PortfolioPosition,
+    TinkoffCandle,
+    TinkoffInvest,
+    TinkoffQuote,
+    get_token,
+    resolve_figi,
+    save_token,
+    status as tinkoff_status,
 )
 
 __all__ = [
