@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.4.0"
+__version__ = "3.5.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -340,6 +340,7 @@ from .moex_feed import (
 )
 from .trading_robot import (
     BacktestResult,
+    Corridor,
     IntervalSignal,
     MaCrossSignal,
     Trade,
@@ -347,8 +348,12 @@ from .trading_robot import (
     backtest,
     interval_strategy,
     ma_cross,
+    market_open_now,
+    percentile_corridor,
+    position_plan,
     run_on_tinkoff,
     run_strategies,
+    stop_loss_level,
     volume_profile,
 )
 from .invest_hub import InvestHub
@@ -406,6 +411,7 @@ __all__ = [
     "ContentSegment",
     "ContextLedger",
     "ContextManager",
+    "Corridor",
     "CriticalFact",
     "DynamicRatioResult",
     "EquivalenceGate",
@@ -480,6 +486,8 @@ __all__ = [
     "never_translate",
     "normalize_question",
     "pack_records",
+    "percentile_corridor",
+    "position_plan",
     "prepare_request",
     "project_fields",
     "reduce_output",
@@ -487,7 +495,9 @@ __all__ = [
     "route_and_estimate",
     "route_query",
     "sherlock_system_prompt",
+    "stop_loss_level",
     "structpack_roundtrip_safe",
+    "market_open_now",
     "AgentSupervisor",
     "AgentTurn",
     "CommitteeVerdict",

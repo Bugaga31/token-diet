@@ -4,9 +4,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org)
-[![Tests](https://img.shields.io/badge/tests-385%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-603%20passed-brightgreen.svg)]()
 [![CI](https://img.shields.io/badge/CI-PASS-brightgreen.svg)]()
-[![Version](https://img.shields.io/badge/version-2.9.1-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-3.5.0-blue.svg)]()
 [![pip](https://img.shields.io/badge/pip-install-3776AB.svg?logo=python)](https://github.com/Bugaga31/token-diet#quickstart)
 [![CO2](https://img.shields.io/badge/CO2-204K%20tonnes%2Fyear%20saved-green.svg)]()
 [![Water](https://img.shields.io/badge/water-340B%20liters%2Fyear%20saved-blue.svg)]()
@@ -54,7 +54,25 @@ TOTAL                 6448    4953         3256       50%        34%
 
 **token-diet 2× cheaper than raw prompts, 1.5× cheaper than naive compression. All Gate PASS.**
 
-## What's inside (v2.9.0)
+## What's inside (v3.5.0)
+
+### 🆕 v3.5.0 — Winner techniques from the T-Invest robot contest (qwertyo1)
+Reverse-engineered from the **winner of the T-Bank robot contest** (`qwertyo1/tinkoff-trading-bot`) — the 4 tricks that made its interval strategy robust on real MOEX data:
+
+- **`percentile_corridor()`** — corridor from the middle 80% of prices (10–90 percentile) instead of min/max. **One outlier spike cannot move the corridor** (live: prices ~100 + spike 1000 → corridor stays 100..100, min/max would jump to 1000).
+- **`stop_loss_level()`** — stop anchored to YOUR average entry price: `avg × (1 - stop_loss_percent)`. Fair even when you bought in several lots.
+- **`position_plan()`** — the winner's risk loop in one call: **stop-loss first**, then never exceed `quantity_limit` (top-up to the cap, sell-all above it).
+- **`market_open_now()`** — MOEX session guard (weekday 10:00–18:50 MSK). Honest limitation: no holiday calendar.
+
+```python
+from token_diet import percentile_corridor, stop_loss_level, position_plan, market_open_now
+
+corr = percentile_corridor(closes, lookback=30)      # 10th..90th percentile
+plan = position_plan(quantity=4, quantity_limit=10,
+                     avg_price=1333.0, last_price=1315.0)  # → STOP_LOSS
+# {'action': 'STOP_LOSS', 'stop_loss_level': 1319.67, ...}
+print(market_open_now())  # True during MOEX session
+```
 
 ### 🆕 v2.9.0 — Cognition Arsenal: intelligence without new weights
 Reverse-engineered from the research literature (ToT, Multi-Agent Debate, Decomposed Reasoning) — all algorithmic, zero neural models, works with ANY provider:
@@ -262,6 +280,7 @@ token_diet/
 ├── smart_multiplier.py      # 5× intelligence proof
 ├── llm_connector.py         # Real API (DeepSeek/OpenAI/Anthropic) + simulation
 ├── investment_analyzer.py   # Dividend-calendar traps, priced-in news, honest verdicts
+├── trading_robot.py         # MA cross, Volume POC, PERCENTILE corridor, stop-loss, position plan
 ├── cognition_arsenal.py     # ToT, Multi-Agent Debate, Decomposed, CognitiveRouter
 └── __init__.py              # Public API
 ```
@@ -269,7 +288,7 @@ token_diet/
 ## Origin
 
 Started as `token_diet_full.py` — a single-file proof-of-concept. Grew into a
-structured library. 385 tests, CI PASS, MIT licensed.
+structured library. 603 tests, CI PASS, MIT licensed.
 
 ## Environmental Impact
 

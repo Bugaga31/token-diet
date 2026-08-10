@@ -3,17 +3,23 @@
 Based on the official T-Bank developer portal robot showcase:
   - t_tech MovingAverageStrategy  → ma_cross() golden/death cross
   - tromario volume-analysis-robot → volume_profile() POC (point of control)
-  - qwertyo1 tinkoff-trading-bot  → interval_strategy() simple intervals
+  - qwertyo1 tinkoff-trading-bot  → interval_strategy() PERCENTILE corridor
+                        (winner technique: 10-90 pct instead of min/max),
+                        stop_loss_level(), position_plan(), market_open_now()
   - karpp investRobot             → backtest() two moving averages
 
 What this adds on top of market_intelligence (which has indicators):
   1. ma_cross()        — BUY/SELL signal on fast×slow MA crossover + strength
   2. volume_profile()  — POC: the price where the MOST volume traded
                         (max horizontal volume — the core of tromario's robot)
-  3. interval_strategy() — simple interval trading rules (qwertyo1 style)
+  3. interval_strategy() — interval rules with PERCENTILE corridor (qwertyo1
+                        winner: middle 80% of prices, immune to outlier spikes)
   4. backtest()        — replay a strategy over history, compute P&L, win rate,
                         max drawdown (honest numbers, no lies)
-  5. run_on_tinkoff()  — feed real candles from TinkoffInvest into any strategy
+  5. stop_loss_level() — winner's stop: avg_price × (1 - stop_loss_percent)
+  6. position_plan()   — winner's risk: stop-loss first, top-up to quantity_limit
+  7. market_open_now() — MOEX session heuristic (weekday 10:00-18:50 MSK)
+  8. run_on_tinkoff()  — feed real candles from TinkoffInvest into any strategy
 
 100% pure Python, zero neural calls, zero extra dependencies.
 """
@@ -22,6 +28,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -200,8 +207,58 @@ def volume_profile(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3. Interval strategy (from qwertyo1's tinkoff-trading-bot)
+# 3. Interval strategy (from qwertyo1's tinkoff-trading-bot — WINNER)
 # ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class Corridor:
+    """A price corridor (bottom..top)."""
+    bottom: float
+    top: float
+
+    def __iter__(self):
+        yield self.bottom
+        yield self.top
+
+
+def _percentile(values: list[float], p: float) -> float:
+    """Linear-interpolation percentile — matches numpy's default method.
+
+    Pure python so token-diet stays zero-dependency.
+    """
+    if not values:
+        return 0.0
+    s = sorted(values)
+    k = (len(s) - 1) * p
+    f = int(k)
+    c = min(f + 1, len(s) - 1)
+    return s[f] + (k - f) * (s[c] - s[f])
+
+
+def percentile_corridor(
+    closes: list[float],
+    lookback: int = 30,
+    interval_size: float = 0.8,
+) -> Corridor | None:
+    """WINNER technique (qwertyo1): percentile corridor instead of min/max.
+
+    The corridor is the middle `interval_size` (default 0.8 → 80%) of the
+    price distribution: bottom = 10th percentile, top = 90th percentile.
+    One outlier spike cannot move the corridor, whereas min/max jumps
+    on any extreme tick. This is exactly what made the contest winner's
+    interval strategy robust on real MOEX data.
+    """
+    if not closes:
+        return None
+    # protect against inverted corridor: interval_size outside (0, 1]
+    interval_size = max(0.01, min(1.0, interval_size))
+    window = closes[-lookback:] if len(closes) > lookback else closes
+    tail = (1 - interval_size) / 2  # 0.1 for interval_size=0.8
+    return Corridor(
+        bottom=_percentile(window, tail),
+        top=_percentile(window, 1 - tail),
+    )
+
 
 @dataclass
 class IntervalSignal:
@@ -210,6 +267,7 @@ class IntervalSignal:
     upper: float         # sell above this
     lower: float         # buy below this
     reason: str
+    percentile: bool = True      # corridor built from percentiles or min/max
 
 
 def interval_strategy(
@@ -217,22 +275,32 @@ def interval_strategy(
     highs: list[float] | None = None,
     lows: list[float] | None = None,
     lookback: int = 20,
+    percentile_mode: bool = True,
+    interval_size: float = 0.8,
 ) -> IntervalSignal:
-    """Simple interval strategy: buy near support, sell near resistance.
+    """Interval strategy: buy near corridor bottom, sell near top.
 
-    qwertyo1's approach: compute recent range (high/low over lookback),
-    then signal BUY when price is near the bottom of the range and
-    SELL when near the top. Works on range-bound markets.
+    qwertyo1's (contest winner) approach: build a PERCENTILE corridor
+    (middle 80% of last `lookback` closes) — robust to outlier spikes —
+    then BUY in the bottom 20% of it, SELL in the top 20%. Works on
+    range-bound markets. Set percentile_mode=False for the classic
+    min/max corridor.
     """
     if not closes:
         return IntervalSignal("HOLD", 0, 0, 0, "no data")
-    window = closes[-lookback:] if len(closes) > lookback else closes
-    lo = min(window)
-    hi = max(window)
     price = closes[-1]
-    mid = (hi + lo) / 2
 
-    # where are we in the range?
+    if percentile_mode:
+        corr = percentile_corridor(closes, lookback, interval_size)
+        if corr is None:
+            return IntervalSignal("HOLD", 0, 0, 0, "no data")
+        lo, hi = corr.bottom, corr.top
+    else:
+        window = closes[-lookback:] if len(closes) > lookback else closes
+        lo = min(window)
+        hi = max(window)
+
+    # where are we in the corridor?
     if hi > lo:
         pos = (price - lo) / (hi - lo)
     else:
@@ -240,12 +308,99 @@ def interval_strategy(
 
     if pos <= 0.2:
         return IntervalSignal("BUY", price, hi, lo,
-                              f"near range bottom ({pos:.0%}) — buy zone")
+                              f"near corridor bottom ({pos:.0%}) — buy zone",
+                              percentile=percentile_mode)
     if pos >= 0.8:
         return IntervalSignal("SELL", price, hi, lo,
-                              f"near range top ({pos:.0%}) — sell zone")
+                              f"near corridor top ({pos:.0%}) — sell zone",
+                              percentile=percentile_mode)
     return IntervalSignal("HOLD", price, hi, lo,
-                          f"mid-range ({pos:.0%}) — wait")
+                          f"mid-corridor ({pos:.0%}) — wait",
+                          percentile=percentile_mode)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3b. Risk management (from qwertyo1's winner: stop-loss + position limit)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def stop_loss_level(
+    avg_price: float,
+    stop_loss_percent: float = 0.01,
+) -> float:
+    """WINNER technique: stop-loss = avg_price × (1 - stop_loss_percent).
+
+    The contest winner triggers an exit when
+        last_price <= avg_price × (1 - stop_loss_percent)
+    i.e. the position lost `stop_loss_percent` (default 1%) from the
+    average entry price. Stop is anchored to YOUR average, not to an
+    arbitrary level — fair even if you bought in several lots.
+    """
+    return avg_price * (1 - stop_loss_percent)
+
+
+def position_plan(
+    quantity: int,
+    quantity_limit: int,
+    avg_price: float | None = None,
+    last_price: float | None = None,
+    stop_loss_percent: float = 0.01,
+) -> dict[str, Any]:
+    """WINNER risk loop: what the robot should do with the position now.
+
+    Order of checks matches the winner's main_cycle:
+      1. STOP_LOSS  — last_price broke avg_price × (1 - stop_loss_pct)
+                      → close the whole position
+      2. SELL_ALL   — quantity >= quantity_limit (never exceed the cap)
+      3. BUY        — below limit → top up to quantity_limit
+      4. HOLD       — otherwise
+    """
+    plan: dict[str, Any] = {
+        "action": "HOLD",
+        "reason": "position within limits, no stop-loss hit",
+        "quantity": quantity,
+        "quantity_limit": quantity_limit,
+    }
+    if avg_price is not None:
+        sl = stop_loss_level(avg_price, stop_loss_percent)
+        plan["stop_loss_level"] = round(sl, 4)
+        if last_price is not None and last_price <= sl:
+            plan["action"] = "STOP_LOSS"
+            plan["reason"] = (
+                f"last {last_price:.2f} <= stop {sl:.2f} "
+                f"({stop_loss_percent:.0%} below avg {avg_price:.2f}) — close all"
+            )
+            return plan
+    if quantity_limit > 0:
+        if quantity >= quantity_limit:
+            plan["action"] = "SELL_ALL"
+            plan["reason"] = f"quantity {quantity} >= limit {quantity_limit} — take profit"
+        else:
+            plan["action"] = "BUY"
+            plan["to_buy"] = quantity_limit - quantity
+            plan["reason"] = (
+                f"quantity {quantity} < limit {quantity_limit} — "
+                f"top up {quantity_limit - quantity}"
+            )
+    return plan
+
+
+def market_open_now(
+    now_utc=None,
+) -> bool:
+    """MOEX session heuristic: weekday, 10:00-18:50 MSK.
+
+    NOTE: honest limitation — no holiday calendar, no exchange trading
+    status API. It's a first-pass guard; for real trading the winner
+    polls Tinkoff's get_trading_status. We expose that via
+    run_on_tinkoff() when the API is reachable.
+    """
+    if now_utc is None:
+        now_utc = datetime.now(timezone.utc)
+    msk = now_utc + timedelta(hours=3)
+    if msk.weekday() >= 5:  # Sat/Sun
+        return False
+    minutes = msk.hour * 60 + msk.minute
+    return 10 * 60 <= minutes <= 18 * 60 + 50
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -362,6 +517,7 @@ def run_strategies(
     cross = ma_cross(closes, fast=10, slow=30)
     vp = volume_profile(highs, lows, closes, volumes)
     iv = interval_strategy(closes, highs, lows)
+    corridor = percentile_corridor(closes, lookback=20)
 
     # combine: 2 of 3 bullish → bullish lean
     bullish = sum(1 for s in (cross.signal, iv.signal)
@@ -381,6 +537,7 @@ def run_strategies(
         "ma_cross": cross.__dict__,
         "volume_profile": vp.__dict__ if vp else None,
         "interval": iv.__dict__,
+        "corridor": corridor.__dict__ if corridor else None,
         "combined_lean": lean,
         "strategies_agree": len({cross.signal, iv.signal, "HOLD"}) == 1 or
                             (cross.signal == iv.signal != "HOLD"),
@@ -413,7 +570,9 @@ def run_on_tinkoff(
 
 __all__ = [
     "MaCrossSignal", "VolumeProfileResult", "IntervalSignal",
-    "Trade", "BacktestResult",
-    "ma_cross", "volume_profile", "interval_strategy", "backtest",
-    "run_strategies", "run_on_tinkoff",
+    "Corridor", "Trade", "BacktestResult",
+    "ma_cross", "volume_profile", "interval_strategy",
+    "percentile_corridor", "stop_loss_level", "position_plan",
+    "market_open_now",
+    "backtest", "run_strategies", "run_on_tinkoff",
 ]
