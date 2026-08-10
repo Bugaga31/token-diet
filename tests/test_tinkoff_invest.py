@@ -29,6 +29,8 @@ class TestTokenSecurity:
 
     def test_get_token_no_source(self, monkeypatch):
         monkeypatch.delenv("TINKOFF_TOKEN", raising=False)
+        import token_diet.tinkoff_invest as ti
+        monkeypatch.setattr(ti, "TOKEN_FILE", Path("/nonexistent/token-file"))
         assert get_token() is None
 
     def test_save_token_file(self, tmp_path):
@@ -75,21 +77,29 @@ class TestClientInit:
 
     def test_available_flag_without_token(self, monkeypatch):
         monkeypatch.delenv("TINKOFF_TOKEN", raising=False)
+        import token_diet.tinkoff_invest as ti
+        monkeypatch.setattr(ti, "TOKEN_FILE", Path("/nonexistent/token-file"))
         tink = TinkoffInvest()
         assert tink.available is False
 
     def test_quote_returns_none_without_credentials(self, monkeypatch):
         monkeypatch.delenv("TINKOFF_TOKEN", raising=False)
+        import token_diet.tinkoff_invest as ti
+        monkeypatch.setattr(ti, "TOKEN_FILE", Path("/nonexistent/token-file"))
         tink = TinkoffInvest()
         assert tink.get_quote("PLZL") is None
 
     def test_candles_empty_without_credentials(self, monkeypatch):
         monkeypatch.delenv("TINKOFF_TOKEN", raising=False)
+        import token_diet.tinkoff_invest as ti
+        monkeypatch.setattr(ti, "TOKEN_FILE", Path("/nonexistent/token-file"))
         tink = TinkoffInvest()
         assert tink.get_candles("PLZL") == []
 
     def test_signal_none_without_credentials(self, monkeypatch):
         monkeypatch.delenv("TINKOFF_TOKEN", raising=False)
+        import token_diet.tinkoff_invest as ti
+        monkeypatch.setattr(ti, "TOKEN_FILE", Path("/nonexistent/token-file"))
         tink = TinkoffInvest()
         assert tink.get_signal("PLZL") is None
 
@@ -97,6 +107,8 @@ class TestClientInit:
 class TestStatus:
     def test_status_report(self, monkeypatch):
         monkeypatch.delenv("TINKOFF_TOKEN", raising=False)
+        import token_diet.tinkoff_invest as ti
+        monkeypatch.setattr(ti, "TOKEN_FILE", Path("/nonexistent/token-file"))
         s = status()
         assert "token_found" in s
         assert "known_tickers" in s

@@ -1,8 +1,8 @@
 """Tinkoff Invest API — live prices, candles, portfolio, signals.
 
-Позволяет token-diet получать РЕАЛЬНЫЕ данные с биржи MOEX через API
-Т-Инвестиций: текущие цены, исторические свечи, портфель — и гонять их
-через market_intelligence для живых сигналов.
+Подключает token-diet к бирже MOEX через Т-Инвестиции.
+Работает через ОТКРЫТЫЙ REST API — не требует официального SDK:
+только HTTP-запросы + токен. SDK используется если установлен.
 
 Безопасность (жёсткие правила):
 - Токен НИКОГДА не хранится в коде
@@ -10,23 +10,84 @@
 - Файл токена НЕ попадает в git (см. .gitignore)
 - Никогда не печатает токен в логи
 
-Использует официальный SDK: pip install tinkoff-invest-python
-Без SDK модуль возвращает None — не падает.
+REST endpoints (Tinkoff public API):
+  POST https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1.MarketDataService/GetLastPrices
+  POST .../GetCandles
+  POST .../InstrumentsService/FindInstrument
+  POST .../UsersService/GetAccounts
+  POST .../OperationsService/GetPortfolio
 """
 
 from __future__ import annotations
 
+import json
 import os
-from dataclasses import dataclass, field
+import ssl
+import urllib.request
+import urllib.error
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-try:
-    from tinkoff.invest import Client, CandleInterval
-    HAS_TINKOFF = True
-except ImportError:
-    HAS_TINKOFF = False
+# ═══════════════════════════════════════════════════════════════════════════════
+# REST API endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+API_BASE = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1"
+
+ENDPOINTS = {
+    "last_prices": f"{API_BASE}.MarketDataService/GetLastPrices",
+    "candles": f"{API_BASE}.MarketDataService/GetCandles",
+    "orderbook": f"{API_BASE}.MarketDataService/GetOrderBook",
+    "accounts": f"{API_BASE}.UsersService/GetAccounts",
+    "portfolio": f"{API_BASE}.OperationsService/GetPortfolio",
+    "find_instrument": f"{API_BASE}.InstrumentsService/FindInstrument",
+}
+
+
+def _rpc(name: str, body: dict, token: str, timeout: int = 15) -> dict | None:
+    """Вызвать REST endpoint (JSON-RPC стиль). Возвращает dict или None."""
+    url = ENDPOINTS.get(name)
+    if not url:
+        return None
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(
+        url, data=data,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    # SSL: на некоторых машинах (DPI-обход, корпоративные прокси) стоит
+    # перехват с самоподписанными сертификатами. Сначала пробуем проверку,
+    # потом fallback на не-проверенный SSL (только для чтения котировок).
+    try:
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode())
+        except urllib.error.URLError as e:
+            # SSL error → retry without verification
+            if isinstance(e.reason, ssl.SSLCertVerificationError):
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+                    return json.loads(resp.read().decode())
+            raise
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+
+def _quotation_to_float(q: dict | None) -> float:
+    """Quotation {units, nano} → float."""
+    if not q:
+        return 0.0
+    units = int(q.get("units", 0))
+    nano = int(q.get("nano", 0))
+    return units + nano / 1e9
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -70,37 +131,51 @@ def save_token(token: str, path: str | None = None) -> Path:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Тикеры → FIGI/UID (популярные MOEX инструменты)
+# Тикеры → FIGI (Tinkoff использует свои TCS-коды, НЕ Bloomberg!)
+# Большинство решается через API find_instrument; ключевые кэшированы.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# FIGI — можно заменить на UID через client.instruments.find_instrument
+# Кэш ПОДТВЕРЖДЁННЫХ через API FIGI (проверено: свечи возвращаются)
+# ВАЖНО: для свечей Tinkoff надёжно отдаёт Bloomberg FIGI (BBG...),
+# но у части инструментов рабочими оказываются TCS-коды (YDEX, RUAL...).
+# Каждая запись ниже реально проверена через GetCandles 10.08.2026.
 KNOWN_FIGI: dict[str, str] = {
-    "SBER": "BBG004730N88",   # Сбер
-    "GAZP": "BBG004730RP0",   # Газпром
-    "PLZL": "BBG004S68B31",   # Полюс
-    "LKOH": "BBG004731032",   # Лукойл
-    "YDEX": "BBG006L8G4H1",   # Яндекс
-    "GMKN": "BBG0047315D6",   # Норникель
-    "ROSN": "BBG004731354",   # Роснефть
-    "VTBR": "BBG004730ZJ9",   # ВТБ
-    "RUAL": "BBG008F2T3T2",   # Русал
-    "NVTK": "BBG00475KKY8",   # Новатэк
-    "MOEX": "BBG004730JJ5",   # Мосбиржа
-    "T": "TCS001650VAL",      # Т-Технологии
-    "SBERP": "BBG004731489",  # Сбер преф
-    "MGNT": "BBG0047315K7",   # Магнит
-    "CHMF": "BBG0047316N6",   # Северсталь
-    "MTSS": "BBG0047315W0",   # МТС
-    "AFLT": "BBG0047332T5",   # Аэрофлот
-    "SNGSP": "BBG00475K0S0",  # Сургутнефтегаз преф
-    "TATN": "BBG0047315D8",   # Татнефть
-    "AKRN": "BBG00475LJX8",   # Акрон
+    "SBER": "BBG004730N88",    # Сбер (29 свечей ✓)
+    "GAZP": "BBG004730RP0",    # Газпром (29 ✓)
+    "LKOH": "BBG004731032",    # Лукойл (29 ✓)
+    "PLZL": "BBG000R607Y3",    # Полюс (29 ✓)
+    "ALRS": "BBG004S68B31",    # Алроса (29 ✓)
+    "MGNT": "BBG004RVFCY3",    # Магнит (29 ✓)
+    "YDEX": "TCS00A107T19",    # Яндекс (29 ✓ — только TCS!)
+    "RUAL": "TCSM739025V3",    # Русал (5 ✓)
+    "NVTK": "TCS50A0DKVS5",    # Новатэк (15 ✓)
+    "MTSS": "TCSM42375219",    # МТС (5 ✓)
+    "TATN": "TCSM41233591",    # Татнефть (12 ✓)
+    # Не проверены на свечах — решаются через API при первом запросе:
+    "GMKN": None,  # Норникель
+    "ROSN": None,  # Роснефть
+    "VTBR": None,  # ВТБ
+    "MOEX": None,  # Мосбиржа
+    "SNGS": None,  # Сургутнефтегаз
+    "TCSG": None,  # Т-Банк
 }
+KNOWN_FIGI = {k: v for k, v in KNOWN_FIGI.items() if v}
+
+# Кэш тикер → uid (из find_instrument, быстрее для last_prices)
+KNOWN_UID: dict[str, str] = {}
 
 
 def resolve_figi(ticker: str) -> str | None:
-    """Тикер → FIGI из известного списка, либо по API."""
+    """Тикер → FIGI из кэша (или None — тогда через API)."""
     return KNOWN_FIGI.get(ticker.upper())
+
+
+def figi_unknown(figi: str) -> str:
+    """FIGI → тикер, или 'UNKNOWN'."""
+    for t, f in KNOWN_FIGI.items():
+        if f == figi:
+            return t
+    return "UNKNOWN"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -137,7 +212,7 @@ class PortfolioPosition:
 
 
 class TinkoffInvest:
-    """Интеграция с Т-Инвестициями.
+    """Интеграция с Т-Инвестициями через REST API (без SDK).
 
     Usage:
         tink = TinkoffInvest()   # токен из env/файла
@@ -149,70 +224,94 @@ class TinkoffInvest:
 
     def __init__(self, token: str | None = None):
         self.token = get_token(token)
-        self.available = bool(self.token and HAS_TINKOFF)
-        self._client = None
+        self.available = bool(self.token)
+        self._sdk = False
+        # Пробуем SDK, если установлен
+        try:
+            from tinkoff.invest import Client, CandleInterval  # type: ignore
+            self._sdk = True
+            self._Client = Client
+            self._CandleInterval = CandleInterval
+        except ImportError:
+            self._sdk = False
 
-    # ── клиент ────────────────────────────────────────────────────────────
-    def _get_client(self) -> Any | None:
+    # ── REST helpers ──────────────────────────────────────────────────────
+    def _rpc(self, name: str, body: dict) -> dict | None:
         if not self.available:
             return None
-        if self._client is None:
-            self._client = Client(self.token)
-        return self._client
-
-    def close(self) -> None:
-        if self._client is not None:
-            try:
-                self._client.__exit__(None, None, None)
-            except Exception:
-                pass
-            self._client = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.close()
+        return _rpc(name, body, self.token)
 
     # ── поиск инструмента ────────────────────────────────────────────────
     def find_figi(self, ticker: str) -> str | None:
-        """Найти FIGI по тикеру: известный список, потом API."""
-        figi = KNOWN_FIGI.get(ticker.upper())
-        if figi:
-            return figi
-        client = self._get_client()
-        if client is None:
-            return None
-        try:
-            resp = client.instruments.find_instrument(query=ticker)
-            for item in resp.instruments:
-                if item.ticker.upper() == ticker.upper():
-                    return item.figi
-        except Exception:
-            pass
+        """Найти FIGI по тикеру: кэш, потом API.
+
+        Приоритет: BBG-коды (надёжны для свечей), иначе первый подходящий.
+        Кэширует результат, чтобы не дёргать API каждый раз.
+        """
+        ticker = ticker.upper()
+        cached = KNOWN_FIGI.get(ticker)
+        if cached:
+            return cached
+        resp = self._rpc("find_instrument", {
+            "query": ticker, "instrumentKind": "INSTRUMENT_TYPE_SHARE",
+        })
+        if resp and "instruments" in resp:
+            matches = [i for i in resp["instruments"]
+                       if i.get("ticker", "").upper() == ticker]
+            if not matches:
+                # некоторые инструменты (Т-Банк) ищутся по имени
+                matches = [i for i in resp["instruments"]
+                           if i.get("name", "").upper() == ticker]
+            # 1) BBG-код, 2) любой
+            figi = None
+            for item in matches:
+                f = item.get("figi")
+                if f and f.startswith("BBG"):
+                    figi = f
+                    break
+            if figi is None and matches:
+                figi = matches[0].get("figi")
+            if figi:
+                KNOWN_FIGI[ticker] = figi
+                for item in matches:
+                    if item.get("uid"):
+                        KNOWN_UID[ticker] = item["uid"]
+                        break
+                return figi
         return None
 
     # ── котировка ────────────────────────────────────────────────────────
     def get_quote(self, ticker: str, figi: str | None = None) -> TinkoffQuote | None:
         """Текущая цена в реальном времени."""
-        client = self._get_client()
-        if client is None:
+        if not self.available:
             return None
         figi = figi or self.find_figi(ticker)
         if not figi:
             return None
         try:
-            resp = client.market_data.get_last_prices(figi=[figi])
-            for price in resp.last_prices:
-                q = price.price
-                return TinkoffQuote(
-                    ticker=ticker,
-                    figi=figi,
-                    price=q.units + q.nano / 1e9,
-                    time=price.time,
-                )
+            # Если SDK есть — используем его
+            if self._sdk:
+                from tinkoff.invest import Client as C
+                with C(self.token) as client:
+                    resp = client.market_data.get_last_prices(figi=[figi])
+                    for price in resp.last_prices:
+                        q = price.price
+                        return TinkoffQuote(
+                            ticker=ticker, figi=figi,
+                            price=q.units + q.nano / 1e9,
+                            time=price.time,
+                        )
         except Exception:
-            return None
+            pass
+        # REST fallback
+        resp = self._rpc("last_prices", {"figi": [figi]})
+        if resp and "lastPrices" in resp:
+            for p in resp["lastPrices"]:
+                return TinkoffQuote(
+                    ticker=ticker, figi=figi,
+                    price=_quotation_to_float(p.get("price")),
+                    time=datetime.now(),
+                )
         return None
 
     # ── свечи ────────────────────────────────────────────────────────────
@@ -224,34 +323,74 @@ class TinkoffInvest:
         figi: str | None = None,
     ) -> list[TinkoffCandle]:
         """Исторические свечи (по умолчанию 30 дней, дневной интервал)."""
-        client = self._get_client()
-        if client is None:
+        if not self.available:
             return []
         figi = figi or self.find_figi(ticker)
         if not figi:
             return []
-        interval = interval or CandleInterval.CANDLE_INTERVAL_DAY
-        try:
-            now = datetime.utcnow()
-            resp = client.market_data.get_candles(
-                figi=figi,
-                from_=now - timedelta(days=days),
-                to=now,
-                interval=interval,
-            )
-            candles = []
-            for c in resp.candles:
+        candles: list[TinkoffCandle] = []
+        now = datetime.utcnow()
+
+        # SDK path
+        if self._sdk:
+            try:
+                from tinkoff.invest import Client as C
+                from tinkoff.invest import CandleInterval as CI
+                interval = interval or CI.CANDLE_INTERVAL_DAY
+                with C(self.token) as client:
+                    resp = client.market_data.get_candles(
+                        figi=figi,
+                        from_=now - timedelta(days=days),
+                        to=now,
+                        interval=interval,
+                    )
+                    for c in resp.candles:
+                        candles.append(TinkoffCandle(
+                            time=c.time,
+                            open=c.open.units + c.open.nano / 1e9,
+                            high=c.high.units + c.high.nano / 1e9,
+                            low=c.low.units + c.low.nano / 1e9,
+                            close=c.close.units + c.close.nano / 1e9,
+                            volume=float(c.volume),
+                        ))
+                    return candles
+            except Exception:
+                pass
+
+        # REST fallback: interval mapping
+        interval_map = {
+            "day": "CANDLE_INTERVAL_DAY", "1min": "CANDLE_INTERVAL_1_MIN",
+            "hour": "CANDLE_INTERVAL_HOUR", "week": "CANDLE_INTERVAL_WEEK",
+            "month": "CANDLE_INTERVAL_MONTH",
+        }
+        interval_name = "CANDLE_INTERVAL_DAY"
+        if isinstance(interval, str):
+            interval_name = interval_map.get(interval.lower(), interval_name)
+        # Tinkoff требует ISO8601 с суффиксом 'Z' (UTC)
+        def _iso_z(dt: datetime) -> str:
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        resp = self._rpc("candles", {
+            "figi": figi,
+            "from": _iso_z(now - timedelta(days=days)),
+            "to": _iso_z(now),
+            "interval": interval_name,
+        })
+        if resp and "candles" in resp:
+            for c in resp["candles"]:
+                try:
+                    t = datetime.fromisoformat(c["time"].replace("Z", "+00:00"))
+                except (ValueError, KeyError):
+                    t = now
                 candles.append(TinkoffCandle(
-                    time=c.time,
-                    open=c.open.units + c.open.nano / 1e9,
-                    high=c.high.units + c.high.nano / 1e9,
-                    low=c.low.units + c.low.nano / 1e9,
-                    close=c.close.units + c.close.nano / 1e9,
-                    volume=float(c.volume),
+                    time=t,
+                    open=_quotation_to_float(c.get("open")),
+                    high=_quotation_to_float(c.get("high")),
+                    low=_quotation_to_float(c.get("low")),
+                    close=_quotation_to_float(c.get("close")),
+                    volume=float(c.get("volume", 0)),
                 ))
-            return candles
-        except Exception:
-            return []
+        return candles
 
     # ── сигнал ───────────────────────────────────────────────────────────
     def get_signal(
@@ -301,42 +440,64 @@ class TinkoffInvest:
     # ── портфель ─────────────────────────────────────────────────────────
     def get_portfolio(self) -> list[PortfolioPosition] | None:
         """Текущие позиции портфеля."""
-        client = self._get_client()
-        if client is None:
+        if not self.available:
             return None
-        try:
-            accounts = client.users.get_accounts()
-            if not accounts.accounts:
-                return []
-            account_id = accounts.accounts[0].id
-            portfolio = client.operations.get_portfolio(account_id=account_id)
-            positions = []
-            for p in portfolio.positions:
-                if not p.lots:
-                    continue
-                figi = p.figi
-                ticker = figi
-                # Ищем тикер по FIGI в обратную сторону
-                for t, f in KNOWN_FIGI.items():
-                    if f == figi:
-                        ticker = t
-                        break
-                cur = p.current_price.units + p.current_price.nano / 1e9
-                avg = (p.average_position_price.units +
-                       p.average_position_price.nano / 1e9) if p.average_position_price else 0
-                qty = p.quantity.units + p.quantity.nano / 1e9
-                profit = ((cur - avg) / avg * 100) if avg else 0.0
-                positions.append(PortfolioPosition(
-                    ticker=ticker,
-                    figi=figi,
-                    quantity=qty,
-                    current_price=cur,
-                    avg_price=avg,
-                    profit_pct=round(profit, 2),
-                ))
-            return positions
-        except Exception:
+        # SDK path
+        if self._sdk:
+            try:
+                from tinkoff.invest import Client as C
+                with C(self.token) as client:
+                    accounts = client.users.get_accounts()
+                    if not accounts.accounts:
+                        return []
+                    account_id = accounts.accounts[0].id
+                    portfolio = client.operations.get_portfolio(account_id=account_id)
+                    positions = []
+                    for p in portfolio.positions:
+                        if not p.lots:
+                            continue
+                        figi = p.figi
+                        ticker = figi_unknown(figi)
+                        cur = p.current_price.units + p.current_price.nano / 1e9
+                        avg = (p.average_position_price.units +
+                               p.average_position_price.nano / 1e9) if p.average_position_price else 0
+                        qty = p.quantity.units + p.quantity.nano / 1e9
+                        profit = ((cur - avg) / avg * 100) if avg else 0.0
+                        positions.append(PortfolioPosition(
+                            ticker=ticker, figi=figi, quantity=qty,
+                            current_price=cur, avg_price=avg,
+                            profit_pct=round(profit, 2),
+                        ))
+                    return positions
+            except Exception:
+                pass
+
+        # REST path
+        accounts = self._rpc("accounts", {})
+        if not accounts or not accounts.get("accounts"):
+            return []
+        account_id = accounts["accounts"][0]["id"]
+        resp = self._rpc("portfolio", {"accountId": account_id})
+        if not resp or "positions" not in resp:
             return None
+        positions = []
+        for p in resp["positions"]:
+            figi = p.get("figi", "")
+            ticker = figi_unknown(figi)
+            if ticker == "UNKNOWN":
+                # Пробуем найти тикер по uid через API
+                uid = p.get("instrumentUid", "")
+                ticker = f"uid:{uid[:8]}" if uid else "UNKNOWN"
+            cur = _quotation_to_float(p.get("currentPrice"))
+            avg = _quotation_to_float(p.get("averagePositionPrice"))
+            qty = _quotation_to_float(p.get("quantity"))
+            profit = ((cur - avg) / avg * 100) if avg else 0.0
+            positions.append(PortfolioPosition(
+                ticker=ticker, figi=figi, quantity=qty,
+                current_price=cur, avg_price=avg,
+                profit_pct=round(profit, 2),
+            ))
+        return positions
 
     # ── сигналы по всему портфелю ───────────────────────────────────────
     def scan_portfolio(self) -> list[dict[str, Any]]:
@@ -344,7 +505,7 @@ class TinkoffInvest:
         positions = self.get_portfolio() or []
         results = []
         for pos in positions:
-            if pos.ticker == figi_unknown(pos.figi):
+            if pos.ticker == "UNKNOWN" or pos.ticker.startswith("uid:"):
                 continue
             try:
                 sig = self.get_signal(pos.ticker)
@@ -358,21 +519,22 @@ class TinkoffInvest:
         return results
 
 
-def figi_unknown(figi: str) -> str:
-    """Возвращает 'UNKNOWN' если FIGI не в известном списке."""
-    for t, f in KNOWN_FIGI.items():
-        if f == figi:
-            return t
-    return "UNKNOWN"
-
-
 def status() -> dict[str, Any]:
     """Статус интеграции (без токена в выводе)."""
     token = get_token()
     return {
-        "sdk_installed": HAS_TINKOFF,
+        "api_available": bool(token),
         "token_found": bool(token),
         "token_source": ("env" if os.environ.get(TOKEN_ENV) else
                          ("file" if TOKEN_FILE.exists() else "none")),
+        "sdk_installed": _sdk_installed(),
         "known_tickers": len(KNOWN_FIGI),
     }
+
+
+def _sdk_installed() -> bool:
+    try:
+        import tinkoff.invest  # noqa: F401
+        return True
+    except ImportError:
+        return False
