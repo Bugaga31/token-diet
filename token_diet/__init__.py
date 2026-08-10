@@ -364,6 +364,13 @@ from .portfolio_commander import (
     plan_position,
 )
 from .tinkoff_mcp import TinkoffMCP, TinkoffMCPError
+from .telegram_commander import (
+    OWNER_ID,
+    HELP as TELEGRAM_HELP,
+    load_token as telegram_load_token,
+    send_message as telegram_send_message,
+    run as telegram_run,
+)
 
 __all__ = [
     "__version__",
@@ -524,6 +531,7 @@ __all__ = [
     "RetrievalResult",
     "ScoredChunk",
     "SupervisorState",
+    "TELEGRAM_HELP",
     "TEST_PROMPTS",
     "assess_news_from_snippets",
     "assess_news_priced_in",
@@ -536,6 +544,10 @@ __all__ = [
     "truncate_tool_result",
     "TurnKind",
     "unpack_records",
+    "OWNER_ID",
+    "telegram_load_token",
+    "telegram_run",
+    "telegram_send_message",
     "ScreenFrame",
     "PhoneScreen",
     "DesktopScreen",
