@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -250,6 +250,17 @@ from .mistake_learner import (
     check_action,
     learn_from,
 )
+from .universal_screen import (
+    DesktopScreen,
+    PhoneScreen,
+    ScreenFrame,
+    UINode,
+    UniversalScreen,
+    click_text,
+    detect_platform,
+    screenshot,
+    see_and_click,
+)
 
 __all__ = [
     "__version__",
@@ -410,6 +421,11 @@ __all__ = [
     "truncate_tool_result",
     "TurnKind",
     "unpack_records",
+    "ScreenFrame",
+    "PhoneScreen",
+    "DesktopScreen",
+    "UINode",
+    "UniversalScreen",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
@@ -419,5 +435,10 @@ __all__ = [
     "decide_action",
     "learn_from",
     "quick_action",
+    "screenshot",
+    "see_and_click",
+    "strip_fluff",
+    "detect_platform",
+    "click_text",
     "strip_fluff",
 ]
