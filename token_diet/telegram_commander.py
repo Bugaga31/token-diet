@@ -32,6 +32,7 @@ from typing import Any
 OWNER_ID = TELEGRAM_OWNER_ID_FROM_ENV
 
 TOKEN_FILE = Path.home() / ".token-diet" / "telegram_bot_token"
+DEEPSEEK_KEY_FILE = Path.home() / ".token-diet" / "deepseek_key"
 SECRETS_FILE = Path.home() / ".invest_bot" / "secrets.env"
 
 API = "https://api.telegram.org/bot{token}/{method}"
@@ -54,10 +55,17 @@ def load_token() -> str:
 
 
 def load_deepseek_key() -> str:
-    """Ключ DeepSeek: env → ~/.invest_bot/secrets.env (DEEPSEEK_API_KEY=...)."""
+    """Ключ DeepSeek: env → ~/.token-diet/deepseek_key → secrets.env.
+
+    Никогда не печатается и не попадает в git.
+    """
     key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
     if key and "PASTE" not in key:
         return key
+    if DEEPSEEK_KEY_FILE.exists():
+        v = DEEPSEEK_KEY_FILE.read_text().strip()
+        if v and "PASTE" not in v:
+            return v
     if SECRETS_FILE.exists():
         for line in SECRETS_FILE.read_text().splitlines():
             if line.startswith("DEEPSEEK_API_KEY="):
