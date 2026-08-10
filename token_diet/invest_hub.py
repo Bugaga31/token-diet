@@ -26,12 +26,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from .tinkoff_invest import TinkoffInvest, get_token
+from .tinkoff_invest import KNOWN_FIGI, TinkoffInvest, get_token
 from .moex_feed import MoexFeed
 from .market_intelligence import generate_signal, estimate_price_range, aggregate_sentiment
 from .trading_robot import run_strategies, backtest
 from .investment_analyzer import InvestmentAnalyzer, CommitteeVote, NewsItem
-from .date_anchor import today, full_date_context, n_trading_days_ahead, format_date_iso
+from .date_anchor import full_date_context
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -119,9 +119,7 @@ class InvestHub:
                 "moex": "free",
                 "telegram_news": "enabled" if self._news_enabled else "disabled",
             },
-            "known_tickers": len(
-                _safe(lambda: list(__import__("token_diet.tinkoff_invest", fromlist=["KNOWN_FIGI"]).KNOWN_FIGI), [])
-            ),
+            "known_tickers": len(KNOWN_FIGI),
         }
 
     # ── котировка (Tinkoff + MOEX) ────────────────────────────────────────
@@ -158,7 +156,7 @@ class InvestHub:
         elif out["moex"]:
             price = out["moex"]["price"]
         out["price"] = price
-        out["change_pct"] = (out["moex"] or {}).get("change_pct") if out["moex"] else None
+        out["change_pct"] = (out["moex"] or {}).get("change_pct")
         return out
 
     # ── свечи ─────────────────────────────────────────────────────────────
@@ -251,11 +249,7 @@ class InvestHub:
         if not self.tinkoff.available:
             return {"ticker": ticker.upper(), "error": "нет токена Т-Инвестиций"}
 
-        figi = _safe(lambda: self.tinkoff.find_figi(ticker))
-        if not figi:
-            return {"ticker": ticker.upper(), "error": f"FIGI для {ticker} не найден"}
-
-        data = _safe(lambda: self.tinkoff._rpc("orderbook", {"figi": figi, "depth": depth}), None)
+        data = _safe(lambda: self.tinkoff.get_orderbook(ticker, depth=depth), None)
         if not data:
             return {"ticker": ticker.upper(), "error": "стакан не получен"}
 
@@ -264,13 +258,13 @@ class InvestHub:
             for item in raw or []:
                 if not isinstance(item, dict):
                     continue
-                price = _quotation_to_float(item.get("price"))
-                qty = _safe(lambda: float(item.get("quantity", 0)), 0.0)
+                price = float(item.get("price", 0))
+                qty = int(item.get("quantity", 0))
                 if price <= 0:
                     continue
                 out.append({
                     "price": round(price, 2),
-                    "quantity": int(qty),
+                    "quantity": qty,
                     "volume_rub": round(price * qty, 0),
                 })
             return out
@@ -444,19 +438,25 @@ class InvestHub:
         ticker: str,
         price_change_pct: float = 0.0,
         votes: list[CommitteeVote] | None = None,
+        news_items: list[NewsItem] | None = None,
+        fetch_news: bool = True,
     ) -> dict[str, Any]:
-        """Честный вердикт: дивидендные ловушки + priced-in + комитет."""
+        """Честный вердикт: дивидендные ловушки + priced-in + комитет.
+
+        Args:
+            news_items: готовые новости (чтобы не тянуть Telegram повторно).
+            fetch_news: тянуть ли новости самим (False — используем news_items).
+        """
         ticker = ticker.upper()
-        news_items: list[NewsItem] = []
+        if news_items is None and fetch_news:
+            feed = self._get_feed()
+            if feed is not None:
+                raw = _safe(lambda: feed.fetch_latest_sync(limit=5), [])
+                if raw:
+                    from .telegram_market_feed import feed_to_news_items
+                    news_items = _safe(lambda: feed_to_news_items(raw), []) or []
 
-        feed = self._get_feed()
-        if feed is not None:
-            raw = _safe(lambda: feed.fetch_latest_sync(limit=5), [])
-            if raw:
-                from .telegram_market_feed import feed_to_news_items
-                news_items = _safe(lambda: feed_to_news_items(raw), []) or []
-
-        analyzer = InvestmentAnalyzer(news=news_items)
+        analyzer = InvestmentAnalyzer(news=news_items or [])
         v = _safe(
             lambda: analyzer.analyze(ticker, price_change_pct=price_change_pct, votes=votes),
             None,
@@ -532,7 +532,24 @@ class InvestHub:
             if news.get("messages"):
                 picture["news"] = news
 
-        picture["verdict"] = self.verdict(ticker)
+        # Вердикт: если новости уже тянули — передаём их, чтобы не фетчить
+        # Telegram второй раз (и не фетчить вовсе при include_news=False).
+        news_items: list[NewsItem] | None = None
+        fetched_news = picture.get("news")
+        if fetched_news and fetched_news.get("messages"):
+            from .telegram_market_feed import RawMessage, feed_to_news_items
+            raw = [
+                RawMessage(channel=m["channel"], text=m["text"],
+                           published=datetime.fromisoformat(m["published"]))
+                for m in fetched_news["messages"]
+            ]
+            news_items = _safe(lambda: feed_to_news_items(raw), []) or []
+
+        picture["verdict"] = self.verdict(
+            ticker,
+            news_items=news_items,
+            fetch_news=include_news and news_items is None,
+        )
 
         if include_orderbook:
             book = self.orderbook(ticker)
@@ -586,7 +603,9 @@ class InvestHub:
 
         tech = pic.get("technical")
         if tech:
-            lines.append(f"Техника: {tech.get('verdict')} (conf {tech.get('confidence'):.0%})")
+            conf = tech.get("confidence")
+            conf_str = f" (conf {conf:.0%})" if conf is not None else ""
+            lines.append(f"Техника: {tech.get('verdict')}{conf_str}")
             for s in tech.get("signals", []):
                 arrow = "🟢" if s["direction"] > 0 else ("🔴" if s["direction"] < 0 else "⚪")
                 lines.append(f"  {arrow} {s['name']}: {s['description']}")

@@ -447,6 +447,41 @@ class TinkoffInvest:
             "stop_5pct": round(closes[-1] * 0.95, 2),
         }
 
+    # ── стакан ───────────────────────────────────────────────────────────
+    def get_orderbook(self, ticker: str, depth: int = 10) -> dict | None:
+        """Стакан (order book) по тикеру: asks/bids списками dict'ов.
+
+        Каждый уровень: {"price": float, "quantity": int}. Returns None
+        если токена нет или FIGI/данные не получены. Никогда не бросает.
+        """
+        if not self.available:
+            return None
+        figi = self.find_figi(ticker)
+        if not figi:
+            return None
+        resp = self._rpc("orderbook", {"figi": figi, "depth": depth})
+        if not resp:
+            return None
+        result: dict = {
+            "ticker": ticker.upper(),
+            "figi": figi,
+            "asks": [],
+            "bids": [],
+        }
+        for side in ("asks", "bids"):
+            for item in resp.get(side, []) or []:
+                if not isinstance(item, dict):
+                    continue
+                price = _quotation_to_float(item.get("price"))
+                if price <= 0:
+                    continue
+                try:
+                    qty = int(float(item.get("quantity", 0)))
+                except (TypeError, ValueError):
+                    qty = 0
+                result[side].append({"price": price, "quantity": qty})
+        return result
+
     # ── портфель ─────────────────────────────────────────────────────────
     def get_portfolio(self) -> list[PortfolioPosition] | None:
         """Текущие позиции портфеля."""
