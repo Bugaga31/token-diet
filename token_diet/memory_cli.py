@@ -165,6 +165,16 @@ def main() -> int:
     p_lib = sub.add_parser("library-search", help="search full texts in the library")
     p_lib.add_argument("query")
     sub.add_parser("library-stats", help="library statistics")
+    p_tg = sub.add_parser("tg-search", help="search Telegram channels/groups")
+    p_tg.add_argument("query", help="search query")
+    p_tg.add_argument("--dialogs", default="",
+                      help="comma-separated dialog filter (optional)")
+    p_tg.add_argument("--limit", type=int, default=5,
+                      help="max messages per dialog (default 5)")
+    p_tg.add_argument("--dialogs-max", type=int, default=50,
+                      help="max dialogs to scan (default 50)")
+    p_tg.add_argument("--save", action="store_true",
+                      help="save findings to the library")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -214,6 +224,30 @@ def main() -> int:
     if args.cmd == "library-stats":
         from .library import Library
         print(Library().stats())
+        return 0
+
+    if args.cmd == "tg-search":
+        from .telegram_search import search_telegram
+        filt = [d.strip() for d in args.dialogs.split(",") if d.strip()]
+        res = search_telegram(
+            args.query,
+            limit_per_dialog=args.limit,
+            max_dialogs=args.dialogs_max,
+            dialog_filter=filt or None,
+            save=args.save,
+        )
+        if res["status"] == "error":
+            print(f"⚠️ {res.get('error')}")
+            return 1
+        if res["status"] == "no_session":
+            print(f"⚠️ {res.get('error')}")
+            return 1
+        print(f"✓ Найдено: {res['found']} сообщений (сессия: {res['session']})")
+        for r in res["results"][:20]:
+            print(f"\n📌 [{r['dialog']}] {r['date']}")
+            print(f"   {r['text'][:220]}")
+        if res.get("saved"):
+            print("\n✓ Сохранено в библиотеку")
         return 0
 
     parser.print_help()
