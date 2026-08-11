@@ -253,6 +253,29 @@ def main() -> int:
                       help="input tokens per call")
     p_tron = sub.add_parser("tron", help="compact tool schemas (TRON)")
     p_tron.add_argument("file", help="path to JSON file with tool schemas")
+    p_memo = sub.add_parser(
+        "memo", help="typed memory graph (Memora-style): link/boost/dupes/merge/digest")
+    memo_sub = p_memo.add_subparsers(dest="memo_cmd")
+    p_m_link = memo_sub.add_parser("link", help="connect two notes with a typed edge")
+    p_m_link.add_argument("source", help="source note title")
+    p_m_link.add_argument("target", help="target note title")
+    p_m_link.add_argument("--type", default="related_to",
+                          choices=["references", "implements", "supersedes",
+                                   "extends", "contradicts", "related_to"],
+                          help="edge type (default related_to)")
+    p_m_boost = memo_sub.add_parser("boost", help="raise a note's importance")
+    p_m_boost.add_argument("title", help="note title")
+    p_m_boost.add_argument("--amount", type=float, default=0.2, help="importance boost")
+    p_m_dupes = memo_sub.add_parser("dupes", help="find duplicate notes")
+    p_m_dupes.add_argument("--threshold", type=float, default=0.85,
+                           help="overlap threshold (default 0.85)")
+    p_m_merge = memo_sub.add_parser("merge", help="merge two duplicate notes")
+    p_m_merge.add_argument("keep", help="note to keep")
+    p_m_merge.add_argument("drop", help="note to drop")
+    p_m_merge.add_argument("--strategy", choices=["append", "prepend", "replace"],
+                           default="append", help="merge strategy (default append)")
+    p_m_digest = memo_sub.add_parser("digest", help="compressed knowledge digest about a topic")
+    p_m_digest.add_argument("topic", help="topic to summarize from memory")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -568,6 +591,76 @@ def main() -> int:
         print()
         print(r["tron"])
         return 0
+
+    if args.cmd == "memo":
+        from .obsidian_memory import ObsidianMemoryStore
+        store = ObsidianMemoryStore(path=vault_path() / "graph.json")
+
+        # Sync: load every note from the file vault so memo can link/boost
+        # notes created with `remember` (one memory, two views).
+        # The real title lives in frontmatter (`title: ...`); filenames are
+        # slugified, so we must read the frontmatter to register notes under
+        # their display names.
+        _synced = 0
+        for f in vault.notes():
+            raw = f.read_text(encoding="utf-8", errors="ignore")
+            fm = re.match(r"^---\s*\n(.*?)\n---\s*\n", raw, re.DOTALL)
+            title = f.stem
+            if fm:
+                m = re.search(r"^title:\s*(.+)$", fm.group(1), re.MULTILINE)
+                if m:
+                    title = m.group(1).strip()
+            if store.get(title) is None:
+                store.remember(title, raw[:2000])
+                _synced += 1
+        if _synced:
+            store._save()
+
+        if not args.memo_cmd:
+            print(store.stats())
+            return 0
+
+        if args.memo_cmd == "link":
+            if not store.get(args.source) or not store.get(args.target):
+                print(f"⚠️ Обе заметки должны существовать. Создайте их через `remember`.")
+                return 1
+            ok = store.link(args.source, args.target, edge_type=args.type)
+            print(f"✓ {args.source} —[{args.type}]→ {args.target}" if ok
+                  else "⚠️ не удалось связать")
+            return 0 if ok else 1
+
+        if args.memo_cmd == "boost":
+            if not store.boost(args.title, amount=args.amount):
+                print(f"⚠️ заметка не найдена: {args.title}")
+                return 1
+            print(f"✓ Важность «{args.title}» поднята (+{args.amount}) → "
+                  f"{store.get(args.title).importance:.2f}")
+            return 0
+
+        if args.memo_cmd == "dupes":
+            dupes = store.find_duplicates(threshold=args.threshold)
+            if not dupes:
+                print("✓ Дубликатов не найдено")
+                return 0
+            print(f"⚠️ Найдено {len(dupes)} пар дубликатов:")
+            for a, b in dupes:
+                print(f"  • «{a.title}» ⇄ «{b.title}»")
+                print(f"    → memory_cli memo merge \"{a.title}\" \"{b.title}\"")
+            return 0
+
+        if args.memo_cmd == "merge":
+            if not store.merge(args.keep, args.drop, strategy=args.strategy):
+                print("⚠️ не удалось слить (проверьте названия)")
+                return 1
+            print(f"✓ Слито: «{args.drop}» → «{args.keep}» (стратегия {args.strategy})")
+            print(f"  Осталось заметок: {len(store.notes)}")
+            return 0
+
+        if args.memo_cmd == "digest":
+            print(store.digest(args.topic))
+            return 0
+
+        return 1
 
     parser.print_help()
     return 1
