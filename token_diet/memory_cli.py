@@ -238,6 +238,11 @@ def main() -> int:
     p_apk_build.add_argument("--out", default="", help="output apk path")
     p_apk_inspect = apk_sub.add_parser("inspect", help="inspect an existing APK")
     p_apk_inspect.add_argument("apk", help="path to .apk file")
+    p_fix = sub.add_parser("fix-prompt",
+                           help="right-size a system prompt (Anthropic context engineering)")
+    p_fix.add_argument("file", help="path to a prompt text file")
+    p_fix.add_argument("--analyze", action="store_true",
+                       help="only report what's bloating it")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -491,6 +496,27 @@ def main() -> int:
                              indent=1))
             return 0
         return 1
+
+    if args.cmd == "fix-prompt":
+        from pathlib import Path
+        from .context_engineering import analyze_prompt, minimize_system_prompt
+        p = Path(args.file)
+        if not p.exists():
+            print(f"⚠️ файл не найден: {p}")
+            return 1
+        prompt = p.read_text(encoding="utf-8", errors="ignore")
+        if args.analyze:
+            print(analyze_prompt(prompt).render())
+            return 0
+        res = minimize_system_prompt(prompt)
+        print(f"✓ {res.tokens_before} → {res.tokens_after} токенов "
+              f"(экономия {res.savings_pct}%)")
+        print(f"  убрано: {res.removed_duplicate_lines} дубликатов, "
+              f"{res.removed_filler_lines} общих фраз, "
+              f"{res.removed_ban_lines} запретов")
+        print()
+        print(res.minimized)
+        return 0
 
     parser.print_help()
     return 1

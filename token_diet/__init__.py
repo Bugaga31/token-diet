@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.8.0"
+__version__ = "3.9.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -431,6 +431,14 @@ from .apk_builder import (
     inspect_apk,
     install_instructions,
 )
+from .context_engineering import (
+    MinimizeResult,
+    RedundancyReport,
+    analyze_prompt,
+    minimize_system_prompt,
+    optimize_system_prompt,
+    reorder_prompt,
+)
 
 __all__ = [
     "__version__",
@@ -659,6 +667,12 @@ __all__ = [
     "find_sdkmanager",
     "inspect_apk",
     "install_instructions",
+    "MinimizeResult",
+    "RedundancyReport",
+    "analyze_prompt",
+    "minimize_system_prompt",
+    "optimize_system_prompt",
+    "reorder_prompt",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
