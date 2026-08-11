@@ -185,6 +185,15 @@ def main() -> int:
                              help="live daemon: catch new posts instantly")
     p_watch.add_argument("--no-save", action="store_true",
                          help="do not save to library")
+    p_glob = sub.add_parser("tg-global",
+                            help="search ALL public Telegram (even unsubscribed)")
+    p_glob.add_argument("query", help="search query")
+    p_glob.add_argument("--limit", type=int, default=10,
+                        help="max results (default 10)")
+    p_un = sub.add_parser("tg-usernames",
+                          help="latest posts from username-channels (even unsubscribed)")
+    p_un.add_argument("--limit", type=int, default=3,
+                      help="posts per channel (default 3)")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -276,6 +285,32 @@ def main() -> int:
     if args.cmd == "tg-watch":
         from .telegram_monitor import watch
         watch(save_to_lib=not args.no_save)
+        return 0
+
+    if args.cmd == "tg-global":
+        from .telegram_monitor import global_search
+        res = global_search(args.query, limit=args.limit)
+        if res["status"] != "ok":
+            print(f"⚠️ {res.get('error')}")
+            return 1
+        print(f"✓ Глобальный поиск «{args.query}»: {res['found']} результатов\n")
+        for r in res["results"][:15]:
+            mark = "🔥" if r.get("important") else "·"
+            print(f"{mark} [{r['channel']}] {r['date']}")
+            print(f"   {r['text'][:200]}\n")
+        return 0
+
+    if args.cmd == "tg-usernames":
+        from .telegram_monitor import by_username
+        res = by_username(limit=args.limit)
+        if res["status"] != "ok":
+            print(f"⚠️ {res.get('error')}")
+            return 1
+        print(f"✓ По username-каналам: {res['found']} постов\n")
+        for r in res["results"][:25]:
+            mark = "🔥" if r.get("important") else "·"
+            print(f"{mark} [{r['channel']}] {r['date']}")
+            print(f"   {r['text'][:180]}\n")
         return 0
 
     parser.print_help()

@@ -48,8 +48,11 @@ INVEST_CHANNEL_FRAGMENTS = [
 
 AI_CHANNEL_FRAGMENTS = [
     "claude-api", "промптологи", "нейробаза", "ai-агент", "максим скороход",
-    "нейро", "ии ", "gpt", "промпт",
+    "нейро", "gpt", "промпт",
 ]
+
+# Мусорные чаты, которые ловятся по фрагментам, но не несут новостной ценности
+BLACKLIST_FRAGMENTS = ["комментари", "чат-болт", "флудилк", "отзовик"]
 
 
 async def _resolve_dialogs(client, fragments: list[str]) -> list[tuple]:
@@ -60,14 +63,27 @@ async def _resolve_dialogs(client, fragments: list[str]) -> list[tuple]:
     """
     found: list[tuple] = []
     lower = [f.lower() for f in fragments]
+    black = [b.lower() for b in BLACKLIST_FRAGMENTS]
     async for dialog in client.iter_dialogs():
         name = (dialog.name or "").strip()
         if not name or not (dialog.is_channel or dialog.is_group):
             continue
         low = name.lower()
+        if any(b in low for b in black):
+            continue
         if any(f in low for f in lower):
             found.append((dialog.entity, name))
     return found
+
+# ── Темы для глобального поиска по всей платформе ─────────────────────────
+GLOBAL_QUERIES = [
+    "ставка ЦБ", "ключевая ставка", "инфляция Россия",
+    "дивиденды российские акции", "облигации ОФЗ", "Мосбиржа",
+    "полюс акции", "сбер акции", "газпром акции", "яндекс акции",
+    "нейросеть claude", "chatgpt новая модель", "deepseek",
+    "санкции Россия", "курс рубля",
+]
+
 
 # ── Фильтр важности: если в посте есть хоть одно слово → он ценен ─────────
 IMPORTANT_KEYWORDS = [
@@ -84,6 +100,135 @@ IMPORTANT_KEYWORDS = [
     # срочное
     "срочно", "экстренн", "авария", "сбой", "запрет",
 ]
+
+
+# ── Каналы по username — get_entity работает для ЛЮБОГО публичного ────────
+# канала, даже если на него не подписан. Это даёт охват сверх подписок.
+# (username взят из telegram_market_feed.MARKET_CHANNELS — проверенные)
+USERNAME_CHANNELS: dict[str, str] = {
+    "bankrossii": "Банк России",
+    "MoscowExchangeOfficial": "MOEX",
+    "minfin": "Минфин России",
+    "government_rus": "Правительство России",
+    "MMInsights": "MMI",
+    "Bonds_lab": "Bonds lab",
+    "bitkogan": "Евгений Коган",
+    "smartlabnews": "СМАРТЛАБ",
+    "newssmartlab": "СМАРТЛАБ НОВОСТИ",
+    "bondsmartlab": "СМАРТЛАБ ОБЛИГАЦИИ",
+    "invest_heroes": "Invest Heroes",
+    "AK47pfl": "РынкиДеньгиВласть",
+    "markettwits": "MarketTwits",
+    "selfinvestor": "РБК Инвестиции",
+    "rbc_invest": "РБК Инвестиции",
+    "bcs_express": "БКС Экспресс",
+    "t_bank_invest": "Т-Инвестиции",
+    "finam_invest": "Финам Инвестиции",
+}
+
+
+async def _by_username_impl(client, limit: int) -> list[dict]:
+    """Собрать свежайшее из каналов по username — даже неподписанных.
+
+    get_entity(username) работает для любого публичного канала.
+    """
+    out: list[dict] = []
+    for username, name in USERNAME_CHANNELS.items():
+        try:
+            entity = await client.get_entity(username)
+        except Exception:
+            continue  # канал недоступен/приватный — пропускаем
+        try:
+            async for msg in client.iter_messages(entity, limit=limit):
+                text = (msg.text or "").strip()
+                if not text:
+                    continue
+                out.append({
+                    "channel": name,
+                    "date": str(msg.date),
+                    "text": text[:400],
+                    "important": _is_important(text),
+                    "source": "username",
+                })
+        except Exception:
+            continue
+    out.sort(key=lambda r: r["date"], reverse=True)
+    return out
+
+
+async def _global_search_impl(client, query: str, limit: int) -> list[dict]:
+    """Глобальный поиск по ВСЕМ публичным сообщениям Telegram.
+
+    SearchGlobalRequest ищет по всей платформе — включая каналы,
+    на которые мы не подписаны и про которые даже не знаем.
+    """
+    from telethon.tl.functions.messages import SearchGlobalRequest
+    from telethon.tl.types import InputMessagesFilterEmpty, InputPeerEmpty
+
+    try:
+        res = await client(SearchGlobalRequest(
+            q=query,
+            filter=InputMessagesFilterEmpty(),
+            min_date=None, max_date=None, offset_rate=0,
+            offset_peer=InputPeerEmpty(), offset_id=0, limit=limit,
+        ))
+    except Exception:
+        return []
+
+    # peer_id → chat: соберём карту по всем chats/пользователям результата
+    chats_by_id: dict = {}
+    for c in getattr(res, "chats", []) or []:
+        chats_by_id[c.id] = c
+    for u in getattr(res, "users", []) or []:
+        chats_by_id[u.id] = u
+
+    out: list[dict] = []
+    for msg in res.messages:
+        text = (getattr(msg, "message", "") or "").strip()
+        if not text:
+            continue
+        peer = getattr(msg, "peer_id", None)
+        cid = getattr(peer, "channel_id", None) or getattr(peer, "chat_id", None) \
+            or getattr(peer, "user_id", None)
+        chat = chats_by_id.get(cid)
+        name = getattr(chat, "title", None) or getattr(chat, "first_name", None) \
+            or getattr(chat, "username", None) or "?"
+        out.append({
+            "channel": name,
+            "date": str(msg.date),
+            "text": text[:400],
+            "important": _is_important(text),
+            "source": "global",
+        })
+    out.sort(key=lambda r: r["date"], reverse=True)
+    return out
+
+
+async def _global_searches_impl(client, limit: int) -> list[dict]:
+    """Прогнать глобальный поиск по ключевым темам — улов со всей платформы."""
+    out: list[dict] = []
+    for q in GLOBAL_QUERIES:
+        out += await _global_search_impl(client, q, limit)
+    return out
+
+
+def _usable_session(session: Path) -> Path:
+    """Always use a temp copy for one-shot commands.
+
+    The watch daemon holds the original session DB open (it writes state
+    on every disconnect), so ANY parallel connect to the original risks
+    'database is locked'. A copy is always safe and never disturbs the
+    daemon. Copy is tiny (~tens of KB) and cheap.
+    """
+    import shutil
+    import tempfile
+
+    tmp = Path(tempfile.gettempdir()) / f"tg_sess_{time.time_ns()}.session"
+    try:
+        shutil.copy2(session, tmp)
+        return tmp
+    except OSError:
+        return session
 
 
 def _load_creds() -> tuple[int, str] | None:
@@ -105,18 +250,21 @@ def _find_live_session() -> Path | None:
     for path in SESSION_CANDIDATES:
         if not path.exists():
             continue
-        try:
-            async def _check():
-                client = TelegramClient(str(path), api_id, api_hash)
-                await client.connect()
-                try:
-                    return bool(await client.is_user_authorized())
-                finally:
-                    await client.disconnect()
-            if asyncio.run(_check()):
-                return path
-        except Exception:
-            continue
+        for attempt in range(3):  # сеть Telegram капризна — ретраим каждую сессию
+            try:
+                async def _check():
+                    usable = _usable_session(path)
+                    client = TelegramClient(str(usable), api_id, api_hash)
+                    await client.connect()
+                    try:
+                        return bool(await client.is_user_authorized())
+                    finally:
+                        await client.disconnect()
+                if asyncio.run(_check()):
+                    return path
+            except Exception:
+                pass
+            time.sleep(2 * (attempt + 1))
     return None
 
 
@@ -197,11 +345,12 @@ def collect_fresh(per_channel: int = 3, include_ai: bool = True) -> dict:
         fragments += AI_CHANNEL_FRAGMENTS
 
     api_id, api_hash = creds
+    usable = _usable_session(session)
     results: list[dict] = []
     for attempt in range(1, 4):
         try:
             async def _run():
-                client = TelegramClient(str(session), api_id, api_hash)
+                client = TelegramClient(str(usable), api_id, api_hash)
                 await client.connect()
                 try:
                     return await _collect_impl(client, fragments, per_channel)
@@ -269,8 +418,38 @@ async def _watch_impl(client, fragments: list[str], save_to_lib: bool) -> None:
             print(f"💓 [{_stamp()}] демон жив ({n * 5} мин на связи, "
                   f"каналов: {len(entities)})", flush=True)
 
+    async def extra_scan():
+        """Периодически: username-каналы + глобальный поиск (неподписанные).
+
+        Live-события ловят только подписанные каналы. А чтобы не упускать
+        остальную платформу, каждые 10 минут прогоняем username-каналы
+        (get_entity работает для любых публичных) и глобальные темы.
+        """
+        seen: set[str] = set()
+        while True:
+            await asyncio.sleep(600)
+            try:
+                found: list[dict] = []
+                found += await _by_username_impl(client, 1)
+                found += await _global_searches_impl(client, 2)
+                for r in found:
+                    if not r.get("important"):
+                        continue
+                    key = f"{r.get('channel')}|{r.get('text')[:60]}"
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    title = r["text"].splitlines()[0][:80]
+                    _append_fresh(title, r["text"], r["channel"])
+                    if save_to_lib:
+                        _save_library(title, r["text"], r["channel"])
+                    print(f"🌐 [{_stamp()}] {r['channel']}: {title}", flush=True)
+            except Exception as e:
+                print(f"⚠️ доп-скан: {str(e)[:80]}", flush=True)
+
     client.add_event_handler(handler, events.NewMessage(chats=entities))
     asyncio.ensure_future(heartbeat())
+    asyncio.ensure_future(extra_scan())
     try:
         await client.run_until_disconnected()
     finally:
@@ -313,5 +492,73 @@ def watch(save_to_lib: bool = True) -> dict:
     return {"status": "stopped"}
 
 
-__all__ = ["collect_fresh", "watch", "INVEST_CHANNEL_FRAGMENTS",
-           "AI_CHANNEL_FRAGMENTS", "FRESH_FILE"]
+def by_username(limit: int = 3) -> dict:
+    """One-shot: latest posts from username-channels (even unsubscribed)."""
+    if not HAS_TELETHON:
+        return {"status": "error", "error": "telethon не установлен"}
+    creds = _load_creds()
+    if not creds:
+        return {"status": "error", "error": "нет api_id/api_hash"}
+    session = _find_live_session()
+    if session is None:
+        return {"status": "no_session", "error": "нет живой сессии"}
+
+    api_id, api_hash = creds
+    usable = _usable_session(session)
+    results: list[dict] = []
+    for attempt in range(1, 4):
+        try:
+            async def _run():
+                client = TelegramClient(str(usable), api_id, api_hash)
+                await client.connect()
+                try:
+                    return await _by_username_impl(client, limit)
+                finally:
+                    await client.disconnect()
+            results = asyncio.run(_run())
+            break
+        except Exception as e:
+            if attempt == 3:
+                return {"status": "error",
+                        "error": f"сеть Telegram нестабильна: {str(e)[:120]}"}
+            time.sleep(2 * attempt)
+    return {"status": "ok", "found": len(results), "results": results}
+
+
+def global_search(query: str, limit: int = 10) -> dict:
+    """One-shot: search ALL public Telegram, including unsubscribed channels."""
+    if not HAS_TELETHON:
+        return {"status": "error", "error": "telethon не установлен"}
+    creds = _load_creds()
+    if not creds:
+        return {"status": "error", "error": "нет api_id/api_hash"}
+    session = _find_live_session()
+    if session is None:
+        return {"status": "no_session", "error": "нет живой сессии"}
+
+    api_id, api_hash = creds
+    usable = _usable_session(session)
+    results: list[dict] = []
+    for attempt in range(1, 4):
+        try:
+            async def _run():
+                client = TelegramClient(str(usable), api_id, api_hash)
+                await client.connect()
+                try:
+                    return await _global_search_impl(client, query, limit)
+                finally:
+                    await client.disconnect()
+            results = asyncio.run(_run())
+            break
+        except Exception as e:
+            if attempt == 3:
+                return {"status": "error",
+                        "error": f"сеть Telegram нестабильна: {str(e)[:120]}"}
+            time.sleep(2 * attempt)
+    return {"status": "ok", "query": query, "found": len(results),
+            "results": results}
+
+
+__all__ = ["collect_fresh", "by_username", "global_search", "watch",
+           "INVEST_CHANNEL_FRAGMENTS", "AI_CHANNEL_FRAGMENTS",
+           "USERNAME_CHANNELS", "GLOBAL_QUERIES", "FRESH_FILE"]
