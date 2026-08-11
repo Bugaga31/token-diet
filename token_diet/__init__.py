@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.9.0"
+__version__ = "3.10.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -439,6 +439,18 @@ from .context_engineering import (
     optimize_system_prompt,
     reorder_prompt,
 )
+from .efficient_thinking import (
+    ANSWER_FIRST_PROMPT,
+    CHAIN_OF_DRAFT_PROMPT,
+    OverthinkingResult,
+    adaptive_effort_prompt,
+    answer_first_prompt,
+    chain_of_draft_compress,
+    chain_of_draft_prompt,
+    detect_overthinking,
+    estimate_effort,
+    optimize_thinking,
+)
 
 __all__ = [
     "__version__",
@@ -673,6 +685,16 @@ __all__ = [
     "minimize_system_prompt",
     "optimize_system_prompt",
     "reorder_prompt",
+    "ANSWER_FIRST_PROMPT",
+    "CHAIN_OF_DRAFT_PROMPT",
+    "OverthinkingResult",
+    "adaptive_effort_prompt",
+    "answer_first_prompt",
+    "chain_of_draft_compress",
+    "chain_of_draft_prompt",
+    "detect_overthinking",
+    "estimate_effort",
+    "optimize_thinking",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",

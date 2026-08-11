@@ -243,6 +243,10 @@ def main() -> int:
     p_fix.add_argument("file", help="path to a prompt text file")
     p_fix.add_argument("--analyze", action="store_true",
                        help="only report what's bloating it")
+    p_think = sub.add_parser("think", help="optimize reasoning for a question")
+    p_think.add_argument("question", help="the user question")
+    p_think.add_argument("--mode", choices=["auto", "draft", "standard", "deep"],
+                         default="auto", help="reasoning mode")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -516,6 +520,16 @@ def main() -> int:
               f"{res.removed_ban_lines} запретов")
         print()
         print(res.minimized)
+        return 0
+
+    if args.cmd == "think":
+        from .efficient_thinking import optimize_thinking
+        r = optimize_thinking(args.question, mode=args.mode)
+        print(f"✓ Режим: {r['mode']} · оценка экономии рассуждений: "
+              f"~{r['estimated_reasoning_savings_pct']}%")
+        print(f"  {r['note']}")
+        print()
+        print(r["prompt"])
         return 0
 
     parser.print_help()
