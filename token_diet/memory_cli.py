@@ -110,6 +110,28 @@ def digest_book(vault: ObsidianVault, path: str | Path) -> str:
     return f"✓ Прочитал книгу «{title}» → сохранено в память"
 
 
+def export_all(vault: ObsidianVault) -> str:
+    """Dump the whole vault into one markdown file.
+
+    Purpose: any AI (Hermes, Claude Code, OpenCode, this chat) can load
+    the file and 'remember everything' — goals, rules, portfolio, books,
+    videos, lessons — without carrying a private conversation cache.
+    """
+    out = Path("/media/ro/KINGSTON1/token-diet-memory/CONTEXT_ALL.md")
+    parts = [
+        "# token-diet MEMORY — полный контекст",
+        "# Загрузи этот файл в любую ИИ-сессию, чтобы она помнила всё.",
+        f"# Экспортировано: {Path('/tmp/token-diet-clone').exists() and 'token-diet' or ''}",
+        "",
+    ]
+    for f in vault.notes():
+        text = f.read_text(encoding="utf-8")
+        parts.append(f"\n\n---\n\n{text}")
+    out.write_text("\n".join(parts), encoding="utf-8")
+    print(f"✓ Экспорт: {out} ({sum(len(p) for p in parts)} символов)")
+    return str(out)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="token-diet-memory")
     sub = parser.add_subparsers(dest="cmd")
@@ -128,6 +150,9 @@ def main() -> int:
     sub.add_parser("stats", help="memory stats")
     p_study = sub.add_parser("study", help="read a book (epub/fb2/txt) into memory")
     p_study.add_argument("path", help="path to the book file")
+    p_video = sub.add_parser("study-video", help="read a YouTube video into memory")
+    p_video.add_argument("url", help="YouTube URL")
+    sub.add_parser("export", help="dump ALL memory to one file (for Hermes/any AI)")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -153,6 +178,18 @@ def main() -> int:
 
     if args.cmd == "study":
         print(digest_book(vault, args.path))
+        return 0
+
+    if args.cmd == "study-video":
+        try:
+            from .youtube_learner import study_video
+            print(study_video(args.url, vault_path()))
+        except ImportError as e:
+            print(f"⚠️ yt-dlp не установлен: {e}")
+        return 0
+
+    if args.cmd == "export":
+        export_all(vault)
         return 0
 
     parser.print_help()
