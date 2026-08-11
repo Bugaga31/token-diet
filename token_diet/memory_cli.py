@@ -98,16 +98,25 @@ def digest_book(vault: ObsidianVault, path: str | Path) -> str:
     if len(text) < 200:
         return f"⚠️ Слишком мало текста в {title}"
 
-    # Сохраняем выжимку с оглавлением-метаданными, чтобы не забивать память
+    # 1) ПОЛНЫЙ текст → библиотека (поиск по главам, RAG-подход)
+    from .library import Library
+
+    lib = Library()
+    meta = lib.add(title, text, source=str(Path(path).name), kind="book")
+
+    # 2) Выжимка + указатель на полный текст → память (для быстрого recall)
     vault.write(
         f"Книга: {title}",
         f"Источник: {Path(path).name}\n"
-        f"Объём текста: {len(text)} символов\n\n"
+        f"Полный текст: {meta['chars']} символов · {meta['chunks']} глав\n"
+        f"Файл: {meta['raw_file']}\n\n"
         f"--- ВЫЖИМКА (первые 4000 симв.) ---\n\n{text[:4000]}",
         tags=["book", "learning"],
         kind="reference",
     )
-    return f"✓ Прочитал книгу «{title}» → сохранено в память"
+    return (f"✓ Прочитал книгу «{title}» — полный текст "
+            f"({meta['chars']} симв., {meta['chunks']} глав) в библиотеке, "
+            f"выжимка в памяти")
 
 
 def export_all(vault: ObsidianVault) -> str:
@@ -153,6 +162,9 @@ def main() -> int:
     p_video = sub.add_parser("study-video", help="read a YouTube video into memory")
     p_video.add_argument("url", help="YouTube URL")
     sub.add_parser("export", help="dump ALL memory to one file (for Hermes/any AI)")
+    p_lib = sub.add_parser("library-search", help="search full texts in the library")
+    p_lib.add_argument("query")
+    sub.add_parser("library-stats", help="library statistics")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -190,6 +202,18 @@ def main() -> int:
 
     if args.cmd == "export":
         export_all(vault)
+        return 0
+
+    if args.cmd == "library-search":
+        from .library import Library
+        lib = Library()
+        block = lib.context_for_prompt(args.query, max_chars=2000)
+        print(block if block else "(в библиотеке ничего не найдено)")
+        return 0
+
+    if args.cmd == "library-stats":
+        from .library import Library
+        print(Library().stats())
         return 0
 
     parser.print_help()
