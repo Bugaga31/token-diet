@@ -218,6 +218,26 @@ def main() -> int:
                        help="focus the summary on this question")
     p_sum.add_argument("--max-chars", type=int, default=12000,
                        help="chunk budget (default 12000)")
+    p_lang = sub.add_parser("lang", help="detect language of a code file")
+    p_lang.add_argument("path", help="path to a code file")
+    p_lang.add_argument("--prompt", action="store_true",
+                        help="show the idiomatic-code system prompt")
+    p_lang.add_argument("--budget", action="store_true",
+                        help="show what can be safely compressed")
+    p_tool = sub.add_parser("toolchain", help="detect compilers/interpreters on this machine")
+    p_apk = sub.add_parser("apk", help="Android APK build & inspect")
+    apk_sub = p_apk.add_subparsers(dest="apk_cmd")
+    p_apk_check = apk_sub.add_parser("check", help="check APK toolchain")
+    p_apk_new = apk_sub.add_parser("new", help="generate a minimal Android project")
+    p_apk_new.add_argument("dir", help="output directory")
+    p_apk_new.add_argument("--package", default="com.example.hello",
+                           help="java package (default com.example.hello)")
+    p_apk_new.add_argument("--name", default="HelloApp", help="app name")
+    p_apk_build = apk_sub.add_parser("build", help="build an APK from a project")
+    p_apk_build.add_argument("dir", help="project directory")
+    p_apk_build.add_argument("--out", default="", help="output apk path")
+    p_apk_inspect = apk_sub.add_parser("inspect", help="inspect an existing APK")
+    p_apk_inspect.add_argument("apk", help="path to .apk file")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -407,6 +427,70 @@ def main() -> int:
         print()
         print(res.answer[:3000])
         return 0
+
+    if args.cmd == "lang":
+        from pathlib import Path
+        from .polyglot import code_budget, detect_language, system_prompt_for
+        p = Path(args.path)
+        if not p.exists():
+            print(f"⚠️ файл не найден: {p}")
+            return 1
+        code = p.read_text(encoding="utf-8", errors="ignore")
+        lang = detect_language(code, str(p))
+        print(f"✓ Язык: {lang}  (файл {p.name})")
+        if args.budget:
+            b = code_budget(code, lang)
+            print(f"  Всего: {b.total_chars} симв. · тело: {b.body_chars} · "
+                  f"импорты: {b.import_chars} · комментарии: {b.comment_chars}")
+            print(f"  Можно безопасно сжать: {b.droppable_pct}% (импорты+комменты+пустые)")
+        if args.prompt:
+            sp = system_prompt_for(lang)
+            print(f"\n  Системный промпт для {lang}:")
+            print(f"  {sp}")
+        return 0
+
+    if args.cmd == "toolchain":
+        from .polyglot import build_toolchain
+        tc = build_toolchain()
+        print(f"✓ Найдено {len(tc.available)} инструментов:")
+        for tool, path in sorted(tc.available.items()):
+            print(f"  {tool}: {path}")
+        return 0
+
+    if args.cmd == "apk":
+        from .apk_builder import (
+            build_apk, check_toolchain, create_android_project,
+            inspect_apk, install_instructions,
+        )
+        if not args.apk_cmd:
+            print(check_toolchain().render())
+            print()
+            print(install_instructions())
+            return 0
+        if args.apk_cmd == "check":
+            print(check_toolchain().render())
+            print()
+            if not check_toolchain().ready:
+                print(install_instructions())
+            return 0
+        if args.apk_cmd == "new":
+            proj = create_android_project(args.dir, package=args.package,
+                                          app_name=args.name)
+            print(f"✓ Проект создан: {proj.root}")
+            print(f"  Манифест: {proj.manifest_path}")
+            print(f"  Активность: {proj.main_activity}")
+            print(f"  Дальше: memory_cli apk build {proj.root}")
+            return 0
+        if args.apk_cmd == "build":
+            res = build_apk(args.dir, out_apk=args.out or None)
+            print(res.render())
+            return 0 if res.ok else 1
+        if args.apk_cmd == "inspect":
+            import json
+            print(json.dumps(inspect_apk(args.apk), ensure_ascii=False,
+                             indent=1))
+            return 0
+        return 1
 
     parser.print_help()
     return 1

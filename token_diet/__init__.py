@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.7.0"
+__version__ = "3.8.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -407,6 +407,30 @@ from .map_reduce import (
     map_reduce,
     split_into_chunks,
 )
+from .polyglot import (
+    CodeBudget,
+    SYSTEM_PROMPTS,
+    Toolchain,
+    build_toolchain,
+    code_budget,
+    detect_language,
+    protect_code,
+    system_prompt_for,
+)
+from .apk_builder import (
+    AndroidProject,
+    BuildResult,
+    ToolchainStatus,
+    build_apk,
+    check_toolchain,
+    create_android_project,
+    find_android_jar,
+    find_build_tools,
+    find_sdk,
+    find_sdkmanager,
+    inspect_apk,
+    install_instructions,
+)
 
 __all__ = [
     "__version__",
@@ -615,6 +639,26 @@ __all__ = [
     "rerank_chunks",
     "rerank_library",
     "split_into_chunks",
+    "CodeBudget",
+    "SYSTEM_PROMPTS",
+    "Toolchain",
+    "build_toolchain",
+    "code_budget",
+    "detect_language",
+    "protect_code",
+    "system_prompt_for",
+    "AndroidProject",
+    "BuildResult",
+    "ToolchainStatus",
+    "build_apk",
+    "check_toolchain",
+    "create_android_project",
+    "find_android_jar",
+    "find_build_tools",
+    "find_sdk",
+    "find_sdkmanager",
+    "inspect_apk",
+    "install_instructions",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
