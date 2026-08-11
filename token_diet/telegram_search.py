@@ -17,8 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
-from datetime import datetime
+import time
 from pathlib import Path
 
 try:
@@ -89,7 +88,6 @@ async def _search_impl(
     results: list[dict] = []
     try:
         await client.connect()
-        me = await client.get_me()
 
         # Собираем диалоги и ставим каналы/группы вперёд — в личных
         # чатах искать новости бессмысленно.
@@ -164,12 +162,25 @@ def search_telegram(
                       "SMS-код слать не буду — сначала поправьте сессию."),
         }
     api_id, api_hash = creds
-    results = asyncio.run(_search_impl(
-        query, session_path, api_id, api_hash,
-        limit_per_dialog=limit_per_dialog,
-        max_dialogs=max_dialogs,
-        dialog_filter=dialog_filter,
-    ))
+    # Telegram любит рвать соединение при частых запросах — ретраим с паузой.
+    results: list[dict] = []
+    for attempt in range(1, 4):
+        try:
+            results = asyncio.run(_search_impl(
+                query, session_path, api_id, api_hash,
+                limit_per_dialog=limit_per_dialog,
+                max_dialogs=max_dialogs,
+                dialog_filter=dialog_filter,
+            ))
+            break
+        except Exception as e:
+            if attempt == 3:
+                return {
+                    "status": "error",
+                    "error": f"сеть Telegram нестабильна ({type(e).__name__}): "
+                             f"{str(e)[:120]}. Попробуйте ещё раз через минуту.",
+                }
+            time.sleep(2 * attempt)
     out = {
         "status": "ok",
         "session": str(session_path),
