@@ -175,6 +175,16 @@ def main() -> int:
                       help="max dialogs to scan (default 50)")
     p_tg.add_argument("--save", action="store_true",
                       help="save findings to the library")
+    p_fresh = sub.add_parser("tg-fresh",
+                             help="latest posts from top channels NOW")
+    p_fresh.add_argument("--per-channel", type=int, default=3,
+                         help="posts per channel (default 3)")
+    p_fresh.add_argument("--no-ai", action="store_true",
+                         help="skip AI channels")
+    p_watch = sub.add_parser("tg-watch",
+                             help="live daemon: catch new posts instantly")
+    p_watch.add_argument("--no-save", action="store_true",
+                         help="do not save to library")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -248,6 +258,24 @@ def main() -> int:
             print(f"   {r['text'][:220]}")
         if res.get("saved"):
             print("\n✓ Сохранено в библиотеку")
+        return 0
+
+    if args.cmd == "tg-fresh":
+        from .telegram_monitor import collect_fresh
+        res = collect_fresh(per_channel=args.per_channel, include_ai=not args.no_ai)
+        if res["status"] != "ok":
+            print(f"⚠️ {res.get('error')}")
+            return 1
+        print(f"✓ Свежак: {res['found']} постов из топ-каналов\n")
+        for r in res["results"][:25]:
+            mark = "🔥" if r["important"] else "·"
+            print(f"{mark} [{r['channel']}] {r['date']}")
+            print(f"   {r['text'][:200]}\n")
+        return 0
+
+    if args.cmd == "tg-watch":
+        from .telegram_monitor import watch
+        watch(save_to_lib=not args.no_save)
         return 0
 
     parser.print_help()
