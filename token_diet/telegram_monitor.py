@@ -124,6 +124,16 @@ USERNAME_CHANNELS: dict[str, str] = {
     "bcs_express": "БКС Экспресс",
     "t_bank_invest": "Т-Инвестиции",
     "finam_invest": "Финам Инвестиции",
+    # ── найденные через глобальный поиск (неподписанные) ──
+    "neomatrix_ai": "Neo Matrix | Нейросети",
+    "syntx_ai": "Syntx AI",
+    "avencores": "avencores telegram",
+    "neuralx_ai": "NEURALX | AI NEWS",
+    "paragon_business": "Paragon",
+    "chatgpt5_gemini": "ChatGPT 5 | Gemini 3",
+    "boloto_store": "Boloto Store",
+    "chappy_ai": "Chappy",
+    "kamaran_abuse": "ᴋᴀᴍᴀʀᴀɴ",
 }
 
 
