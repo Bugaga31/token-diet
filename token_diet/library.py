@@ -42,20 +42,26 @@ def _words(text: str) -> set[str]:
 
 def chunk_text(text: str, size: int = CHUNK_SIZE,
                overlap: int = CHUNK_OVERLAP) -> list[str]:
-    """Split text into overlapping chunks on word boundaries."""
-    words = text.split()
+    """Split text into overlapping chunks (~size chars, on word boundaries)."""
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return []
     chunks: list[str] = []
-    if not words:
-        return chunks
     step = max(1, size - overlap)
     i = 0
-    while i < len(words):
-        part = " ".join(words[i:i + size])
-        if part.strip():
+    while i < len(text):
+        end = min(i + size, len(text))
+        # rewind to the previous space so we don't cut words in half
+        if end < len(text):
+            sp = text.rfind(" ", i, end)
+            if sp > i + size // 2:
+                end = sp
+        part = text[i:end].strip()
+        if part:
             chunks.append(part)
-        if i + size >= len(words):
+        if end >= len(text):
             break
-        i += step
+        i = max(end - overlap, i + 1)
     return chunks
 
 
