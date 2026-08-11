@@ -76,12 +76,30 @@ class ObsidianNote:
         }
 
 
+# Typed edge relations (reverse-engineered from Memora memory graph)
+# — typed edges let retrieval know WHY notes are connected, not just that they are.
+EDGE_TYPES = (
+    "references",   # A mentions/uses B
+    "implements",   # A implements B (plan → code, todo → feature)
+    "supersedes",   # A replaces B (new decision beats old one)
+    "extends",      # A extends B (adds detail)
+    "contradicts",  # A contradicts B (conflict resolution marker)
+    "related_to",   # generic association
+)
+
+
 @dataclass
 class GraphEdge:
-    """An edge in the knowledge graph: note A → note B via wikilink."""
+    """An edge in the knowledge graph: note A → note B via wikilink.
+
+    Memora insight: edges carry a TYPE so retrieval can reason about
+    relations — a "supersedes" edge should bury the old note, a
+    "contradicts" edge should surface BOTH sides.
+    """
     source: str
     target: str
-    weight: float = 1.0           # Link strength (default 1.0, can decay)
+    edge_type: str = "related_to"   # one of EDGE_TYPES
+    weight: float = 1.0             # Link strength (default 1.0, can decay)
 
 
 @dataclass
@@ -187,21 +205,154 @@ class ObsidianMemoryStore:
 
         return note
 
-    def link(self, source_title: str, target_title: str) -> bool:
-        """Create a wikilink between two existing notes."""
+    def link(self, source_title: str, target_title: str,
+             edge_type: str = "related_to") -> bool:
+        """Create a typed wikilink between two existing notes.
+
+        edge_type: references | implements | supersedes | extends |
+                   contradicts | related_to
+
+        Memora insight: typed edges power smarter retrieval — a
+        "supersedes" edge demotes the old note, a "contradicts" edge
+        surfaces both sides of a conflict.
+        """
+        if edge_type not in EDGE_TYPES:
+            edge_type = "related_to"
         source = self.get(source_title)
         target = self.get(target_title)
         if not source or not target:
             return False
 
-        if target_title not in source.wikilinks:
+        # Upgrade existing link's type if present, else add new edge
+        existing = next(
+            (e for e in self.edges if e.source == source.id and e.target == target.id),
+            None,
+        )
+        if existing:
+            existing.edge_type = edge_type
+        else:
             source.wikilinks.append(target_title)
-            self.edges.append(GraphEdge(source=source.id, target=target.id))
-            self._rebuild_backlinks()
-            if self.path:
-                self._save()
-            return True
-        return False
+            self.edges.append(GraphEdge(
+                source=source.id, target=target.id, edge_type=edge_type))
+        self._rebuild_backlinks()
+        if self.path:
+            self._save()
+        return True
+
+    def boost(self, title: str, amount: float = 0.2) -> bool:
+        """Permanently raise a note's importance (Memora's memory_boost).
+
+        Important notes float higher in retrieval. amount: 0..1 added to
+        importance, capped at 1.0.
+        """
+        note = self.get(title)
+        if not note:
+            return False
+        note.importance = min(1.0, note.importance + amount)
+        if self.path:
+            self._save()
+        return True
+
+    def find_duplicates(self, threshold: float = 0.85) -> list[tuple[ObsidianNote, ObsidianNote]]:
+        """Find near-duplicate note pairs (token-overlap heuristic).
+
+        Memora's memory_find_duplicates — but deterministic, zero LLM
+        calls, zero tokens. Two notes are duplicates when their content
+        shares ≥threshold of tokens (normalized by length).
+        """
+        dupes: list[tuple[ObsidianNote, ObsidianNote]] = []
+        ids = list(self.notes.values())
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                a, b = ids[i], ids[j]
+                if a.id == b.id:
+                    continue
+                overlap = self._token_overlap(a.content, b.content)
+                if overlap >= threshold:
+                    dupes.append((a, b))
+        return dupes
+
+    def merge(self, keep_title: str, drop_title: str, strategy: str = "append") -> bool:
+        """Merge two duplicate notes into one (Memora's memory_merge).
+
+        strategies:
+          append  — keep both contents (drop_title appended to keep_title)
+          replace — drop_title's newer content wins if updated_at newer
+          prepend — drop_title content first, then keep_title's
+
+        Merged note keeps the higher importance and union of tags.
+        """
+        keep = self.get(keep_title)
+        drop = self.get(drop_title)
+        if not keep or not drop:
+            return False
+
+        if strategy == "replace" and drop.updated_at > keep.updated_at:
+            keep.content = drop.content
+        elif strategy == "prepend":
+            keep.content = drop.content + "\n\n" + keep.content
+        else:  # append
+            keep.content = keep.content + "\n\n" + drop.content
+
+        keep.importance = max(keep.importance, drop.importance)
+        keep.tags = sorted(set(keep.tags) | set(drop.tags))
+        keep.metadata = {**drop.metadata, **keep.metadata}
+        keep.updated_at = time.time()
+
+        # Steal drop's wikilinks, remove drop note + its edges
+        for lt in drop.wikilinks:
+            if lt not in keep.wikilinks:
+                keep.wikilinks.append(lt)
+        for e in list(self.edges):
+            if e.source == drop.id:
+                self.edges.remove(e)
+        self.notes.pop(drop.id, None)
+        self._rebuild_backlinks()
+        if self.path:
+            self._save()
+        return True
+
+    def digest(self, topic: str, max_lines: int = 8) -> str:
+        """Return a compressed knowledge digest about a topic.
+
+        Memora's memory_digest — deterministic: top retrieved notes +
+        their typed relations, formatted as a compact context block.
+        Cheaper than dumping raw notes; smarter than keyword search.
+        """
+        results = self.retrieve(topic, max_results=6)
+        if not results:
+            return f"[No memory about: {topic}]"
+
+        lines = [f"[Memory digest: {topic}]"]
+        edge_repr: dict[tuple[str, str], str] = {
+            (e.source, e.target): e.edge_type for e in self.edges}
+
+        for r in results[:max_lines]:
+            note = r.note
+            kind_icon = {"fact": "📋", "decision": "🔨", "constraint": "🔒",
+                         "preference": "⚙", "reference": "📖"}.get(note.kind, "📝")
+            line = f"- {kind_icon} **{note.title}** (rel {r.score:.2f}): {note.snippet(90)}"
+            lines.append(line)
+
+            # Show typed relations to other retrieved notes
+            rels = [
+                f"{edge_repr[(note.id, other.note.id)]}→{other.note.title}"
+                for other in results
+                if (note.id, other.note.id) in edge_repr and other.note.id != note.id
+            ]
+            if rels:
+                lines.append(f"    ⛓ {'; '.join(rels[:3])}")
+
+        lines.append("[End digest]")
+        return "\n".join(lines)
+
+    def _token_overlap(self, a: str, b: str) -> float:
+        """Jaccard-style token overlap between two texts (0..1)."""
+        ta = set(a.lower().split())
+        tb = set(b.lower().split())
+        if not ta or not tb:
+            return 0.0
+        return len(ta & tb) / min(len(ta), len(tb))
 
     def get(self, title: str) -> ObsidianNote | None:
         """Get note by title."""
@@ -455,7 +606,14 @@ class ObsidianMemoryStore:
                 }
                 for nid, n in self.notes.items()
             },
-            "version": "1.0",
+            # Memora insight: persist typed edges explicitly so the
+            # graph keeps relation semantics across sessions.
+            "edges": [
+                {"source": e.source, "target": e.target,
+                 "edge_type": e.edge_type, "weight": e.weight}
+                for e in self.edges
+            ],
+            "version": "1.1",
         }
         with open(self.path, "w") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -481,12 +639,24 @@ class ObsidianMemoryStore:
             )
             self.notes[nid] = note
 
-        # Rebuild edges from wikilinks
-        self.edges = []
-        for note in self.notes.values():
-            for link_title in note.wikilinks:
-                link_id = self._make_id(link_title)
-                self.edges.append(GraphEdge(source=note.id, target=link_id))
+        # Restore typed edges from file (fallback: rebuild from wikilinks)
+        saved_edges = data.get("edges")
+        if saved_edges:
+            self.edges = [
+                GraphEdge(
+                    source=e.get("source", ""),
+                    target=e.get("target", ""),
+                    edge_type=e.get("edge_type", "related_to"),
+                    weight=e.get("weight", 1.0),
+                )
+                for e in saved_edges
+            ]
+        else:
+            self.edges = []
+            for note in self.notes.values():
+                for link_title in note.wikilinks:
+                    link_id = self._make_id(link_title)
+                    self.edges.append(GraphEdge(source=note.id, target=link_id))
 
         self._rebuild_backlinks()
 

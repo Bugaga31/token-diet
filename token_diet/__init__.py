@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.12.0"
+__version__ = "3.13.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -161,6 +161,7 @@ from .agent_supervisor import (
     truncate_tool_result,
 )
 from .obsidian_memory import (
+    EDGE_TYPES,
     ObsidianMemoryStore,
     ObsidianNote,
     RetrievalResult,
@@ -500,6 +501,7 @@ __all__ = [
     "parse_message",
     "SECTION_NAMES",
     "CALL_TYPES",
+    "EDGE_TYPES",
     "AdaptiveContext",
     "AgentContextResult",
     "BenchmarkEntry",
