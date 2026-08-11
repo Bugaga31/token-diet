@@ -194,6 +194,20 @@ def main() -> int:
                           help="latest posts from username-channels (even unsubscribed)")
     p_un.add_argument("--limit", type=int, default=3,
                       help="posts per channel (default 3)")
+    p_docs = sub.add_parser("docs", help="live package docs (Context7-style)")
+    p_docs.add_argument("package", help="package name (requests, fastapi, react...)")
+    p_docs.add_argument("--tokens", type=int, default=500,
+                        help="max tokens for the context block")
+    p_docs.add_argument("--fresh", action="store_true",
+                        help="ignore cache, re-fetch")
+    p_docs.add_argument("--flush", action="store_true",
+                        help="clear docs cache for this package")
+    p_scrape = sub.add_parser("scrape", help="clean readable text from a URL (Firecrawl-lite)")
+    p_scrape.add_argument("url", help="http(s) URL")
+    p_scrape.add_argument("--save", action="store_true",
+                          help="save cleaned text to the library")
+    p_scrape.add_argument("--chars", type=int, default=12000,
+                          help="max characters to keep (default 12000)")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -311,6 +325,40 @@ def main() -> int:
             mark = "🔥" if r.get("important") else "·"
             print(f"{mark} [{r['channel']}] {r['date']}")
             print(f"   {r['text'][:180]}\n")
+        return 0
+
+    if args.cmd == "docs":
+        from .live_docs import flush_cache, get_live_docs
+        if args.flush:
+            print(f"✓ Очищено кэшей: {flush_cache(args.package)}")
+            return 0
+        res = get_live_docs(args.package, max_tokens=args.tokens,
+                            use_cache=not args.fresh)
+        if res.error:
+            print(f"⚠️ {args.package}: {res.error}")
+            return 1
+        print(f"✓ {res.package} {res.version} — {res.source_url}")
+        print(f"  Сыро: {res.raw_tokens} ток. → Сжато: {res.compressed_tokens} ток."
+              f" (экономия {res.savings_pct}%)")
+        print()
+        print(res.context_block)
+        return 0
+
+    if args.cmd == "scrape":
+        from .clean_scraper import scrape_and_save
+        from .library import Library
+        lib = Library() if args.save else None
+        res = scrape_and_save(args.url, max_chars=args.chars, library=lib)
+        if res.status == "error":
+            print(f"⚠️ {res.error}")
+            return 1
+        print(f"✓ {res.title}")
+        print(f"  HTML: {res.raw_chars} симв. → Чистый текст: {res.clean_chars} симв."
+              f" (убранo {res.compression_pct}% мусора)")
+        if res.status == "saved":
+            print("  ✓ Сохранено в библиотеку")
+        print()
+        print(res.text[:args.chars])
         return 0
 
     parser.print_help()

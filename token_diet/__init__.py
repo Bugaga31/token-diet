@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.5.0"
+__version__ = "3.6.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -371,6 +371,30 @@ from .telegram_commander import (
     send_message as telegram_send_message,
     run as telegram_run,
 )
+from .live_docs import (
+    DocsCache,
+    KNOWN_PACKAGES,
+    LiveDocsResult,
+    docs_bundle,
+    fetch_package_docs,
+    flush_cache,
+    get_live_docs,
+)
+from .tool_output_pruner import (
+    PruneResult,
+    PrunedTurn,
+    fuzzy_fingerprint,
+    prune_and_compress,
+    prune_tool_outputs,
+    render_pruned,
+    result_hash,
+)
+from .clean_scraper import (
+    ScrapeResult,
+    html_to_text,
+    scrape_and_save,
+    scrape_url,
+)
 
 __all__ = [
     "__version__",
@@ -553,6 +577,24 @@ __all__ = [
     "DesktopScreen",
     "UINode",
     "UniversalScreen",
+    "DocsCache",
+    "KNOWN_PACKAGES",
+    "LiveDocsResult",
+    "PruneResult",
+    "PrunedTurn",
+    "ScrapeResult",
+    "docs_bundle",
+    "fetch_package_docs",
+    "flush_cache",
+    "fuzzy_fingerprint",
+    "get_live_docs",
+    "html_to_text",
+    "prune_and_compress",
+    "prune_tool_outputs",
+    "render_pruned",
+    "result_hash",
+    "scrape_and_save",
+    "scrape_url",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",

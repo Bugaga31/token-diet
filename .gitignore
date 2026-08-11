@@ -37,3 +37,4 @@ mcp_errors.log
 # Tinkoff Invest API token (never commit!)
 .tinkoff/
 *.token
+~/.sudo_pass
