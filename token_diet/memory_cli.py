@@ -253,6 +253,12 @@ def main() -> int:
                       help="input tokens per call")
     p_tron = sub.add_parser("tron", help="compact tool schemas (TRON)")
     p_tron.add_argument("file", help="path to JSON file with tool schemas")
+    p_sk = sub.add_parser("skills", help="lazy-load skills (Pi-style): inject only what's needed")
+    p_sk.add_argument("query", help="the user request to match against skills")
+    p_sk.add_argument("--budget", type=int, default=0,
+                      help="max instruction tokens to load (0 = no limit)")
+    p_sk.add_argument("--base", default="You are a capable assistant.",
+                      help="base system prompt text")
     p_memo = sub.add_parser(
         "memo", help="typed memory graph (Memora-style): link/boost/dupes/merge/digest")
     memo_sub = p_memo.add_subparsers(dest="memo_cmd")
@@ -570,6 +576,22 @@ def main() -> int:
         print(f"  Экономия:    ${r['savings_usd']} ({r['savings_pct']}%)")
         print(f"  Оптимальный пинг: каждые {r['optimal_ping_seconds']}с")
         print(f"  Потолок выгоды:   {r['break_even_minutes']} мин простоя")
+        return 0
+
+    if args.cmd == "skills":
+        from .lazy_skills import default_registry
+        reg = default_registry()
+        st = reg.stats()
+        skills = reg.select(args.query, budget_tokens=args.budget)
+        prompt = reg.build_prompt(args.base, args.query,
+                                  budget_tokens=args.budget)
+        print(f"✓ Скиллов в реестре: {st['skills']} · всего инструкций: "
+              f"{st['instruction_tokens_total']} ток.")
+        print(f"  Запрос: «{args.query}» → загружено {len(skills)} скиллов:"
+              f" {', '.join(s.name for s in skills) or '—'}")
+        print(f"  Экономия: {reg.savings_pct(args.query)}% инструкций НЕ грузились")
+        print()
+        print(prompt)
         return 0
 
     if args.cmd == "tron":

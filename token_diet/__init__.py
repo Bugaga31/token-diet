@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.13.0"
+__version__ = "3.14.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -467,6 +467,11 @@ from .tron_format import (
     to_tron_schemas,
     tron_roundtrip_safe,
 )
+from .lazy_skills import (
+    Skill,
+    SkillRegistry,
+    default_registry,
+)
 
 __all__ = [
     "__version__",
@@ -723,6 +728,9 @@ __all__ = [
     "to_tron",
     "to_tron_schemas",
     "tron_roundtrip_safe",
+    "Skill",
+    "SkillRegistry",
+    "default_registry",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
