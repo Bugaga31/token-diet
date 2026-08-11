@@ -568,11 +568,105 @@ def run_on_tinkoff(
     return result
 
 
+def live_trade(
+    ticker: str,
+    budget: float,
+    dry_run: bool = True,
+    min_agreement: int = 2,
+    stop_loss_pct: float = 0.01,
+    days: int = 60,
+) -> dict[str, Any]:
+    """Full loop: REAL candles → strategies → decision → order (if not dry_run).
+
+    THIS IS THE SELLABLE PRODUCT. One function = one trading bot.
+
+    Rules (honest, no lies):
+      - dry_run=True by default — prints what it WOULD do, places nothing.
+      - dry_run=False — places a real MARKET order on your account.
+      - Never trades against an explicit stop-loss break.
+      - Budget is the max rubles spent on one buy.
+
+    Returns a dict with the decision and (if executed) the order result.
+    """
+    from .tinkoff_invest import TinkoffInvest
+
+    tink = TinkoffInvest()
+    if not tink.available:
+        return {"ticker": ticker, "error": "TINKOFF_TOKEN not found"}
+
+    candles = tink.get_candles(ticker, days=days)
+    if len(candles) < 10:
+        return {"ticker": ticker, "error": "not enough candles",
+                "candles": len(candles)}
+
+    closes = [c.close for c in candles]
+    highs = [c.high for c in candles]
+    lows = [c.low for c in candles]
+    vols = [c.volume for c in candles]
+    price = closes[-1]
+
+    result = run_strategies(closes, highs, lows, vols)
+    lean = result["combined_lean"]
+
+    # agreement: how many strategies point the same way
+    agree = 0
+    if result["ma_cross"]["signal"] == lean:
+        agree += 1
+    if result["interval"]["signal"] == lean:
+        agree += 1
+    if result["volume_profile"] and (
+        (lean == "BUY" and result["volume_profile"]["poc_position"] >= 0.5)
+        or (lean == "SELL" and result["volume_profile"]["poc_position"] < 0.5)
+    ):
+        agree += 1
+
+    decision: dict[str, Any] = {
+        "ticker": ticker,
+        "price": round(price, 2),
+        "date": str(candles[-1].time.date()),
+        "combined_lean": lean,
+        "strategies_agree": agree,
+        "min_agreement": min_agreement,
+        "dry_run": dry_run,
+        "action": "HOLD",
+        "reason": "not enough agreement / HOLD lean",
+    }
+
+    # enough agreement → act
+    if lean != "HOLD" and agree >= min_agreement:
+        qty = max(1, int(budget // price))
+        if qty >= 1:
+            decision["action"] = lean
+            decision["quantity"] = qty
+            decision["est_cost"] = round(qty * price, 2)
+            decision["reason"] = (
+                f"{agree} strategies agree ({lean}) — "
+                f"{'WOULD buy' if lean == 'BUY' else 'WOULD sell'} {qty} lots"
+            )
+            if not dry_run:
+                order = tink.post_order(
+                    ticker, quantity=qty,
+                    direction="buy" if lean == "BUY" else "sell",
+                    order_type="market",
+                )
+                decision["order"] = order
+                decision["reason"] = (
+                    f"{agree} strategies agree ({lean}) — order placed: "
+                    f"{order.get('status') if order else 'FAILED'}"
+                )
+    else:
+        decision["reason"] = (
+            f"{agree}/{min_agreement} strategies agree (lean={lean}) — hold"
+        )
+
+    return decision
+
+
 __all__ = [
     "MaCrossSignal", "VolumeProfileResult", "IntervalSignal",
     "Corridor", "Trade", "BacktestResult",
     "ma_cross", "volume_profile", "interval_strategy",
     "percentile_corridor", "stop_loss_level", "position_plan",
     "market_open_now",
-    "backtest", "run_strategies", "run_on_tinkoff",
+    "backtest", "run_strategies", "run_on_tinkoff", "live_trade",
 ]

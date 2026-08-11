@@ -43,6 +43,8 @@ ENDPOINTS = {
     "accounts": f"{API_BASE}.UsersService/GetAccounts",
     "portfolio": f"{API_BASE}.OperationsService/GetPortfolio",
     "find_instrument": f"{API_BASE}.InstrumentsService/FindInstrument",
+    "post_order": f"{API_BASE}.OrdersService/PostOrder",
+    "get_orders": f"{API_BASE}.OrdersService/GetOrders",
 }
 
 
@@ -481,6 +483,85 @@ class TinkoffInvest:
                     qty = 0
                 result[side].append({"price": price, "quantity": qty})
         return result
+
+    # ── ордера ───────────────────────────────────────────────────────────
+    def post_order(
+        self,
+        ticker: str,
+        quantity: int = 1,
+        direction: str = "buy",
+        order_type: str = "market",
+        price: float | None = None,
+        figi: str | None = None,
+    ) -> dict | None:
+        """Выставить ордер (market или limit) через OrdersService/PostOrder.
+
+        Args:
+            ticker: тикер (PLZL, SBER...)
+            quantity: кол-во лотов
+            direction: 'buy' или 'sell'
+            order_type: 'market' (исполнится по рынку) или 'limit' (нужен price)
+            price: цена для limit-ордера (для market — игнорируется)
+
+        Returns:
+            dict {order_id, status, executed_price, lots} или None при ошибке.
+            НИКОГДА не бросает исключение.
+        """
+        if not self.available:
+            return None
+        figi = figi or self.find_figi(ticker)
+        if not figi:
+            return None
+        accounts = self._rpc("accounts", {})
+        if not accounts or not accounts.get("accounts"):
+            return None
+        account_id = accounts["accounts"][0]["id"]
+
+        direction_enum = (
+            "ORDER_DIRECTION_BUY" if direction.lower() in ("buy", "b")
+            else "ORDER_DIRECTION_SELL"
+        )
+        if order_type.lower() in ("market", "m"):
+            order_type_enum = "ORDER_TYPE_MARKET"
+            price_q: dict = {"units": 0, "nano": 0}
+        else:
+            order_type_enum = "ORDER_TYPE_LIMIT"
+            if not price or price <= 0:
+                return None
+            units = int(price)
+            nano = int(round((price - units) * 1e9))
+            price_q = {"units": units, "nano": nano}
+
+        resp = self._rpc("post_order", {
+            "figi": figi,
+            "quantity": int(quantity),
+            "price": price_q,
+            "direction": direction_enum,
+            "accountId": account_id,
+            "orderType": order_type_enum,
+            "instrumentId": figi,
+        })
+        if not resp:
+            return None
+        return {
+            "order_id": resp.get("orderId"),
+            "status": resp.get("executionReportStatus"),
+            "executed_price": _quotation_to_float(resp.get("executedOrderPrice")),
+            "lots": resp.get("lotsExecuted"),
+        }
+
+    def get_orders(self) -> list[dict] | None:
+        """Активные заявки (неисполненные) по первому счёту."""
+        if not self.available:
+            return None
+        accounts = self._rpc("accounts", {})
+        if not accounts or not accounts.get("accounts"):
+            return None
+        account_id = accounts["accounts"][0]["id"]
+        resp = self._rpc("get_orders", {"accountId": account_id})
+        if not resp or "orders" not in resp:
+            return []
+        return resp["orders"]
 
     # ── портфель ─────────────────────────────────────────────────────────
     def get_portfolio(self) -> list[PortfolioPosition] | None:
