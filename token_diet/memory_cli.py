@@ -208,6 +208,16 @@ def main() -> int:
                           help="save cleaned text to the library")
     p_scrape.add_argument("--chars", type=int, default=12000,
                           help="max characters to keep (default 12000)")
+    p_bm25 = sub.add_parser("bm25", help="smart library search (Okapi BM25 rerank)")
+    p_bm25.add_argument("query", help="search query")
+    p_bm25.add_argument("--top", type=int, default=3,
+                        help="top results (default 3)")
+    p_sum = sub.add_parser("summarize", help="map-reduce summary of a long text/file")
+    p_sum.add_argument("path", help="path to a .txt/.md/.py file (or URL)")
+    p_sum.add_argument("--query", default="",
+                       help="focus the summary on this question")
+    p_sum.add_argument("--max-chars", type=int, default=12000,
+                       help="chunk budget (default 12000)")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -359,6 +369,43 @@ def main() -> int:
             print("  ✓ Сохранено в библиотеку")
         print()
         print(res.text[:args.chars])
+        return 0
+
+    if args.cmd == "bm25":
+        from .bm25_reranker import rerank_library
+        from .library import Library
+        hits = rerank_library(args.query, Library(), candidates=8, top_k=args.top)
+        if not hits:
+            print("(в библиотеке ничего не найдено)")
+            return 1
+        for h in hits:
+            print(f"\n### {h['title']} (глава {h['chunk'] + 1}) — score {h['score']}")
+            print(h["text"][:400])
+        return 0
+
+    if args.cmd == "summarize":
+        from .map_reduce import map_reduce
+        text = ""
+        if args.path.startswith(("http://", "https://")):
+            from .clean_scraper import scrape_url
+            res = scrape_url(args.path, max_chars=200_000)
+            if res.status != "ok":
+                print(f"⚠️ {res.error}")
+                return 1
+            text = res.text
+        else:
+            from pathlib import Path
+            p = Path(args.path)
+            if not p.exists():
+                print(f"⚠️ файл не найден: {p}")
+                return 1
+            text = p.read_text(encoding="utf-8", errors="ignore")
+        res = map_reduce(text, query=args.query, max_chunk_chars=args.max_chars)
+        print(f"✓ Карта-редукция: {res.n_chunks} чанков · вх. {res.input_tokens} ток."
+              f" → вых. {res.total_tokens} ток. (экономия {res.savings_pct}%)")
+        print(f"  Детерминированный режим (без API): {'да' if not res.used_llm else 'нет'}")
+        print()
+        print(res.answer[:3000])
         return 0
 
     parser.print_help()

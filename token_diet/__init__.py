@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.6.0"
+__version__ = "3.7.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -395,6 +395,18 @@ from .clean_scraper import (
     scrape_and_save,
     scrape_url,
 )
+from .bm25_reranker import (
+    BM25Reranker,
+    RerankHit,
+    rerank_chunks,
+    rerank_library,
+)
+from .map_reduce import (
+    MapReduceResult,
+    extractive_summarize,
+    map_reduce,
+    split_into_chunks,
+)
 
 __all__ = [
     "__version__",
@@ -595,6 +607,14 @@ __all__ = [
     "result_hash",
     "scrape_and_save",
     "scrape_url",
+    "BM25Reranker",
+    "MapReduceResult",
+    "RerankHit",
+    "extractive_summarize",
+    "map_reduce",
+    "rerank_chunks",
+    "rerank_library",
+    "split_into_chunks",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
