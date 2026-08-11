@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.10.0"
+__version__ = "3.11.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -451,6 +451,21 @@ from .efficient_thinking import (
     estimate_effort,
     optimize_thinking,
 )
+from .cache_keepalive import (
+    CachePolicy,
+    KeepaliveDecision,
+    KeepaliveEconomics,
+    KeepaliveManager,
+    KeepaliveStats,
+    estimate_keepalive_savings,
+)
+from .tron_format import (
+    TronCheck,
+    savings as tron_savings,
+    to_tron,
+    to_tron_schemas,
+    tron_roundtrip_safe,
+)
 
 __all__ = [
     "__version__",
@@ -695,6 +710,17 @@ __all__ = [
     "detect_overthinking",
     "estimate_effort",
     "optimize_thinking",
+    "CachePolicy",
+    "KeepaliveDecision",
+    "KeepaliveEconomics",
+    "KeepaliveManager",
+    "KeepaliveStats",
+    "estimate_keepalive_savings",
+    "TronCheck",
+    "tron_savings",
+    "to_tron",
+    "to_tron_schemas",
+    "tron_roundtrip_safe",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",

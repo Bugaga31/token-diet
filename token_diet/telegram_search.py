@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from pathlib import Path
 
@@ -125,14 +126,88 @@ async def _search_impl(
                         "dialog": name,
                         "id": dialog.id,
                         "date": str(msg.date),
-                        "text": text[:500],
+                        "text": text[:800],
                         "sender": (msg.sender_id or ""),
                     })
             except Exception:
                 continue
-        results.sort(key=lambda r: r["date"], reverse=True)
+        # Post-processing: dedupe, BM25-rerank, mark importance.
+        results = _dedupe_results(results)
+        results = _bm25_rerank(query, results)
+        results = _mark_importance(query, results)
     finally:
         await client.disconnect()
+    return results
+
+
+# ── post-processing: dedupe, rerank, importance ──────────────────────────────
+
+# Важные слова: если сообщение содержит хотя бы одно — помечаем 🔥
+_IMPORTANT_RE = re.compile(
+    r"\b(?:срочно|важно|эксклюзив|первый|прорыв|новый|запуск|выпуск|"
+    r"падение|рост|рекорд|сбой|отставка|война|санкции|ставка|дивид|"
+    r"плагин|mcp|claude|gpt|нейросет|модель|breakthrough|launch|"
+    r"urgent|exclusive|record|crash|sanctions)\b",
+    re.IGNORECASE,
+)
+
+
+def _text_fingerprint(text: str) -> str:
+    """Stable fingerprint of a message's core content (for dedup)."""
+    import hashlib
+    norm = re.sub(r"\s+", " ", text).strip().lower()
+    return hashlib.sha256(norm.encode()).hexdigest()[:16]
+
+
+def _dedupe_results(results: list[dict]) -> list[dict]:
+    """Remove near-duplicate posts (the same news is reposted across channels).
+
+    Keeps the FIRST occurrence (highest-ranked channel) of each fingerprint.
+    """
+    seen: set[str] = set()
+    out: list[dict] = []
+    for r in results:
+        fp = _text_fingerprint(r["text"])
+        if fp in seen:
+            continue
+        seen.add(fp)
+        out.append(r)
+    return out
+
+
+def _bm25_rerank(query: str, results: list[dict], top_k: int | None = None) -> list[dict]:
+    """Re-rank messages by BM25 relevance to the query (not just date).
+
+    Uses our bm25_reranker: the message that matches the query's RARE
+    words best rises to the top even if it's a day older.
+    """
+    if not results or not query.strip():
+        return results
+    try:
+        from .bm25_reranker import BM25Reranker
+        texts = [r["text"] for r in results]
+        reranker = BM25Reranker(texts)
+        hits = reranker.rerank(query, top_k=len(results))
+        ranked = []
+        for hit in hits:
+            r = dict(results[hit.index])
+            r["relevance"] = round(hit.score, 3)
+            ranked.append(r)
+        # keep relevance=0 items at the end, sorted by date
+        ranked.sort(key=lambda r: (r["relevance"] == 0, -r["relevance"]),
+                    reverse=False)
+        ranked.sort(key=lambda r: -r["relevance"])
+        if top_k:
+            ranked = ranked[:top_k]
+        return ranked
+    except ImportError:
+        return results
+
+
+def _mark_importance(query: str, results: list[dict]) -> list[dict]:
+    """Mark messages that contain important/urgent keywords as 🔥."""
+    for r in results:
+        r["important"] = bool(_IMPORTANT_RE.search(r["text"]))
     return results
 
 

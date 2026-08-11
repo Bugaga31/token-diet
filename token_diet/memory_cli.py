@@ -247,6 +247,12 @@ def main() -> int:
     p_think.add_argument("question", help="the user question")
     p_think.add_argument("--mode", choices=["auto", "draft", "standard", "deep"],
                          default="auto", help="reasoning mode")
+    p_ka = sub.add_parser("keepalive", help="estimate prompt-cache keepalive savings")
+    p_ka.add_argument("--calls", type=int, default=50, help="calls per session")
+    p_ka.add_argument("--tokens", type=int, default=5000,
+                      help="input tokens per call")
+    p_tron = sub.add_parser("tron", help="compact tool schemas (TRON)")
+    p_tron.add_argument("file", help="path to JSON file with tool schemas")
 
     args = parser.parse_args()
     vault = ObsidianVault(vault_path())
@@ -530,6 +536,37 @@ def main() -> int:
         print(f"  {r['note']}")
         print()
         print(r["prompt"])
+        return 0
+
+    if args.cmd == "keepalive":
+        from .cache_keepalive import estimate_keepalive_savings
+        r = estimate_keepalive_savings(args.calls, args.tokens)
+        print(f"✓ Keepalive: {r['n_calls']} вызовов × {r['input_tokens_per_call']} ток.")
+        print(f"  Без пинга:   ${r['no_keepalive_usd']}")
+        print(f"  С пингом:    ${r['with_keepalive_usd']}")
+        print(f"  Экономия:    ${r['savings_usd']} ({r['savings_pct']}%)")
+        print(f"  Оптимальный пинг: каждые {r['optimal_ping_seconds']}с")
+        print(f"  Потолок выгоды:   {r['break_even_minutes']} мин простоя")
+        return 0
+
+    if args.cmd == "tron":
+        import json as _json
+        from pathlib import Path
+        from .tron_format import savings as tron_savings
+        p = Path(args.file)
+        if not p.exists():
+            print(f"⚠️ файл не найден: {p}")
+            return 1
+        try:
+            tools = _json.loads(p.read_text(encoding="utf-8"))
+        except _json.JSONDecodeError as e:
+            print(f"⚠️ не JSON: {e}")
+            return 1
+        r = tron_savings(tools)
+        print(f"✓ JSON: {r['json_tokens']} ток. → TRON: {r['tron_tokens']} ток."
+              f" (экономия {r['savings_pct']}%)")
+        print()
+        print(r["tron"])
         return 0
 
     parser.print_help()
