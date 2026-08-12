@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.17.0"
+__version__ = "3.18.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -564,6 +564,38 @@ from .open_generative import (
     normalize_payload,
     payload_key,
 )
+from .candlestick_patterns import (
+    CandlePattern,
+    detect_patterns,
+    latest_patterns,
+    patterns_block,
+    single_bar_patterns,
+    three_bar_patterns,
+    two_bar_patterns,
+)
+from .technical_indicators import (
+    ema,
+    mfi,
+    obv,
+    obv_trend,
+    sma,
+    snapshot_block,
+    stochastic,
+    technical_snapshot,
+    williams_r,
+)
+from .risk_metrics import (
+    annualized_volatility,
+    correlation_matrix,
+    historical_var,
+    max_drawdown,
+    returns_of,
+    risk_block,
+    risk_report,
+    sharpe_ratio,
+    sortino_ratio,
+    trailing_stop,
+)
 
 __all__ = [
     "__version__",
@@ -891,6 +923,32 @@ __all__ = [
     "estimate_gateway_savings",
     "normalize_payload",
     "payload_key",
+    "CandlePattern",
+    "detect_patterns",
+    "latest_patterns",
+    "patterns_block",
+    "single_bar_patterns",
+    "three_bar_patterns",
+    "two_bar_patterns",
+    "ema",
+    "mfi",
+    "obv",
+    "obv_trend",
+    "sma",
+    "snapshot_block",
+    "stochastic",
+    "technical_snapshot",
+    "williams_r",
+    "annualized_volatility",
+    "correlation_matrix",
+    "historical_var",
+    "max_drawdown",
+    "returns_of",
+    "risk_block",
+    "risk_report",
+    "sharpe_ratio",
+    "sortino_ratio",
+    "trailing_stop",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
