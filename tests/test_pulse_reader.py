@@ -77,3 +77,36 @@ def test_search_keywords():
     hits = pr.search_keywords([p for p in posts if p], "золото")
     assert len(hits) == 1
     assert hits[0].nickname == "TestUser"
+
+
+def test_pulse_sentiment_bearish(monkeypatch):
+    bearish_posts = [
+        {"id": str(i), "text": "всё падает, сливают, дно, паника", "nickname": "X", "inserted": "2026-08-12T14:20:00Z"}
+        for i in range(5)
+    ]
+    payload = {"status": "Ok", "payload": {"items": bearish_posts}}
+    monkeypatch.setattr(pr, "_fetch", lambda url, timeout=15: payload)
+    s = pr.pulse_sentiment("PLZL")
+    assert s["signal"] == "bearish"
+    assert s["sample_size"] == 5
+    assert s["bearish_pct"] >= 50
+    assert "contrarian" in s  # толпа в панике → контрарный сигнал
+
+
+def test_pulse_sentiment_bullish(monkeypatch):
+    bullish_posts = [
+        {"id": str(i), "text": "рост продолжится, покупать, лонг, ралли, закупился", "nickname": "Y", "inserted": "2026-08-12T14:20:00Z"}
+        for i in range(5)
+    ]
+    payload = {"status": "Ok", "payload": {"items": bullish_posts}}
+    monkeypatch.setattr(pr, "_fetch", lambda url, timeout=15: payload)
+    s = pr.pulse_sentiment("PLZL")
+    assert s["signal"] == "bullish"
+    assert s["bullish_pct"] >= 50
+
+
+def test_pulse_sentiment_no_posts(monkeypatch):
+    monkeypatch.setattr(pr, "_fetch", lambda url, timeout=15: None)
+    s = pr.pulse_sentiment("PLZL")
+    assert s["signal"] == "neutral"
+    assert s["sample_size"] == 0

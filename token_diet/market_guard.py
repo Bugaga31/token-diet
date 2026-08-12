@@ -444,6 +444,20 @@ def snapshot_block(cfg: GuardConfig | None = None) -> str:
         lines.append(f"  Новости в ленте: {len(snap.get('news'))} "
                      f"(полюс/золото/цб)")
     lines.append(pulse_block("PLZL", max_items=3))
+    try:
+        from .pulse_reader import pulse_sentiment
+
+        s = pulse_sentiment("PLZL", limit=20)
+        if s.get("sample_size"):
+            lines.append(
+                f"  Пульс-настроение: {s['signal']} "
+                f"(быки {s['bullish_pct']}% / медведи {s['bearish_pct']}%, "
+                f"n={s['sample_size']})"
+            )
+            if s.get("contrarian"):
+                lines.append(f"  ⚡ {s['contrarian']}")
+    except Exception:
+        pass  # сентимент не критичен — сторож живёт и без него
     return "\n".join(lines)
 
 

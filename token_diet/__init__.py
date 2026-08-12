@@ -324,6 +324,7 @@ from .pulse_reader import (
     get_ticker_posts,
     get_user_posts,
     parse_post,
+    pulse_sentiment,
     search_keywords,
 )
 from .code_quality import (
@@ -979,6 +980,7 @@ __all__ = [
     "get_user_posts",
     "parse_post",
     "pulse_digest",
+    "pulse_sentiment",
     "search_keywords",
     "monitor_loop",
     "news_block",

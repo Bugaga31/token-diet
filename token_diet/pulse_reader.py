@@ -155,3 +155,56 @@ def search_keywords(posts: list[PulsePost], *keywords: str) -> list[PulsePost]:
     """Отфильтровать посты по ключевым словам (регистронезависимо)."""
     keys = [k.lower() for k in keywords]
     return [p for p in posts if any(k in p.text.lower() for k in keys)]
+
+
+def pulse_sentiment(ticker: str, limit: int = 20) -> dict:
+    """Настроение толпы Пульса по тикеру: скоринг постов.
+
+    Переиспользует market_intelligence.score_sentiment (рус+англ словарь).
+    Возвращает: signal (bullish/bearish/neutral), score, % быков/медведей,
+    топ постов по лайкам и контрарный сигнал, если толпа в панике.
+    """
+    from .market_intelligence import score_sentiment
+
+    posts = get_ticker_posts(ticker, limit=limit)
+    if not posts:
+        return {
+            "signal": "neutral", "score": 0.0, "sample_size": 0,
+            "bullish_pct": 0, "bearish_pct": 0, "posts": [],
+        }
+
+    scored = []
+    for p in posts:
+        s = score_sentiment(p.text)
+        scored.append({
+            "score": s["score"],
+            "text": p.text[:160],
+            "nickname": p.nickname,
+            "likes": p.likes,
+        })
+
+    n = len(scored)
+    bullish = sum(1 for s in scored if s["score"] > 0.1)
+    bearish = sum(1 for s in scored if s["score"] < -0.1)
+
+    if bullish > bearish and bullish / n >= 0.5:
+        signal = "bullish"
+    elif bearish > bullish and bearish / n >= 0.5:
+        signal = "bearish"
+    else:
+        signal = "neutral"
+
+    result = {
+        "signal": signal,
+        "score": round(sum(s["score"] for s in scored) / n, 3),
+        "sample_size": n,
+        "bullish_pct": round(100 * bullish / n),
+        "bearish_pct": round(100 * bearish / n),
+        "posts": sorted(scored, key=lambda s: s["likes"], reverse=True)[:3],
+    }
+    if signal == "bearish" and bearish >= max(3, n // 2):
+        result["contrarian"] = (
+            "толпа в панике по " + ticker + " — контрарный сценарий: "
+            "возможен отскок при развороте золота или пробое уровня"
+        )
+    return result
