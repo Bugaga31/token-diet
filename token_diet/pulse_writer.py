@@ -76,45 +76,82 @@ def _ssl_ctx() -> ssl.SSLContext:
 # Загрузка кук
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _read_tbank_cookies(db: Path) -> list[str]:
+    """Прочитать tbank-куки из cookies.sqlite, переживая блокировку Firefox.
+
+    Firefox держит базу в WAL-режиме: при запущенном браузере прямой
+    read-only коннект падает с 'database is locked'. Решение — скопировать
+    db + wal + shm во временную папку и читать копию (WAL подхватит
+    незакоммиченные сессионные куки, которые Firefox ещё не сбросил
+    на диск).
+    """
+    attempts = [db]
+    if db.exists():
+        import shutil
+        import tempfile
+
+        tmp = Path(tempfile.mkdtemp(prefix="fx_cookies_"))
+        try:
+            for suffix in ("", "-wal", "-shm"):
+                src = Path(str(db) + suffix)
+                if src.exists():
+                    shutil.copy2(src, tmp / src.name)
+            copy = tmp / db.name
+            if copy.exists():
+                attempts.insert(0, copy)
+        except OSError:
+            pass
+
+    for candidate in attempts:
+        try:
+            con = sqlite3.connect(f"file:{candidate}?mode=ro", uri=True)
+            rows = con.execute(
+                "SELECT name, value FROM moz_cookies "
+                "WHERE (host LIKE '%tinkoff.ru' OR host LIKE '%tbank.ru') "
+                "AND name IS NOT NULL AND value IS NOT NULL AND value != ''"
+            ).fetchall()
+            con.close()
+            if rows:
+                return [f"{n}={v}" for n, v in rows]
+        except sqlite3.Error:
+            continue
+    return []
+
+
 def load_cookies_from_firefox(profile_dir: str | None = None) -> str:
     """Вытащить Cookie-заголовок для tinkoff.ru/tbank.ru из Firefox.
 
     В Firefox куки хранятся в cookies.sqlite БЕЗ шифрования (в отличие
-    от Chromium). Возвращает строку 'name=value; name2=value2'.
-    """
-    if profile_dir is None:
-        base = Path.home() / ".mozilla" / "firefox"
-        candidates = []
-        for d in base.glob("*.default*"):
-            candidates.append(d)
-        for d in base.iterdir():
-            if d.is_dir() and (d / "cookies.sqlite").exists() and d not in candidates:
-                candidates.append(d)
-        if not candidates:
-            raise FileNotFoundError("профиль Firefox с cookies.sqlite не найден")
-        profile_dir = str(candidates[0])
-    db = Path(profile_dir) / "cookies.sqlite"
-    if not db.exists():
-        raise FileNotFoundError(f"нет cookies.sqlite в {profile_dir}")
+    от Chromium). Автоматически выбирает профиль с НАИБОЛЬШИМ числом
+    tbank-кук (сессия обычно в активном default-release, а не в первом
+    по алфавиту) и читает через WAL-копию, если Firefox запущен.
 
-    cookies: list[str] = []
-    try:
-        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-        cur = con.execute(
-            "SELECT host, name, value FROM moz_cookies "
-            "WHERE host LIKE '%tinkoff.ru' OR host LIKE '%tbank.ru'"
-        )
-        for host, name, value in cur.fetchall():
-            if name and value:
-                cookies.append(f"{name}={value}")
-        con.close()
-    except sqlite3.Error as e:
-        raise RuntimeError(f"не удалось прочитать куки: {e}") from e
-    if not cookies:
+    Возвращает строку 'name=value; name2=value2'.
+    """
+    base = Path.home() / ".mozilla" / "firefox"
+    profiles = []
+    if profile_dir is not None:
+        profiles.append(Path(profile_dir))
+    elif base.is_dir():
+        for d in base.iterdir():
+            if d.is_dir() and (d / "cookies.sqlite").exists():
+                profiles.append(d)
+
+    best: tuple[int, str] = (0, "")
+    for p in profiles:
+        try:
+            cookies = _read_tbank_cookies(p / "cookies.sqlite")
+        except Exception:
+            cookies = []
+        if len(cookies) > best[0]:
+            best = (len(cookies), "; ".join(cookies))
+
+    if not best[1]:
         raise RuntimeError(
-            "кук tinkoff/tbank не найдено — сначала войди в tbank.ru в Firefox"
+            "кук tinkoff/tbank не найдено ни в одном профиле Firefox — "
+            "сначала войди в https://www.tbank.ru/invest/ в Firefox"
         )
-    return "; ".join(cookies)
+    return best[1]
 
 
 def load_cookies_from_file(path: str) -> str:
