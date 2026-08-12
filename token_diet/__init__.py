@@ -618,6 +618,13 @@ from .risk_metrics import (
     sortino_ratio,
     trailing_stop,
 )
+from .sweet_spot import (
+    DEFAULT_BASKET,
+    GOLD_PROXIES,
+    SweetSpot,
+    report as sweet_report,
+    scan as sweet_scan,
+)
 
 __all__ = [
     "__version__",
@@ -971,6 +978,11 @@ __all__ = [
     "sharpe_ratio",
     "sortino_ratio",
     "trailing_stop",
+    "DEFAULT_BASKET",
+    "GOLD_PROXIES",
+    "SweetSpot",
+    "sweet_report",
+    "sweet_scan",
     "ALERT_FILE",
     "LOG_FILE",
     "GuardConfig",
