@@ -472,6 +472,15 @@ from .lazy_skills import (
     SkillRegistry,
     default_registry,
 )
+from .goal_planner import (
+    GOAPAction,
+    GoalPlanner,
+    PlanResult,
+    TrajectoryMemory,
+    WorldState,
+    coding_actions,
+    demo_goal,
+)
 
 __all__ = [
     "__version__",
@@ -731,6 +740,13 @@ __all__ = [
     "Skill",
     "SkillRegistry",
     "default_registry",
+    "GOAPAction",
+    "GoalPlanner",
+    "PlanResult",
+    "TrajectoryMemory",
+    "WorldState",
+    "coding_actions",
+    "demo_goal",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
