@@ -45,6 +45,9 @@ ENDPOINTS = {
     "find_instrument": f"{API_BASE}.InstrumentsService/FindInstrument",
     "post_order": f"{API_BASE}.OrdersService/PostOrder",
     "get_orders": f"{API_BASE}.OrdersService/GetOrders",
+    "post_stop_order": f"{API_BASE}.StopOrdersService/PostStopOrder",
+    "get_stop_orders": f"{API_BASE}.StopOrdersService/GetStopOrders",
+    "cancel_stop_order": f"{API_BASE}.StopOrdersService/CancelStopOrder",
 }
 
 
@@ -562,6 +565,100 @@ class TinkoffInvest:
         if not resp or "orders" not in resp:
             return []
         return resp["orders"]
+
+    # ── стоп-заявки (защита капитала на бирже) ──────────────────────────
+    def _account_id(self) -> str | None:
+        """Первый счёт аккаунта, или None."""
+        accounts = self._rpc("accounts", {})
+        if not accounts or not accounts.get("accounts"):
+            return None
+        return accounts["accounts"][0]["id"]
+
+    def post_stop_order(
+        self,
+        ticker: str,
+        quantity: int = 1,
+        stop_price: float | None = None,
+        direction: str = "sell",
+        limit_price: float | None = None,
+        expire_days: int = 14,
+        figi: str | None = None,
+    ) -> dict | None:
+        """Выставить СТОП-заявку на бирже (защита капитала).
+
+        По умолчанию — рыночный стоп-лосс (STOP_ORDER_TYPE_STOP_LOSS):
+        при достижении stop_price биржа исполнит по рынку. Если передан
+        limit_price — стоп-лимит (STOP_ORDER_TYPE_STOP_LIMIT).
+
+        Returns:
+            dict {stop_order_id, status} или None при ошибке.
+        """
+        if not self.available:
+            return None
+        figi = figi or self.find_figi(ticker)
+        if not figi or not stop_price or stop_price <= 0:
+            return None
+        account_id = self._account_id()
+        if not account_id:
+            return None
+
+        def _q(p: float) -> dict:
+            units = int(p)
+            nano = int(round((p - units) * 1e9))
+            return {"units": units, "nano": nano}
+
+        from datetime import timedelta
+        expire = (datetime.utcnow() + timedelta(days=expire_days))
+        expire_iso = expire.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        direction_enum = (
+            "ORDER_DIRECTION_BUY" if direction.lower() in ("buy", "b")
+            else "ORDER_DIRECTION_SELL"
+        )
+        stop_type = (
+            "STOP_ORDER_TYPE_STOP_LIMIT" if limit_price and limit_price > 0
+            else "STOP_ORDER_TYPE_STOP_LOSS"
+        )
+        body = {
+            "figi": figi,
+            "quantity": int(quantity),
+            "price": _q(limit_price or 0.0),
+            "stop_price": _q(stop_price),
+            "direction": direction_enum,
+            "accountId": account_id,
+            "expirationType": "STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL",
+            "stopOrderType": stop_type,
+            "expireDate": expire_iso,
+        }
+        resp = self._rpc("post_stop_order", body)
+        if not resp:
+            return None
+        return {"stop_order_id": resp.get("stopOrderId"),
+                "status": resp.get("status")}
+
+    def get_stop_orders(self) -> list[dict] | None:
+        """Активные стоп-заявки по первому счёту."""
+        if not self.available:
+            return None
+        account_id = self._account_id()
+        if not account_id:
+            return None
+        resp = self._rpc("get_stop_orders", {"accountId": account_id})
+        if not resp or "stopOrders" not in resp:
+            return []
+        return resp["stopOrders"]
+
+    def cancel_stop_order(self, stop_order_id: str) -> dict | None:
+        """Отменить стоп-заявку."""
+        if not self.available:
+            return None
+        account_id = self._account_id()
+        if not account_id:
+            return None
+        resp = self._rpc("cancel_stop_order", {
+            "accountId": account_id, "stopOrderId": stop_order_id,
+        })
+        return resp or None
 
     # ── портфель ─────────────────────────────────────────────────────────
     def get_portfolio(self) -> list[PortfolioPosition] | None:

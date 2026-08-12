@@ -409,6 +409,16 @@ def monitor_loop(interval_min: int = 10, cfg: GuardConfig | None = None,
         time.sleep(interval_min * 60)
 
 
+def pulse_block(ticker: str = "PLZL", max_items: int = 4) -> str:
+    """Свежее настроение Пульса по тикеру (топ по лайкам)."""
+    from .pulse_reader import digest
+
+    try:
+        return digest(ticker, limit=max_items)
+    except Exception as e:  # сеть упала — не роняем сторож
+        return f"[Пульс] {ticker}: ошибка ({str(e)[:60]})"
+
+
 def snapshot_block(cfg: GuardConfig | None = None) -> str:
     """Компактный блок снимка для промпта."""
     snap = snapshot(cfg)
@@ -433,12 +443,13 @@ def snapshot_block(cfg: GuardConfig | None = None) -> str:
     if snap.get("news"):
         lines.append(f"  Новости в ленте: {len(snap.get('news'))} "
                      f"(полюс/золото/цб)")
+    lines.append(pulse_block("PLZL", max_items=3))
     return "\n".join(lines)
 
 
 __all__ = ["GuardConfig", "snapshot", "snapshot_block", "stress_test",
-           "stress_block", "news_sweep", "news_block", "monitor_loop",
-           "ALERT_FILE", "LOG_FILE"]
+           "stress_block", "news_sweep", "news_block", "pulse_block",
+           "monitor_loop", "ALERT_FILE", "LOG_FILE"]
 
 
 if __name__ == "__main__":  # python3 -m token_diet.market_guard

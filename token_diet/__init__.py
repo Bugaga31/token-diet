@@ -317,6 +317,15 @@ from .tinkoff_invest import (
     save_token,
     status as tinkoff_status,
 )
+from .pulse_reader import (
+    PulsePost,
+    digest as pulse_digest,
+    get_post_comments,
+    get_ticker_posts,
+    get_user_posts,
+    parse_post,
+    search_keywords,
+)
 from .code_quality import (
     Finding,
     REVIEW_CHECKLIST,
@@ -964,6 +973,13 @@ __all__ = [
     "ALERT_FILE",
     "LOG_FILE",
     "GuardConfig",
+    "PulsePost",
+    "get_post_comments",
+    "get_ticker_posts",
+    "get_user_posts",
+    "parse_post",
+    "pulse_digest",
+    "search_keywords",
     "monitor_loop",
     "news_block",
     "news_sweep",
