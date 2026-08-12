@@ -632,6 +632,7 @@ from .webpilot import (
     read_page,
     search as web_search,
 )
+from .morning_brief import MorningBrief, brief, brief_block
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1010,6 +1011,9 @@ __all__ = [
     "extract_relevant",
     "read_page",
     "web_search",
+    "MorningBrief",
+    "brief",
+    "brief_block",
     "calibrate_prompt",
     "check_plan_coverage",
     "compress_thought",
