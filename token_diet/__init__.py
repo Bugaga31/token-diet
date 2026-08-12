@@ -633,6 +633,15 @@ from .webpilot import (
     search as web_search,
 )
 from .morning_brief import MorningBrief, brief, brief_block
+from .pulse_writer import (
+    WriteState,
+    comment as pulse_comment,
+    like_post as pulse_like,
+    load_cookies_from_file as pulse_cookies_from_file,
+    load_cookies_from_firefox as pulse_cookies_from_firefox,
+    post_text as pulse_post,
+    validate_text as pulse_validate_text,
+)
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1014,6 +1023,13 @@ __all__ = [
     "MorningBrief",
     "brief",
     "brief_block",
+    "WriteState",
+    "pulse_comment",
+    "pulse_cookies_from_file",
+    "pulse_cookies_from_firefox",
+    "pulse_like",
+    "pulse_post",
+    "pulse_validate_text",
     "calibrate_prompt",
     "check_plan_coverage",
     "compress_thought",
