@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.15.0"
+__version__ = "3.16.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -519,6 +519,16 @@ from .entity_graph import (
     Relation,
     extract_entities,
 )
+from .scrape_graph import (
+    ScrapeGraph,
+    ScrapeGraphResult,
+    estimate_scrape_savings,
+    extract_across_chunks,
+    extract_json_ld,
+    extract_meta_tags,
+    extract_schema_fields,
+    ld_flatten,
+)
 
 __all__ = [
     "__version__",
@@ -813,6 +823,14 @@ __all__ = [
     "render_schema",
     "schema_to_prompt_block",
     "extract_entities",
+    "ScrapeGraph",
+    "ScrapeGraphResult",
+    "estimate_scrape_savings",
+    "extract_across_chunks",
+    "extract_json_ld",
+    "extract_meta_tags",
+    "extract_schema_fields",
+    "ld_flatten",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
