@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.14.0"
+__version__ = "3.15.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -481,6 +481,44 @@ from .goal_planner import (
     coding_actions,
     demo_goal,
 )
+from .ui_context import (
+    InteractiveElement,
+    extract_interactive_elements,
+    estimate_ui_savings,
+    is_bot_like_ua,
+    render_accessibility_tree,
+    render_ui_context,
+    stealth_fingerprint,
+)
+from .design_tokens import (
+    DesignTokens,
+    closest_key,
+    estimate_design_savings,
+    extract_design_tokens,
+    map_to_tailwind,
+    tailwind_class_for,
+)
+from .docs_retriever import (
+    DocEntry,
+    DocsHit,
+    DocsRetriever,
+    estimate_docs_savings,
+)
+from .schema_compressor import (
+    ColumnInfo,
+    TableInfo,
+    compress_schema,
+    estimate_schema_savings,
+    parse_ddl,
+    render_schema,
+    schema_to_prompt_block,
+)
+from .entity_graph import (
+    Entity,
+    EntityGraph,
+    Relation,
+    extract_entities,
+)
 
 __all__ = [
     "__version__",
@@ -747,6 +785,34 @@ __all__ = [
     "WorldState",
     "coding_actions",
     "demo_goal",
+    "InteractiveElement",
+    "DesignTokens",
+    "DocEntry",
+    "DocsHit",
+    "DocsRetriever",
+    "ColumnInfo",
+    "TableInfo",
+    "Entity",
+    "EntityGraph",
+    "Relation",
+    "extract_interactive_elements",
+    "estimate_ui_savings",
+    "is_bot_like_ua",
+    "render_accessibility_tree",
+    "render_ui_context",
+    "stealth_fingerprint",
+    "closest_key",
+    "estimate_design_savings",
+    "extract_design_tokens",
+    "map_to_tailwind",
+    "tailwind_class_for",
+    "estimate_docs_savings",
+    "compress_schema",
+    "estimate_schema_savings",
+    "parse_ddl",
+    "render_schema",
+    "schema_to_prompt_block",
+    "extract_entities",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
