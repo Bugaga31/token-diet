@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.16.0"
+__version__ = "3.17.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -529,6 +529,41 @@ from .scrape_graph import (
     extract_schema_fields,
     ld_flatten,
 )
+from .headroom import (
+    CCRStore,
+    crush_json,
+    crush_logs,
+    crush_markdown,
+    detect_content_type,
+    estimate_headroom_savings,
+    headroom_compress,
+    headroom_retrieve,
+)
+from .claude_mem import (
+    ClaudeMem,
+    MemoryObservation,
+    estimate_memory_injection_savings,
+)
+from .strix_stealth import (
+    StrixProfile,
+    audit_fingerprint,
+    build_profile,
+    is_coherent,
+    rotate_profiles,
+)
+from .ponytail import (
+    Tab,
+    TabManager,
+    estimate_tabs_savings,
+)
+from .open_generative import (
+    GatewayResult,
+    GenerativeGateway,
+    Provider,
+    estimate_gateway_savings,
+    normalize_payload,
+    payload_key,
+)
 
 __all__ = [
     "__version__",
@@ -831,6 +866,31 @@ __all__ = [
     "extract_meta_tags",
     "extract_schema_fields",
     "ld_flatten",
+    "CCRStore",
+    "ClaudeMem",
+    "MemoryObservation",
+    "StrixProfile",
+    "Tab",
+    "TabManager",
+    "GatewayResult",
+    "GenerativeGateway",
+    "Provider",
+    "crush_json",
+    "crush_logs",
+    "crush_markdown",
+    "detect_content_type",
+    "estimate_headroom_savings",
+    "headroom_compress",
+    "headroom_retrieve",
+    "estimate_memory_injection_savings",
+    "audit_fingerprint",
+    "build_profile",
+    "is_coherent",
+    "rotate_profiles",
+    "estimate_tabs_savings",
+    "estimate_gateway_savings",
+    "normalize_payload",
+    "payload_key",
     "TangetAlert",
     "RapidContext",
     "analyze_focus",
