@@ -625,6 +625,13 @@ from .sweet_spot import (
     report as sweet_report,
     scan as sweet_scan,
 )
+from .webpilot import (
+    WebPilotResult,
+    ask_web,
+    extract_relevant,
+    read_page,
+    search as web_search,
+)
 
 __all__ = [
     "__version__",
@@ -983,6 +990,11 @@ __all__ = [
     "SweetSpot",
     "sweet_report",
     "sweet_scan",
+    "WebPilotResult",
+    "ask_web",
+    "extract_relevant",
+    "read_page",
+    "web_search",
     "ALERT_FILE",
     "LOG_FILE",
     "GuardConfig",
