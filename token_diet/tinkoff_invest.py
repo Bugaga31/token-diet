@@ -43,6 +43,7 @@ ENDPOINTS = {
     "accounts": f"{API_BASE}.UsersService/GetAccounts",
     "portfolio": f"{API_BASE}.OperationsService/GetPortfolio",
     "find_instrument": f"{API_BASE}.InstrumentsService/FindInstrument",
+    "get_instrument": f"{API_BASE}.InstrumentsService/GetInstrumentBy",
     "post_order": f"{API_BASE}.OrdersService/PostOrder",
     "get_orders": f"{API_BASE}.OrdersService/GetOrders",
     "post_stop_order": f"{API_BASE}.StopOrdersService/PostStopOrder",
@@ -284,6 +285,51 @@ class TinkoffInvest:
                         break
                 return figi
         return None
+
+    # ── лот и безопасные ордера (защита от ошибки «лот ≠ акция») ─────────
+    _lot_cache: dict[str, int] = {}
+
+    def lot_size(self, ticker: str, figi: str | None = None) -> int:
+        """Размер лота инструмента (сколько акций в 1 лоте).
+
+        УРОК (13.08): лот ≠ акция. Норникель торгуется лотами по 10 акций —
+        quantity=15 в ордере = 150 акций, а не 15. Этот метод + buy_shares/
+        sell_shares исключают такую ошибку.
+        """
+        ticker = ticker.upper()
+        cached = self._lot_cache.get(ticker)
+        if cached:
+            return cached
+        figi = figi or self.find_figi(ticker)
+        if not figi:
+            return 1
+        resp = self._rpc("get_instrument", {
+            "idType": "INSTRUMENT_ID_TYPE_FIGI", "id": figi,
+        })
+        lot = (resp or {}).get("instrument", {}).get("lot")
+        lot = int(lot) if lot else 1
+        self._lot_cache[ticker] = lot
+        return lot
+
+    def buy_shares(self, ticker: str, shares: int) -> dict | None:
+        """Купить КОНКРЕТНОЕ число АКЦИЙ (сам переведёт в лоты).
+
+        Безопасный аналог post_order: нельзя перепутать акции и лоты.
+        Округляет вниз до целого лота и проверяет, что лотов > 0.
+        """
+        lot = self.lot_size(ticker)
+        lots = shares // lot
+        if lots <= 0:
+            return {"error": f"{shares} акций < 1 лота (лот = {lot})"}
+        return self.post_order(ticker, quantity=lots, direction="buy")
+
+    def sell_shares(self, ticker: str, shares: int) -> dict | None:
+        """Продать КОНКРЕТНОЕ число АКЦИЙ (сам переведёт в лоты)."""
+        lot = self.lot_size(ticker)
+        lots = shares // lot
+        if lots <= 0:
+            return {"error": f"{shares} акций < 1 лота (лот = {lot})"}
+        return self.post_order(ticker, quantity=lots, direction="sell")
 
     # ── котировка ────────────────────────────────────────────────────────
     def get_quote(self, ticker: str, figi: str | None = None) -> TinkoffQuote | None:
