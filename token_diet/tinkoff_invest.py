@@ -538,6 +538,38 @@ class TinkoffInvest:
         rows.sort(key=lambda r: -r["momentum_lean"])
         return rows
 
+    def full_signal(self, ticker: str, days: int = 90) -> dict | None:
+        """Полный сигнал: техника + momentum + сантимент (лента + Пульс).
+
+        В отличие от get_signal (только техника), здесь сантимент толпы
+        замешивается в общий вердикт (generate_signal: 70% техника + 30%
+        сантимент). Возвращает dict с итоговым lean, verdict, confidence.
+        """
+        from .market_intelligence import generate_signal
+        from .market_sentiment import gather_sentiment_texts
+
+        candles = self.get_candles(ticker, days=days)
+        if len(candles) < 31:
+            return None
+        closes = [c.close for c in candles]
+        highs = [c.high for c in candles]
+        lows = [c.low for c in candles]
+        volumes = [c.volume for c in candles]
+        texts = gather_sentiment_texts(ticker)
+        s = generate_signal(ticker, closes, highs, lows, volumes, texts)
+        return {
+            "ticker": ticker,
+            "price": round(closes[-1], 2),
+            "verdict": s.final_verdict,
+            "confidence": round(s.final_confidence, 3),
+            "lean": s.lean,
+            "lean_direction": s.lean_direction,
+            "technical": s.technical_verdict,
+            "sentiment": s.sentiment_signal,
+            "sentiment_score": round(s.sentiment_score, 3),
+            "sentiment_texts": len(texts),
+        }
+
     # ── стакан ───────────────────────────────────────────────────────────
     def get_orderbook(self, ticker: str, depth: int = 10) -> dict | None:
         """Стакан (order book) по тикеру: asks/bids списками dict'ов.

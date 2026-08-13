@@ -697,6 +697,12 @@ from .momentum import (
     momentum_lean,
     rate_of_change,
 )
+from .market_sentiment import (
+    company_keywords,
+    from_fresh_news,
+    from_pulse,
+    gather_sentiment_texts,
+)
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1172,4 +1178,8 @@ __all__ = [
     "detect_breakout",
     "momentum_lean",
     "rate_of_change",
+    "company_keywords",
+    "from_fresh_news",
+    "from_pulse",
+    "gather_sentiment_texts",
 ]
