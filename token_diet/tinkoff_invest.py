@@ -465,6 +465,7 @@ class TinkoffInvest:
         куда смотреть в первую очередь.
         """
         from .market_intelligence import generate_signal
+        from .momentum import momentum_lean, rate_of_change
 
         rows: list[dict] = []
         for t in tickers:
@@ -476,6 +477,8 @@ class TinkoffInvest:
             lows = [c.low for c in candles]
             volumes = [c.volume for c in candles]
             s = generate_signal(t, closes, highs, lows, volumes)
+            roc = rate_of_change(closes, 10)
+            ml = momentum_lean(closes, highs, volumes)
             rows.append({
                 "ticker": t,
                 "price": round(closes[-1], 2),
@@ -483,8 +486,10 @@ class TinkoffInvest:
                 "confidence": round(s.final_confidence, 3),
                 "lean": s.lean,
                 "lean_direction": s.lean_direction,
+                "momentum_lean": ml,
+                "roc_10d": roc,
             })
-        rows.sort(key=lambda r: -r["lean"])
+        rows.sort(key=lambda r: -r["momentum_lean"])
         return rows
 
     # ── стакан ───────────────────────────────────────────────────────────
