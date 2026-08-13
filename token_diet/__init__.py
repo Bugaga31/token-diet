@@ -642,6 +642,13 @@ from .pulse_writer import (
     post_text as pulse_post,
     validate_text as pulse_validate_text,
 )
+from .graph_memory import (
+    FileGraphStore,
+    GraphitiBackend,
+    GraphMemory,
+    extract_entities,
+    extract_numbers,
+)
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1076,4 +1083,9 @@ __all__ = [
     "detect_platform",
     "click_text",
     "strip_fluff",
+    "FileGraphStore",
+    "GraphitiBackend",
+    "GraphMemory",
+    "extract_entities",
+    "extract_numbers",
 ]
