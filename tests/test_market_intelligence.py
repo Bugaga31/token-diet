@@ -6,6 +6,7 @@ from token_diet.market_intelligence import (
     find_support_resistance, analyze_signals, ConfluenceReport,
     score_sentiment, aggregate_sentiment,
     generate_signal, estimate_price_range,
+    screen_market, rank_market,
 )
 
 
@@ -147,6 +148,54 @@ class TestGenerateSignal:
             sentiment_texts=["покупать рост бычий", "отличный отчёт"],
         )
         assert signal.sentiment_signal in ("bullish", "bearish", "neutral")
+
+
+class TestLeanAndScreener:
+    """Новый слой: непрерывный наклон lean + скринер ранжирования."""
+
+    def test_lean_nonzero_with_enough_data(self):
+        # 60 точек (как 90 дней торговли) — движку хватает на MACD(26)+буфер
+        closes = [1300 + i * 3 + (i % 7) * 4 for i in range(60)]  # явный аптренд
+        signal = generate_signal("TEST", closes)
+        assert signal.lean > 0, f"аптренд должен давать положительный lean, а не {signal.lean}"
+        assert len(signal.signals_detail) > 0
+
+    def test_lean_negative_on_downtrend(self):
+        closes = [2000 - i * 3 - (i % 5) * 2 for i in range(60)]  # явный даунтренд
+        signal = generate_signal("TEST", closes)
+        assert signal.lean < 0, f"даунтренд должен давать отрицательный lean, а не {signal.lean}"
+
+    def test_short_data_returns_empty(self):
+        # 23 свечи (как 30 календарных дней) — движку НЕ хватает, сигналов нет
+        closes = [100 + i for i in range(23)]
+        signal = generate_signal("SHORT", closes)
+        assert signal.lean == 0.0
+        assert len(signal.signals_detail) == 0
+
+    def test_screen_market_sorts_by_lean(self):
+        # Разные паттерны дают разные lean — скринер должен их различать и сортировать
+        up = [100 + i * 2 for i in range(60)]
+        down = [200 - i * 2 for i in range(60)]
+        flat = [150 + 3 * (i % 2) for i in range(60)]
+        ranked = screen_market({
+            "UP": {"closes": up},
+            "DOWN": {"closes": down},
+            "FLAT": {"closes": flat},
+        })
+        assert len(ranked) == 3
+        # ключевое: отсортировано по lean по убыванию
+        for i in range(len(ranked) - 1):
+            assert ranked[i].lean >= ranked[i + 1].lean
+        # и lean реально различается (движок различает бумаги, а не плоский 0)
+        leans = [s.lean for s in ranked]
+        assert len(set(leans)) > 1
+
+    def test_rank_market_text(self):
+        up = [100 + i * 2 for i in range(60)]
+        down = [200 - i * 2 for i in range(60)]
+        ranked = screen_market({"UP": {"closes": up}, "DOWN": {"closes": down}})
+        text = rank_market(ranked)
+        assert "UP" in text and "DOWN" in text
 
 
 class TestEstimateRange:

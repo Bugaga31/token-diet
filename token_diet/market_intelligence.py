@@ -228,6 +228,7 @@ class ConfluenceReport:
     sell_count: int = 0
     neutral_count: int = 0
     confidence: float = 0.0
+    weighted_score: float = 0.0  # знаковый непрерывный счёт (−1..+1)
     verdict: str = "HOLD"  # BUY / SELL / HOLD
     price_targets: dict[str, list[float]] = field(default_factory=dict)
 
@@ -325,6 +326,7 @@ def analyze_signals(
     if total_signals > 0:
         # Weighted: stronger signals count more
         weighted_score = sum(s.direction * s.strength for s in signals)
+        report.weighted_score = round(weighted_score / (total_signals * 0.7), 4)
         report.confidence = min(1.0, abs(weighted_score) / (total_signals * 0.7))
 
     if report.buy_count >= 3 and report.buy_count > report.sell_count:
@@ -428,8 +430,17 @@ class TradingSignal:
     sentiment_signal: str
     final_verdict: str  # BUY / SELL / HOLD
     final_confidence: float
+    lean: float = 0.0  # непрерывный наклон −1..+1 (даже при HOLD)
     price_targets: dict[str, list[float]] = field(default_factory=dict)
     signals_detail: list[SignalResult] = field(default_factory=list)
+
+    @property
+    def lean_direction(self) -> str:
+        if self.lean > 0.05:
+            return "bullish"
+        if self.lean < -0.05:
+            return "bearish"
+        return "flat"
 
     def to_dict(self) -> dict:
         return {
@@ -438,6 +449,8 @@ class TradingSignal:
             "technical": {"verdict": self.technical_verdict, "confidence": self.technical_confidence},
             "sentiment": {"score": self.sentiment_score, "signal": self.sentiment_signal},
             "final": {"verdict": self.final_verdict, "confidence": self.final_confidence},
+            "lean": self.lean,
+            "lean_direction": self.lean_direction,
             "price_targets": self.price_targets,
         }
 
@@ -472,11 +485,9 @@ def generate_signal(
     tech_weight = 0.7
     sent_weight = 0.3
 
-    tech_score = 0.0
-    if report.verdict == "BUY":
-        tech_score = report.confidence
-    elif report.verdict == "SELL":
-        tech_score = -report.confidence
+    # Используем знаковый непрерывный счёт техники (а не только BUY/SELL),
+    # чтобы даже HOLD-бумаги имели разный наклон lean.
+    tech_score = report.weighted_score
 
     sent_score = sentiment["score"] * sentiment["strength"]
 
@@ -501,9 +512,49 @@ def generate_signal(
         sentiment_signal=sentiment["signal"],
         final_verdict=verdict,
         final_confidence=confidence,
+        lean=round(combined, 3),
         price_targets=report.price_targets,
         signals_detail=report.signals,
     )
+
+
+def screen_market(
+    candles_by_ticker: dict[str, dict],
+) -> list[TradingSignal]:
+    """Прогнать сигналы по всем тикерам и отсортировать по lean (наклону).
+
+    Даже если формально всё HOLD, эта функция показывает, КТО ближе всего
+    к BUY (положительный lean) и кто ближе всего к SELL (отрицательный).
+    Это превращает плоское «всё HOLD» в ранжированный список для слежки.
+
+    candles_by_ticker: {тикер: {"closes": [...], "highs": [...],
+                                 "lows": [...], "volumes": [...],
+                                 "sentiment": [...]}}
+    """
+    results: list[TradingSignal] = []
+    for ticker, data in candles_by_ticker.items():
+        s = generate_signal(
+            ticker,
+            data["closes"],
+            data.get("highs"),
+            data.get("lows"),
+            data.get("volumes"),
+            data.get("sentiment"),
+        )
+        results.append(s)
+    results.sort(key=lambda s: -s.lean)
+    return results
+
+
+def rank_market(signals: list[TradingSignal]) -> str:
+    """Красивый текстовый ранкинг: кто к покупке, кто к продаже."""
+    if not signals:
+        return "нет данных"
+    lines = [f"{"ТИКЕР":6} {"ЦЕНА":>9} {"LEAN":>7}  НАКЛОН"]
+    for s in signals:
+        arrow = "🟢" if s.lean > 0.05 else ("🔴" if s.lean < -0.05 else "⚪")
+        lines.append(f"{arrow} {s.ticker:5} {s.price:>9} {s.lean:>+7.3f}  {s.lean_direction}")
+    return "\n".join(lines)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

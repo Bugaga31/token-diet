@@ -411,12 +411,15 @@ class TinkoffInvest:
     def get_signal(
         self,
         ticker: str,
-        days: int = 30,
+        days: int = 90,
         sentiment_texts: list[str] | None = None,
     ) -> dict[str, Any] | None:
         """Полный сигнал от market_intelligence на РЕАЛЬНЫХ свечах.
 
-        Возвращает dict с вердиктом, уверенностью, целями. None если нет API.
+        Возвращает dict с вердиктом, уверенностью, целями, lean. None если нет API.
+
+        ВАЖНО: days < 45 даёт <31 торговой свечи — движку не хватает данных
+        (MACD slow=26 + буфер), и он молча возвращал HOLD 0.5. Дефолт = 90 дней.
         """
         candles = self.get_candles(ticker, days=days)
         if len(candles) < 20:
@@ -439,6 +442,8 @@ class TinkoffInvest:
             "price": closes[-1],
             "verdict": signal.final_verdict,
             "confidence": round(signal.final_confidence, 3),
+            "lean": signal.lean,
+            "lean_direction": signal.lean_direction,
             "technical": signal.technical_verdict,
             "sentiment": signal.sentiment_signal,
             "signals": [{"name": s.name, "direction": s.direction,
@@ -451,6 +456,36 @@ class TinkoffInvest:
             "target_3pct": round(closes[-1] * 1.03, 2),
             "stop_5pct": round(closes[-1] * 0.95, 2),
         }
+
+    def screen(self, tickers: list[str], days: int = 90) -> list[dict]:
+        """Ранжировать рынок по lean: кто ближе к BUY, кто к SELL.
+
+        В отличие от get_signal (одна бумага), screen прогоняет все тикеры
+        и сортирует по непрерывному наклону. Даже если всё HOLD — видно,
+        куда смотреть в первую очередь.
+        """
+        from .market_intelligence import generate_signal
+
+        rows: list[dict] = []
+        for t in tickers:
+            candles = self.get_candles(t, days=days)
+            if len(candles) < 20:
+                continue
+            closes = [c.close for c in candles]
+            highs = [c.high for c in candles]
+            lows = [c.low for c in candles]
+            volumes = [c.volume for c in candles]
+            s = generate_signal(t, closes, highs, lows, volumes)
+            rows.append({
+                "ticker": t,
+                "price": round(closes[-1], 2),
+                "verdict": s.final_verdict,
+                "confidence": round(s.final_confidence, 3),
+                "lean": s.lean,
+                "lean_direction": s.lean_direction,
+            })
+        rows.sort(key=lambda r: -r["lean"])
+        return rows
 
     # ── стакан ───────────────────────────────────────────────────────────
     def get_orderbook(self, ticker: str, depth: int = 10) -> dict | None:
