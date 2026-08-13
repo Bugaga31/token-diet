@@ -1,13 +1,18 @@
-"""Авто-трейдер GMKN: стоп + прорыв + автодокупка + уведомление.
+"""Авто-трейдер GMKN: trailing-стоп + прорыв + автодокупка + уведомление.
 
 Полностью автоматический цикл (без участия человека):
-1. СТОП (вниз): цена <= 114.55 → продаёт ВСЮ позицию по рынку.
-2. ПРОРЫВ (вверх): цена пробивает 20-дневный максимум → ДОКУПАЕТ до целевых
-   5 лотов (50 акций) через position_size, подтягивает стоп к точке прорыва.
+1. TRAILING-СТОП: стоп ПОДТЯГИВАЕТСЯ за максимумом цены.
+   - базовый стоп: 114.55 (−5% от входа 120.57)
+   - trailing: стоп = максимум × (1 − 4%), растёт вместе с ценой
+   - безубыток: как только цена побывала ≥ +2% от входа, стоп НЕ ниже
+     входа — убыток становится невозможен, прибыль защищена
+   - цена ≤ стоп → продаёт ВСЮ позицию, фиксируя прибыль (не убыток)
+2. ПРОРЫВ (вверх): цена пробивает 20-дневный максимум → ДОКУПАЕТ до
+   целевых 5 лотов (50 акций) через position_size, подтягивает стоп.
 3. УВЕДОМЛЕНИЕ: каждое действие пишет в /tmp/gmkn_alert.txt + Obsidian.
 
-Прорыв-докупка срабатывает ОДИН раз (флаг в state-файле), чтобы не
-покупать повторно на каждом цикле.
+Прорыв-докупка срабатывает ОДИН раз (флаг в state-файле).
+Trailing-максимум хранится в state-файле — переживает рестарт.
 
 Запуск:  python3 gmkn_stop_watch.py
 Стоп:    tmux kill-session -t gmknstop
@@ -25,9 +30,12 @@ from token_diet.tinkoff_invest import TinkoffInvest
 from token_diet.momentum import detect_breakout
 
 TICKER = "GMKN"
-STOP_PRICE = 114.55     # −5% от входа 120.57
-TARGET_LOTS = 5         # целевая позиция (модель 2% риска)
-INTERVAL_SEC = 180      # 3 минуты
+ENTRY_PRICE = 120.57      # наш вход
+BASE_STOP = 114.55        # −5% от входа (базовый, пока цена не выросла)
+TRAIL_PCT = 0.04          # trailing: стоп = максимум × (1 − 4%)
+BREAKEVEN_TRIGGER = 0.02  # если максимум ≥ вход × (1 + 2%) → стоп не ниже входа
+TARGET_LOTS = 5           # целевая позиция (модель 2% риска)
+INTERVAL_SEC = 180        # 3 минуты
 LOG = "/tmp/gmkn_stop.log"
 ALERT = "/tmp/gmkn_alert.txt"
 STATE = "/tmp/gmkn_state.json"
@@ -44,7 +52,6 @@ def notify(title: str, body: str) -> None:
     with open(ALERT, "w") as f:
         f.write(f"{title}\n{body}\n")
     log(f"🚨 {title}: {body.splitlines()[0] if body else ''}")
-    # пишем в Obsidian (память) — увижу при следующем обращении
     try:
         from token_diet.memory_cli import vault_path
         from token_diet.obsidian_vault import ObsidianVault
@@ -69,7 +76,6 @@ def _save_state(st: dict) -> None:
 
 
 def _current_lots(inv: TinkoffInvest) -> int:
-    """Сколько лотов GMKN сейчас в портфеле."""
     try:
         for p in inv.get_portfolio() or []:
             if getattr(p, "figi", "") == "BBG004731489" or "GMKN" in str(getattr(p, "ticker", "")):
@@ -77,6 +83,18 @@ def _current_lots(inv: TinkoffInvest) -> int:
     except Exception:
         pass
     return 0
+
+
+def _trailing_stop(max_price: float) -> float:
+    """Стоп, который подтягивается за максимумом и защищает прибыль."""
+    stop = BASE_STOP
+    # 1. trailing от максимума
+    trail = max_price * (1 - TRAIL_PCT)
+    stop = max(stop, trail)
+    # 2. безубыток: если цена побывала ≥ +2% от входа — стоп не ниже входа
+    if max_price >= ENTRY_PRICE * (1 + BREAKEVEN_TRIGGER):
+        stop = max(stop, ENTRY_PRICE * 1.005)  # чуть выше входа (комиссии)
+    return round(stop, 2)
 
 
 def check(inv: TinkoffInvest, state: dict) -> str:
@@ -91,12 +109,21 @@ def check(inv: TinkoffInvest, state: dict) -> str:
         return "continue"
     price = q.price
 
-    # ── 1. СТОП вниз: продать всё ──
-    if price <= STOP_PRICE:
+    # ── обновляем максимум и стоп ──
+    max_price = max(float(state.get("max_price", 0) or 0), price)
+    state["max_price"] = max_price
+    stop = _trailing_stop(max_price)
+    state["stop"] = stop
+    _save_state(state)
+
+    # ── 1. СТОП вниз (в т.ч. trailing): продать всё ──
+    if price <= stop:
         lots = _current_lots(inv) or 2
-        log(f"⚠️ STOP HIT: {price} ≤ {STOP_PRICE} — продаю {lots} лотов")
+        kind = "TRAIL STOP" if stop > BASE_STOP else "STOP HIT"
+        log(f"⚠️ {kind}: {price} ≤ {stop} — продаю {lots} лотов "
+            f"(макс было {max_price:.2f})")
         r = inv.post_order(TICKER, quantity=lots, direction="sell", order_type="market")
-        notify("STOP HIT", f"GMKN {price} ≤ {STOP_PRICE}, продано {lots} лотов: {r}")
+        notify(kind, f"GMKN {price} ≤ стоп {stop}, продано {lots} лотов: {r}")
         return "exit"
 
     # ── 2. ПРОРЫВ вверх: докупить до целевых лотов (ОДИН раз) ──
@@ -108,7 +135,8 @@ def check(inv: TinkoffInvest, state: dict) -> str:
             vols = [c.volume for c in candles]
             brk = detect_breakout(closes, highs, vols, lookback=20)
             high20 = max(highs[-20:-1]) if len(highs) >= 21 else 0
-            log(f"{TICKER} {price} (стоп {STOP_PRICE}, 20д-макс {high20:.1f}, прорыв {brk.direction})")
+            log(f"{TICKER} {price} (стоп {stop}, 20д-макс {high20:.1f}, "
+                f"макс {max_price:.2f}, прорыв {brk.direction})")
 
             if brk.direction == "up" and not state.get("added"):
                 cur = _current_lots(inv)
@@ -118,26 +146,32 @@ def check(inv: TinkoffInvest, state: dict) -> str:
                     r = inv.post_order(TICKER, quantity=add, direction="buy", order_type="market")
                     state["added"] = True
                     state["added_at"] = price
+                    # подтягиваем стоп к точке прорыва (−3% от прорыва)
+                    if price > stop:
+                        state["stop"] = round(price * 0.97, 2)
                     _save_state(state)
                     notify(
                         "BREAKOUT GMKN — докупил",
                         f"GMKN {price} пробил 20-дневный максимум {high20:.1f}.\n"
-                        f"Докупил {add} лотов → цель {TARGET_LOTS} лотов.\nОрдер: {r}",
+                        f"Докупил {add} лотов → цель {TARGET_LOTS} лотов.\n"
+                        f"Стоп подтянут к {state['stop']}. Ордер: {r}",
                     )
                 return "continue"
     except Exception as e:
         log(f"ошибка прорыва: {e}")
 
-    log(f"{TICKER} {price} (стоп {STOP_PRICE})")
+    log(f"{TICKER} {price} (стоп {stop})")
     return "continue"
 
 
 def main() -> None:
-    log("авто-трейдер GMKN запущен (стоп + прорыв-докупка)")
+    log("авто-трейдер GMKN запущен (trailing-стоп + прорыв-докупка)")
     inv = TinkoffInvest()
     state = _load_state()
     if state.get("added"):
         log(f"позиция уже докуплена (added_at={state.get('added_at')}) — прорыв-флаг стоит")
+    if state.get("max_price"):
+        log(f"максимум с прошлого запуска: {state.get('max_price')}")
     while True:
         try:
             if check(inv, state) == "exit":
