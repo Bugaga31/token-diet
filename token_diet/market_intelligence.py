@@ -316,6 +316,20 @@ def analyze_signals(
         if volumes[-1] > avg_vol * 1.5:
             signals.append(SignalResult("Volume", 1 if price > (sma_vals[-1] or price) else -1, 0.3, "high volume"))
 
+    # ── 6. Momentum breakout (ловит сильные движения, а не только отскоки) ──
+    try:
+        from .momentum import detect_breakout
+        brk = detect_breakout(closes, highs, volumes, lookback=20)
+        if brk.is_breakout:
+            signals.append(SignalResult(
+                "Momentum",
+                1 if brk.direction == "up" else -1,
+                brk.strength,
+                brk.description,
+            ))
+    except ImportError:
+        pass
+
     # ── Aggregate ──
     report.signals = signals
     report.buy_count = sum(1 for s in signals if s.direction > 0)

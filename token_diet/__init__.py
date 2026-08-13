@@ -691,6 +691,12 @@ from .step_back import (
     step_back_prompt,
     step_back_question,
 )
+from .momentum import (
+    BreakoutResult,
+    detect_breakout,
+    momentum_lean,
+    rate_of_change,
+)
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1162,4 +1168,8 @@ __all__ = [
     "find_analogies",
     "step_back_prompt",
     "step_back_question",
+    "BreakoutResult",
+    "detect_breakout",
+    "momentum_lean",
+    "rate_of_change",
 ]
