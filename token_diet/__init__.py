@@ -710,6 +710,12 @@ from .commander import (
     decide,
     full_plan,
 )
+from .pnl_journal import (
+    history,
+    journal_block,
+    record,
+    snapshot,
+)
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1194,4 +1200,8 @@ __all__ = [
     "Decision",
     "decide",
     "full_plan",
+    "history",
+    "journal_block",
+    "record",
+    "snapshot",
 ]
