@@ -44,6 +44,7 @@ ENDPOINTS = {
     "portfolio": f"{API_BASE}.OperationsService/GetPortfolio",
     "find_instrument": f"{API_BASE}.InstrumentsService/FindInstrument",
     "get_instrument": f"{API_BASE}.InstrumentsService/GetInstrumentBy",
+    "bond_by": f"{API_BASE}.InstrumentsService/GetBondBy",
     "post_order": f"{API_BASE}.OrdersService/PostOrder",
     "get_orders": f"{API_BASE}.OrdersService/GetOrders",
     "post_stop_order": f"{API_BASE}.StopOrdersService/PostStopOrder",

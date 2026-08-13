@@ -386,6 +386,11 @@ from .tg_intel import (
     merge_and_rank as tg_merge_and_rank,
     tg_intel,
 )
+from .web_agent import (
+    extract_links as web_extract_links,
+    visit as web_visit,
+    visit_and_save as web_visit_and_save,
+)
 from .live_docs import (
     DocsCache,
     KNOWN_PACKAGES,
