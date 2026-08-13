@@ -655,6 +655,14 @@ from .tool_search import (
     ToolRegistry,
     ToolSpec,
 )
+from .omniroute import (
+    DEFAULT_PROVIDERS,
+    OmniRouter,
+    Provider,
+    SubAgentResult,
+    _judge,
+    _split_tasks,
+)
 from .playbooks import (
     Playbook,
     PlaybookStore,
@@ -1110,4 +1118,10 @@ __all__ = [
     "cleared_marker",
     "history_budget",
     "prune_history",
+    "DEFAULT_PROVIDERS",
+    "OmniRouter",
+    "Provider",
+    "SubAgentResult",
+    "_judge",
+    "_split_tasks",
 ]
