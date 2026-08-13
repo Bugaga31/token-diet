@@ -611,11 +611,13 @@ from .risk_metrics import (
     correlation_matrix,
     historical_var,
     max_drawdown,
+    position_size,
     returns_of,
     risk_block,
     risk_report,
     sharpe_ratio,
     sortino_ratio,
+    trade_plan,
     trailing_stop,
 )
 from .sweet_spot import (
@@ -1065,6 +1067,8 @@ __all__ = [
     "correlation_matrix",
     "historical_var",
     "max_drawdown",
+    "position_size",
+    "trade_plan",
     "returns_of",
     "risk_block",
     "risk_report",

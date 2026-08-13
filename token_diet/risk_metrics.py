@@ -150,6 +150,70 @@ def trailing_stop(
     }
 
 
+def position_size(
+    capital: float,
+    risk_pct: float,
+    entry_price: float,
+    stop_price: float,
+    lot_size: int = 1,
+) -> dict[str, Any]:
+    """Риск-ориентированный размер позиции (сколько акций/лотов купить).
+
+    Правило: если сработает стоп, потеряем РОВНО risk_pct % капитала —
+    не больше. Это защита от главной ошибки трейдера: ставить слишком много.
+
+    УРОК (13.08): лот ≠ акция. Возвращает и акции, и лоты (округляя вниз),
+    чтобы нельзя было перепутать.
+
+    Формула:  акции = (capital × risk_pct) / |entry − stop|
+    """
+    if capital <= 0 or risk_pct <= 0 or entry_price <= 0 or stop_price <= 0:
+        return {"error": "некорректные входные параметры"}
+    per_share_risk = abs(entry_price - stop_price)
+    if per_share_risk == 0:
+        return {"error": "стоп равен входу — риск не определён"}
+
+    risk_amount = capital * risk_pct / 100.0
+    shares = risk_amount / per_share_risk
+    lot_size = max(1, int(lot_size))
+    lots = int(shares // lot_size)
+    actual_shares = lots * lot_size
+    actual_risk = actual_shares * per_share_risk
+
+    return {
+        "risk_amount": round(risk_amount, 2),
+        "per_share_risk": round(per_share_risk, 2),
+        "shares_raw": round(shares, 2),
+        "lot_size": lot_size,
+        "lots": lots,
+        "shares": actual_shares,
+        "position_cost": round(actual_shares * entry_price, 2),
+        "actual_risk_pct": round(100 * actual_risk / capital, 2) if capital else 0.0,
+        "stop": round(stop_price, 2),
+    }
+
+
+def trade_plan(
+    capital: float,
+    risk_pct: float,
+    entry_price: float,
+    stop_price: float,
+    target_price: float,
+    lot_size: int = 1,
+) -> dict[str, Any]:
+    """Полный план сделки: размер + риск + профиль/риск (R:R)."""
+    s = position_size(capital, risk_pct, entry_price, stop_price, lot_size)
+    if "error" in s:
+        return s
+    risk = abs(entry_price - stop_price)
+    reward = abs(target_price - entry_price)
+    s["target"] = round(target_price, 2)
+    s["reward"] = round(reward, 2)
+    s["rr_ratio"] = round(reward / risk, 2) if risk else 0.0
+    s["potential_profit"] = round(s["shares"] * reward, 2)
+    return s
+
+
 def risk_report(prices: list[float], rfr: float = 0.0,
                 periods_per_year: int = 252) -> dict[str, Any]:
     """One-screen risk picture for a price series."""
