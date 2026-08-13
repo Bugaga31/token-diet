@@ -190,6 +190,13 @@ def main() -> int:
     p_glob.add_argument("query", help="search query")
     p_glob.add_argument("--limit", type=int, default=10,
                         help="max results (default 10)")
+    p_intel = sub.add_parser("tg-intel",
+                             help="unified TG intel: global + dialogs + memory")
+    p_intel.add_argument("query", help="search query")
+    p_intel.add_argument("--limit", type=int, default=10,
+                         help="max results (default 10)")
+    p_intel.add_argument("--no-save", action="store_true",
+                         help="do not save findings to Obsidian")
     p_un = sub.add_parser("tg-usernames",
                           help="latest posts from username-channels (even unsubscribed)")
     p_un.add_argument("--limit", type=int, default=3,
@@ -373,6 +380,23 @@ def main() -> int:
     if args.cmd == "tg-watch":
         from .telegram_monitor import watch
         watch(save_to_lib=not args.no_save)
+        return 0
+
+    if args.cmd == "tg-intel":
+        from .tg_intel import tg_intel
+        res = tg_intel(args.query, limit=args.limit, save=not args.no_save)
+        if res["status"] != "ok":
+            print(f"⚠️ {res.get('error', 'не удалось')}")
+            return 1
+        print(f"✓ Разведка «{res['query']}»: {res['found']} результатов "
+              f"(глобально {res['global_found']}, подписки {res['dialogs_found']})")
+        if res.get("saved"):
+            print("  🧠 сохранено в Obsidian")
+        print()
+        for r in res["results"][:15]:
+            mark = "🔥" if r.get("important") else "·"
+            print(f"{mark} [{r['channel']}] {r['date']} ({r['source']})")
+            print(f"   {r['text'][:200]}\n")
         return 0
 
     if args.cmd == "tg-global":

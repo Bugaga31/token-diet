@@ -382,6 +382,10 @@ from .telegram_commander import (
     send_message as telegram_send_message,
     run as telegram_run,
 )
+from .tg_intel import (
+    merge_and_rank as tg_merge_and_rank,
+    tg_intel,
+)
 from .live_docs import (
     DocsCache,
     KNOWN_PACKAGES,
