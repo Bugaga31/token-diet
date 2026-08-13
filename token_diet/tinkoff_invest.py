@@ -651,9 +651,12 @@ class TinkoffInvest:
         expire = (datetime.utcnow() + timedelta(days=expire_days))
         expire_iso = expire.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+        # ВАЖНО: стоп-заявки используют СВОЙ enum направления (StopOrderDirection),
+        # а не OrderDirection. Баг: раньше слали ORDER_DIRECTION_* → API отвечал
+        # «Missing parameter: direction» / code 30019.
         direction_enum = (
-            "ORDER_DIRECTION_BUY" if direction.lower() in ("buy", "b")
-            else "ORDER_DIRECTION_SELL"
+            "STOP_ORDER_DIRECTION_BUY" if direction.lower() in ("buy", "b")
+            else "STOP_ORDER_DIRECTION_SELL"
         )
         stop_type = (
             "STOP_ORDER_TYPE_STOP_LIMIT" if limit_price and limit_price > 0
