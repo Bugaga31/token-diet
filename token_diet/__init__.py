@@ -649,6 +649,19 @@ from .graph_memory import (
     extract_entities,
     extract_numbers,
 )
+from .tool_search import (
+    TdqsLinter,
+    TdqsResult,
+    ToolRegistry,
+    ToolSpec,
+)
+from .playbooks import (
+    Playbook,
+    PlaybookStore,
+    cleared_marker,
+    history_budget,
+    prune_history,
+)
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1088,4 +1101,13 @@ __all__ = [
     "GraphMemory",
     "extract_entities",
     "extract_numbers",
+    "TdqsLinter",
+    "TdqsResult",
+    "ToolRegistry",
+    "ToolSpec",
+    "Playbook",
+    "PlaybookStore",
+    "cleared_marker",
+    "history_budget",
+    "prune_history",
 ]
