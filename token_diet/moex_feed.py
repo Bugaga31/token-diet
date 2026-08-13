@@ -93,6 +93,46 @@ class MoexFeed:
     """Free MOEX data. All methods return empty/None on failure — never raise."""
 
     # ── quote ───────────────────────────────────────────────────────────
+    # ── bond quote (TQCB board) ─────────────────────────────────────
+    def get_bond_quote(self, isin: str) -> dict | None:
+        """Live quote for a BOND from MOEX TQCB board (free, no token).
+
+        Returns {"isin", "name", "price_pct", "price_rub", "facevalue",
+                 "prev_pct", "change_pp", "nkd", "maturity"} or None.
+        Цена на MOEX для облигаций — в % от ТЕКУЩЕГО номинала (для
+        амортизируемых он меньше 1000). price_rub = price_pct % от facevalue.
+        """
+        url = (f"{ISS_BASE}/engines/stock/markets/bonds/boards/TQCB/securities/"
+               f"{urllib.parse.quote(isin)}.json?iss.meta=off")
+        data = _fetch(url)
+        if not data:
+            return None
+        out: dict[str, Any] = {}
+        for block in ("securities", "marketdata"):
+            cols, rows = _table(data, block)
+            if rows:
+                out.update(dict(zip(cols, rows[0])))
+        if not out.get("SECID"):
+            return None
+        price = _as_float(out.get("LAST") or out.get("CURRENTPRICE"))
+        prev = _as_float(out.get("PREVPRICE"))
+        face = _as_float(out.get("FACEVALUE")) or 1000.0
+        nkd = _as_float(out.get("ACCINT")) or 0.0
+        change = None
+        if prev and price:
+            change = price - prev  # в пунктах (п.п.) для облигаций
+        return {
+            "isin": isin,
+            "name": out.get("SHORTNAME", ""),
+            "price_pct": price or 0.0,
+            "price_rub": round((price or 0.0) * face / 100.0, 2),
+            "facevalue": face,
+            "prev_pct": prev,
+            "change_pp": round(change, 2) if change is not None else None,
+            "nkd": nkd,
+            "maturity": out.get("MATDATE", ""),
+        }
+
     def get_quote(self, ticker: str) -> MoexQuote | None:
         """Live quote from MOEX TQBR board (free, no token)."""
         url = (f"{ISS_BASE}/engines/stock/markets/shares/boards/TQBR/securities/"

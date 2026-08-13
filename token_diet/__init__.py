@@ -391,6 +391,10 @@ from .web_agent import (
     visit as web_visit,
     visit_and_save as web_visit_and_save,
 )
+from .market_search import (
+    classify as market_classify,
+    market_info,
+)
 from .live_docs import (
     DocsCache,
     KNOWN_PACKAGES,
