@@ -705,6 +705,11 @@ from .market_sentiment import (
     from_pulse,
     gather_sentiment_texts,
 )
+from .commander import (
+    Decision,
+    decide,
+    full_plan,
+)
 from .reasoning_kit import (
     calibrate_prompt,
     check_plan_coverage,
@@ -1186,4 +1191,7 @@ __all__ = [
     "from_fresh_news",
     "from_pulse",
     "gather_sentiment_texts",
+    "Decision",
+    "decide",
+    "full_plan",
 ]
