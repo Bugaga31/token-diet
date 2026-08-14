@@ -31,7 +31,7 @@ sys.path.insert(0, ".")
 from token_diet.tinkoff_invest import TinkoffInvest
 
 # ═══════════ КОНФИГУРАЦИЯ ═══════════
-DRY_RUN = True          # True: анализ без покупок. False: реальные сделки
+DRY_RUN = False         # БОЕВОЙ РЕЖИМ (приказ генерала 14.08): реальные сделки
 COMMISSION_PCT = 0.003  # 0.3% за сделку (вход + выход = 0.6%)
 MIN_MOVE_PCT = 1.2      # минимальный ожидаемый ход для входа (> 2×комиссия)
 TRAIL_PCT = 0.04        # trailing-стоп: −4% от максимума
@@ -122,6 +122,30 @@ def check_entry(inv: TinkoffInvest) -> str:
 
     ticker = decision.checks.get("candidate", "")
     if not ticker:
+        return "wait"
+
+    # ── АРМИЯ: второе мнение перед покупкой ──
+    # Мозг (алгоритм) дал ENTER → спрашиваем LLM-армию: подтверждает ли.
+    # Двойная проверка = меньше ошибок = прибыль надёжнее.
+    army_ok = True
+    try:
+        from token_diet.model_army import ask_fast
+    except ImportError:
+        from .model_army import ask_fast
+    try:
+        army = ask_fast(
+            f"{ticker} растёт {change}% с объёмом. Рынок: "
+            f"{decision.checks.get('geopolitics', '?')}. "
+            f"Стоит ли ПОКУПАТЬ прямо сейчас? Ответь одним словом: да/нет",
+            max_tokens=8,
+        )
+        army_ok = "да" in army.lower()
+        log(f"армия: {army.strip()[:40]} → {'согласна' if army_ok else 'ПРОТИВ'}")
+    except Exception as e:
+        log(f"армия недоступна: {e} — пропускаю второе мнение")
+
+    if not army_ok:
+        log(f"армия ПРОТИВ покупки {ticker} — ждём, не спорим с двумя мнениями")
         return "wait"
 
     # ── размер позиции: максимум MAX_POSITION_RUB на бумагу ──
