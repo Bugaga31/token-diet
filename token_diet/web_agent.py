@@ -63,7 +63,21 @@ def visit(url: str, timeout_ms: int = 30000, wait_sec: float = 2.0) -> dict:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        return {"status": "no_browser", "error": "playwright не установлен"}
+        # playwright живёт в .venv проекта — подгружаем его оттуда,
+        # чтобы браузер работал из любого интерпретатора
+        import os
+        import sys
+
+        for cand in (
+            "/tmp/token-diet-clone/.venv/lib/python3.12/site-packages",
+            os.path.expanduser("~/.venv/lib/python3.12/site-packages"),
+        ):
+            if os.path.isdir(cand) and cand not in sys.path:
+                sys.path.insert(0, cand)
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return {"status": "no_browser", "error": "playwright не установлен"}
 
     try:
         with sync_playwright() as p:
