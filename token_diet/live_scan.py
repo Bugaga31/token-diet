@@ -100,6 +100,7 @@ def scan_market(
     min_change: float = 0.3,
     min_volume_ratio: float = 1.0,
     max_results: int = 10,
+    respect_geopolitics: bool = True,
 ) -> list[ScanResult]:
     """Просканировать рынок и вернуть только РАСТУЩИЕ с объёмом бумаги.
 
@@ -108,7 +109,23 @@ def scan_market(
         min_change: минимальный рост за день, %.
         min_volume_ratio: минимальное отношение объёма к среднему.
         max_results: сколько лучших вернуть.
+        respect_geopolitics: если True и геополитический фон RED —
+            возвращать пусто (урок генерала: геополитику учитывать).
     """
+    if respect_geopolitics:
+        try:
+            from .geopolitics import geo_verdict
+        except ImportError:
+            from token_diet.geopolitics import geo_verdict
+        try:
+            geo = geo_verdict(limit_per_topic=2)
+            if geo.verdict == "RED":
+                # Урок генерала: Лавров сказал «перемирия не будет» → весь рынок
+                # красный. В такой фон входы не делаем, даже при BUY-сигнале.
+                return []
+        except Exception:
+            pass  # геополитика недоступна — не блокируем сканер
+
     try:
         from .tinkoff_invest import TinkoffInvest
     except ImportError:
@@ -176,7 +193,20 @@ def run_scan() -> list[dict]:
     return [r.as_dict() for r in results]
 
 
+def _print_geo_block() -> None:
+    try:
+        from .geopolitics import market_context_block
+    except ImportError:
+        from token_diet.geopolitics import market_context_block
+    try:
+        print(market_context_block())
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
+    _print_geo_block()
+    print()
     print(f"{'ТИКЕР':<7}{'ЦЕНА':>9}{'ДЕНЬ%':>8}{'ОБЪЁМ':>8}{'УХАЯ':>7}{'СКОР':>6}  СИГНАЛЫ")
     print("-" * 78)
     for r in scan_market():

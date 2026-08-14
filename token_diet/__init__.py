@@ -395,6 +395,10 @@ from .live_scan import (
     run_scan as live_scan_cli,
     LIQUID_TICKERS as LIVE_SCAN_TICKERS,
 )
+from .geopolitics import (
+    geo_verdict as geopolitics,
+    market_context_block as geopolitics_block,
+)
 from .web_agent import (
     extract_links as web_extract_links,
     visit as web_visit,
