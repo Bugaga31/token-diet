@@ -106,8 +106,15 @@ def _save_to_vault(query: str, results: list[dict]) -> bool:
         return False
 
 
-def tg_intel(query: str, limit: int = 10, save: bool = True) -> dict:
+def tg_intel(query: str, limit: int = 10, save: bool = True,
+              retries: int = 2) -> dict:
     """Одна команда: поиск по всему Telegram + память в Obsidian.
+
+    Глобальный и диалоговый поиски идут ПАРАЛЛЕЛЬНО (а не друг за
+    другом — так быстрее в 2 раза на рваной сети), каждый с ретраями:
+    сеть через DPI/прокси может молчать первым вызовом и ответить
+    вторым. Таймауты щедрые (45с), чтобы медленный, но живой ответ
+    не считался провалом.
 
     Returns {"status", "query", "found", "global_found", "dialogs_found",
              "results", "saved"}.
@@ -116,22 +123,46 @@ def tg_intel(query: str, limit: int = 10, save: bool = True) -> dict:
     """
     from .telegram_monitor import global_search
 
-    # 1) Глобально — по ВСЕЙ платформе (неподписанные каналы в том числе),
-    #    но с таймаутом: сеть через DPI может молчать, не вешаемся на ней
-    glob_results: list[dict] = []
-    glob_result = _run_with_timeout(
-        lambda: global_search(query, limit=limit), seconds=30)
-    if isinstance(glob_result, dict) and glob_result.get("status") == "ok":
-        glob_results = glob_result.get("results", [])
+    def _glob_once() -> list[dict]:
+        r = global_search(query, limit=limit)
+        if isinstance(r, dict) and r.get("status") == "ok":
+            return r.get("results", [])
+        return []
 
-    # 2) По подписанным диалогам — тоже с таймаутом
-    dial_results: list[dict] = []
-    dial = _run_with_timeout(
-        lambda: search_telegram(query, limit_per_dialog=3,
-                                max_dialogs=30, save=False),
-        seconds=30)
-    if isinstance(dial, dict) and dial.get("status") == "ok":
-        dial_results = dial.get("results", [])
+    def _dial_once() -> list[dict]:
+        r = search_telegram(query, limit_per_dialog=3,
+                            max_dialogs=30, save=False)
+        if isinstance(r, dict) and r.get("status") == "ok":
+            return r.get("results", [])
+        return []
+
+    # ретраи: сеть через DPI капризничает, повторный вызов часто проходит
+    def _with_retries(fn, seconds: float) -> list[dict]:
+        for attempt in range(retries + 1):
+            res = _run_with_timeout(fn, seconds=seconds)
+            if res:
+                return res
+        return []
+
+    # 1+2) Параллельно: глобальный поиск + поиск по диалогам
+    import threading
+
+    box: dict[str, list[dict]] = {"glob": [], "dial": []}
+
+    def _worker_glob() -> None:
+        box["glob"] = _with_retries(_glob_once, seconds=45)
+
+    def _worker_dial() -> None:
+        box["dial"] = _with_retries(_dial_once, seconds=45)
+
+    t1 = threading.Thread(target=_worker_glob, daemon=True)
+    t2 = threading.Thread(target=_worker_dial, daemon=True)
+    t1.start(); t2.start()
+    t1.join(timeout=95)
+    t2.join(timeout=95)
+
+    glob_results = box["glob"]
+    dial_results = box["dial"]
 
     if not glob_results and not dial_results:
         return {
