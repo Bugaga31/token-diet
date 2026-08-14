@@ -416,6 +416,11 @@ from .model_army import (
     ask_generator as model_generator,
     army_verdict as model_army_verdict,
 )
+from .rick_panel import (
+    find as arsenal_find,
+    categories as arsenal_categories,
+    panel_block as arsenal_panel,
+)
 from .web_agent import (
     extract_links as web_extract_links,
     visit as web_visit,
