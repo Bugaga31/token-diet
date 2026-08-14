@@ -408,6 +408,14 @@ from .autopilot import (
     check_entry as autopilot_check_entry,
     check_stop as autopilot_check_stop,
 )
+from .model_army import (
+    ask as model_ask,
+    ask_brain as model_brain,
+    ask_analyst as model_analyst,
+    ask_fast as model_fast,
+    ask_generator as model_generator,
+    army_verdict as model_army_verdict,
+)
 from .web_agent import (
     extract_links as web_extract_links,
     visit as web_visit,
