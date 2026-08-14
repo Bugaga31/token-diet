@@ -47,11 +47,34 @@ class MorningBrief:
         return "\n".join(parts)
 
 
+# Реальные позиции: entry/stop/цель для честного P&L в брифинге
+# (ключ — тикер; значения — параметры GuardConfig)
+POSITIONS: dict[str, dict] = {
+    "GMKN": {"entry": 120.57, "stop": 117.0, "target": 128.9},
+    "PLZL": {"entry": 1339.6, "stop": 1290.0, "target": 1400.0},
+}
+
+# Драйверы по тикеру: что реально двигает бумагу (для веб-секции)
+TICKER_DRIVERS: dict[str, str] = {
+    "PLZL": "золото XAU/USD",
+    "GMKN": "палладий, никель и медь на LME",
+    "SBER": "ключевая ставка ЦБ и банковский сектор",
+    "GAZP": "цены на газ и нефть",
+    "YDEX": "IT-сектор и отчётность по рекламе",
+}
+
+
 def _sec_snapshot(ticker: str, gold_price: float | None) -> str:
     try:
-        from .market_guard import snapshot_block
+        from .market_guard import GuardConfig, snapshot_block
 
-        return snapshot_block()
+        # Универсальный конфиг: берём тикер из брифинга, а не хардкод PLZL.
+        # figi=None → get_quote сам резолвит FIGI по тикеру через find_figi.
+        # entry/stop/target из карты реальных позиций → честный P&L.
+        t = ticker.upper()
+        pos = POSITIONS.get(t, {})
+        cfg = GuardConfig(ticker=t, figi=None, **pos)
+        return snapshot_block(cfg)
     except Exception as e:
         return f"(стакан недоступен: {type(e).__name__})"
 
@@ -80,7 +103,8 @@ def _sec_web(ticker: str, gold_price: float | None) -> str:
     try:
         from .webpilot import ask_web
 
-        q = f"последние новости и прогноз по акции {ticker} и золоту 2026"
+        driver = TICKER_DRIVERS.get(ticker.upper(), "рыночная конъюнктура")
+        q = f"последние новости и прогноз по акции {ticker}: влияние {driver} на цену в 2026"
         r = ask_web(q, max_steps=3, max_chars=1200, timeout=10)
         if not r.evidence:
             return "(веб: свидетельств нет)"

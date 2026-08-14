@@ -423,8 +423,9 @@ def snapshot_block(cfg: GuardConfig | None = None) -> str:
     """Компактный блок снимка для промпта."""
     snap = snapshot(cfg)
     ob = snap.get("orderbook", {})
+    ticker = (cfg.ticker if cfg else "PLZL").upper()
     lines = [
-        f"[Guard — PLZL] {snap['time']}  status={snap.get('status')}",
+        f"[Guard — {ticker}] {snap['time']}  status={snap.get('status')}",
         f"  Цена: {snap.get('price')} | P&L {snap.get('pnl_pct')}% "
         f"({snap.get('pnl_rub')} ₽)",
         f"  Стакан: bid {ob.get('bid_total')} / ask {ob.get('ask_total')} "
@@ -442,12 +443,12 @@ def snapshot_block(cfg: GuardConfig | None = None) -> str:
     lines.append(f"  Золото: {snap.get('gold')}")
     if snap.get("news"):
         lines.append(f"  Новости в ленте: {len(snap.get('news'))} "
-                     f"(полюс/золото/цб)")
-    lines.append(pulse_block("PLZL", max_items=3))
+                     f"({ticker.lower()})")
+    lines.append(pulse_block(ticker, max_items=3))
     try:
         from .pulse_reader import pulse_sentiment
 
-        s = pulse_sentiment("PLZL", limit=20)
+        s = pulse_sentiment(ticker, limit=20)
         if s.get("sample_size"):
             lines.append(
                 f"  Пульс-настроение: {s['signal']} "
