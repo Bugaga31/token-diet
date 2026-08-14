@@ -61,6 +61,43 @@ DEFAULT_PROVIDERS: list[dict] = [
     },
 ]
 
+# ── AnyModel (проверено генералом 14.08.2026, ключ из .env) ─────────────
+# OpenAI-совместимый API: https://anymodel.org/v1/chat/completions
+# Модели подтверждены живыми: deepseek-v4-pro, glm-5.2, minimax-m3.
+_ANYMODEL_KEY = os.environ.get("ANYMODEL_API_KEY", "")
+if not _ANYMODEL_KEY:
+    try:
+        if os.path.exists(".env"):
+            for _l in open(".env", encoding="utf-8"):
+                if _l.strip().startswith("ANYMODEL_API_KEY="):
+                    _ANYMODEL_KEY = _l.strip().split("=", 1)[1]
+                    break
+    except Exception:
+        pass
+
+ANYMODEL_BASE = "https://anymodel.org/v1"
+if _ANYMODEL_KEY:
+    DEFAULT_PROVIDERS += [
+        {
+            "name": "anymodel-deepseek-v4-pro", "kind": "openai",
+            "model": "am/deepseek-v4-pro", "base_url": ANYMODEL_BASE,
+            "api_key": _ANYMODEL_KEY, "cost": 0.02, "latency": 1.2,
+            "quality": 9, "tags": ["smart", "coding", "reasoning", "balanced"],
+        },
+        {
+            "name": "anymodel-glm-5.2", "kind": "openai",
+            "model": "am/glm-5.2", "base_url": ANYMODEL_BASE,
+            "api_key": _ANYMODEL_KEY, "cost": 0.015, "latency": 1.8,
+            "quality": 9, "tags": ["smart", "analyst", "balanced"],
+        },
+        {
+            "name": "anymodel-minimax-m3", "kind": "openai",
+            "model": "am/minimax-m3", "base_url": ANYMODEL_BASE,
+            "api_key": _ANYMODEL_KEY, "cost": 0.005, "latency": 0.4,
+            "quality": 7, "tags": ["fast", "cheap", "general"],
+        },
+    ]
+
 
 @dataclass
 class Provider:

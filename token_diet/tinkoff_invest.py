@@ -26,7 +26,7 @@ import ssl
 import urllib.request
 import urllib.error
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -389,7 +389,7 @@ class TinkoffInvest:
         if not figi:
             return []
         candles: list[TinkoffCandle] = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # SDK path
         if self._sdk:
@@ -761,7 +761,7 @@ class TinkoffInvest:
             return {"units": units, "nano": nano}
 
         from datetime import timedelta
-        expire = (datetime.utcnow() + timedelta(days=expire_days))
+        expire = (datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=expire_days))
         expire_iso = expire.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # ВАЖНО: стоп-заявки используют СВОЙ enum направления (StopOrderDirection),

@@ -141,7 +141,7 @@ def export_all(vault: ObsidianVault) -> str:
     return str(out)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="token-diet-memory")
     sub = parser.add_subparsers(dest="cmd")
 
@@ -298,7 +298,7 @@ def main() -> int:
     p_m_digest = memo_sub.add_parser("digest", help="compressed knowledge digest about a topic")
     p_m_digest.add_argument("topic", help="topic to summarize from memory")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     vault = ObsidianVault(vault_path())
 
     if args.cmd == "remember":

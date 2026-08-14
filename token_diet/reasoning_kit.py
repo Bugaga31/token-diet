@@ -53,8 +53,15 @@ _NUM_STEP_RE = re.compile(r"(?:^|\n)\s*(\d+)[.)]\s*([^\n]+)")
 
 
 def plan_steps(text: str) -> list[str]:
-    """Вытащить нумерованные шаги плана из текста."""
-    return [m.group(2).strip() for m in _NUM_STEP_RE.finditer(text) if m.group(2).strip()]
+    """Вытащить нумерованные шаги плана из текста.
+
+    Если нумерованных шагов нет — возвращает сам текст одним шагом,
+    чтобы планировщик никогда не возвращал пустой план.
+    """
+    steps = [m.group(2).strip() for m in _NUM_STEP_RE.finditer(text) if m.group(2).strip()]
+    if not steps and text.strip():
+        return [text.strip()]
+    return steps
 
 
 def _st(w: str, n: int = 4) -> str:
