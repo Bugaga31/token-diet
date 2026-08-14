@@ -43,12 +43,17 @@ INVEST_CHANNEL_FRAGMENTS = [
     "банк росси", "moex", "минфин", "marketmaker", "bonds lab",
     "коган", "smart-lab", "смартлаб", "invest heroes", "рынкиденьгивласть",
     "markettwits", "рбк инвестиции", "бкс экспресс", "т-инвестиции",
-    "финам инвестиции",
+    "финам инвестиции", "ведомост", "коммерсантъ", "интерфакс",
+    "риа новости", "тасс", "банкирос", "финверсия", "сбер инвестиц",
+    "investing.com", "облигац", "бонды", "промсвязьбанк", "втб капитал",
+    "альфа-инвест", "доходъ", "юнисервис", "лизин", "полюс", "норникел",
 ]
 
 AI_CHANNEL_FRAGMENTS = [
     "claude-api", "промптологи", "нейробаза", "ai-агент", "максим скороход",
-    "нейро", "gpt", "промпт",
+    "нейро", "gpt", "промпт", "openai", "anthropic", "hugging face",
+    "искусственный интеллект", "нейросет", "агент", "llm", "модель",
+    "python", "код", "программирован", "разработк", "mcp", "плагин",
 ]
 
 # Мусорные чаты, которые ловятся по фрагментам, но не несут новостной ценности
@@ -134,6 +139,32 @@ USERNAME_CHANNELS: dict[str, str] = {
     "boloto_store": "Boloto Store",
     "chappy_ai": "Chappy",
     "kamaran_abuse": "ᴋᴀᴍᴀʀᴀɴ",
+    # ── федеральные СМИ: экономика и политика РФ ──
+    "rbc": "РБК",
+    "rbc_news": "РБК Новости",
+    "vedomosti": "Ведомости",
+    "kommersant": "Коммерсантъ",
+    "tass_agency": "ТАСС",
+    "ria_novosti": "РИА Новости",
+    "interfax_news": "Интерфакс",
+    "gazeta_ru": "Газета.Ru",
+    "lenta_ru": "Lenta.ru",
+    # ── финансы и банки ──
+    "bankiros": "Банкирос",
+    "finversia": "Финверсия",
+    "pro_bonds": "ProBonds (облигации)",
+    "bonds_finance": "Bonds.Finance",
+    "sber_invest": "СберИнвестиции",
+    "investing_com_ru": "Investing.com Россия",
+    "forex_ru": "FOREX.RU",
+    # ── мировые ИИ/технологии ──
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "huggingface": "Hugging Face",
+    "google_ai": "Google AI",
+    "microsoft_ai": "Microsoft AI",
+    "techcrunch": "TechCrunch",
+    "theverge": "The Verge",
 }
 
 
