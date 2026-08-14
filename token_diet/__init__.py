@@ -399,6 +399,10 @@ from .geopolitics import (
     geo_verdict as geopolitics,
     market_context_block as geopolitics_block,
 )
+from .trading_brain import (
+    decide as brain_decision,
+    scan_all as brain_scan,
+)
 from .web_agent import (
     extract_links as web_extract_links,
     visit as web_visit,
