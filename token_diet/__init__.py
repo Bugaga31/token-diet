@@ -390,6 +390,11 @@ from .tg_scout import (
     scout as tg_scout,
     scout_block as tg_scout_block,
 )
+from .live_scan import (
+    scan_market as live_scan,
+    run_scan as live_scan_cli,
+    LIQUID_TICKERS as LIVE_SCAN_TICKERS,
+)
 from .web_agent import (
     extract_links as web_extract_links,
     visit as web_visit,
