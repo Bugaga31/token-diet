@@ -386,6 +386,10 @@ from .tg_intel import (
     merge_and_rank as tg_merge_and_rank,
     tg_intel,
 )
+from .tg_scout import (
+    scout as tg_scout,
+    scout_block as tg_scout_block,
+)
 from .web_agent import (
     extract_links as web_extract_links,
     visit as web_visit,

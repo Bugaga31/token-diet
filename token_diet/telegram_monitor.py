@@ -165,6 +165,12 @@ USERNAME_CHANNELS: dict[str, str] = {
     "microsoft_ai": "Microsoft AI",
     "techcrunch": "TechCrunch",
     "theverge": "The Verge",
+    "paragonzone": "Paragon",  # авто: 2,030 подп.
+    "centralbank_russia": "Банк России",  # авто: 245,104 подп.
+    "rian_ru": "РИА Новости",  # авто: 3,027,350 подп.
+    "forbesrussia": "Forbes Russia",  # авто: 235,042 подп.
+    "vibecoding_anymodel": "AnyModel чат вайбкодеров",  # авто: 3,771 подп.
+    "banki_economy": "Русская экономика",  # авто: 1,059,584 подп.
 }
 
 
@@ -236,6 +242,9 @@ async def _global_search_impl(client, query: str, limit: int) -> list[dict]:
             or getattr(chat, "username", None) or "?"
         out.append({
             "channel": name,
+            "channel_id": cid,          # id канала — для охоты за каналами
+            "username": getattr(chat, "username", None),
+            "members": getattr(chat, "participants_count", None),
             "date": str(msg.date),
             "text": text[:400],
             "important": _is_important(text),

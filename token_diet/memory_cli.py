@@ -197,6 +197,14 @@ def main() -> int:
                          help="max results (default 10)")
     p_intel.add_argument("--no-save", action="store_true",
                          help="do not save findings to Obsidian")
+    p_scout = sub.add_parser("tg-scout",
+                             help="hunt NEW channels by topic, score them, "
+                                  "auto-register the best")
+    p_scout.add_argument("topic", help="search topic (e.g. 'облигации')")
+    p_scout.add_argument("--limit", type=int, default=8,
+                         help="how many channels to return (default 8)")
+    p_scout.add_argument("--no-register", action="store_true",
+                         help="do NOT auto-add found channels to the list")
     p_un = sub.add_parser("tg-usernames",
                           help="latest posts from username-channels (even unsubscribed)")
     p_un.add_argument("--limit", type=int, default=3,
@@ -410,6 +418,26 @@ def main() -> int:
             mark = "🔥" if r.get("important") else "·"
             print(f"{mark} [{r['channel']}] {r['date']}")
             print(f"   {r['text'][:200]}\n")
+        return 0
+
+    if args.cmd == "tg-scout":
+        from .tg_scout import scout
+        res = scout(args.topic, limit=args.limit,
+                     register=not args.no_register)
+        if res["status"] != "ok":
+            print(f"⚠️ {res.get('error')}")
+            return 1
+        print(f"✓ Охота «{res['topic']}»: найдено {res['found']} каналов")
+        if res.get("registered"):
+            print(f"  ➕ авто-зарегистрировано: {res['registered']}")
+        print()
+        for ch in res["channels"]:
+            mem = f"{ch.get('members', 0):,}" if ch.get("members") else "?"
+            print(f"{ch.get('score', 0):>5.1f}/100  {ch.get('title', '?')} "
+                  f"(👥{mem}) @{ch.get('username') or '—'}")
+            about = (ch.get("about") or "").strip()
+            if about:
+                print(f"        {about[:110]}")
         return 0
 
     if args.cmd == "tg-usernames":
