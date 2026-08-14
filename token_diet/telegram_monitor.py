@@ -25,6 +25,34 @@ try:
 except ImportError:
     HAS_TELETHON = False
 
+# ── Рабочий прокси (Karing / sing-box на 127.0.0.1:3066) ──────────────
+# Сеть через DPI режет прямые подключения к Telegram, но socks5-прокси
+# на локали работает стабильно (проверено: api.telegram.org через него
+# отвечает за ~1с). Все клиенты Telethon идут через него.
+PROXY_HOST = "127.0.0.1"
+PROXY_PORT = 3066
+
+
+def _make_client(session_path: str | Path, api_id: int, api_hash: str):
+    """Создать TelegramClient через рабочий прокси (socks5).
+
+    Возвращает клиент, готовый к connect(). Если прокси недоступен —
+    пробуем без него (иногда сеть бывает прямой).
+    """
+    from telethon import TelegramClient
+
+    try:
+        import socks as _socks
+
+        client = TelegramClient(
+            str(session_path), api_id, api_hash,
+            proxy=(_socks.SOCKS5, PROXY_HOST, PROXY_PORT),
+        )
+        return client
+    except Exception:
+        return TelegramClient(str(session_path), api_id, api_hash)
+
+
 # Живые сессии (урок из памяти: сначала сессии, потом SMS)
 SESSION_CANDIDATES = [
     Path.home() / ".telegram-mcp" / "telegram_live.session",
@@ -304,7 +332,7 @@ def _find_live_session() -> Path | None:
             try:
                 async def _check():
                     usable = _usable_session(path)
-                    client = TelegramClient(str(usable), api_id, api_hash)
+                    client = _make_client(usable, api_id, api_hash)
                     await client.connect()
                     try:
                         return bool(await client.is_user_authorized())
@@ -400,7 +428,7 @@ def collect_fresh(per_channel: int = 3, include_ai: bool = True) -> dict:
     for attempt in range(1, 4):
         try:
             async def _run():
-                client = TelegramClient(str(usable), api_id, api_hash)
+                client = _make_client(usable, api_id, api_hash)
                 await client.connect()
                 try:
                     return await _collect_impl(client, fragments, per_channel)
@@ -526,7 +554,7 @@ def watch(save_to_lib: bool = True) -> dict:
     while True:
         try:
             async def _run_watch():
-                client = TelegramClient(str(session), api_id, api_hash)
+                client = _make_client(session, api_id, api_hash)
                 await client.connect()
                 try:
                     await _watch_impl(client, fragments, save_to_lib)
@@ -559,7 +587,7 @@ def by_username(limit: int = 3) -> dict:
     for attempt in range(1, 4):
         try:
             async def _run():
-                client = TelegramClient(str(usable), api_id, api_hash)
+                client = _make_client(usable, api_id, api_hash)
                 await client.connect()
                 try:
                     return await _by_username_impl(client, limit)
@@ -592,7 +620,7 @@ def global_search(query: str, limit: int = 10) -> dict:
     for attempt in range(1, 4):
         try:
             async def _run():
-                client = TelegramClient(str(usable), api_id, api_hash)
+                client = _make_client(usable, api_id, api_hash)
                 await client.connect()
                 try:
                     return await _global_search_impl(client, query, limit)

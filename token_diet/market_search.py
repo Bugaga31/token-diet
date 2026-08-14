@@ -129,20 +129,67 @@ def market_info(query: str, with_news: bool = False) -> dict:
 
 
 def _recent_news(query: str, limit: int = 3) -> list[dict]:
-    """Свежие новости по инструменту из FRESH_NEWS (телеграм-демон)."""
+    """Свежие новости по инструменту — три источника по порядку:
+
+    1. FRESH_NEWS (телеграм-демон) — самый быстрый
+    2. T-Invest API get_news (если SDK/эндпоинт жив)
+    3. Браузер (web_agent) — страница Т-Инвестиций, всегда работает
+    """
     import os
 
     path = os.path.expanduser("~/FRESH_NEWS.md")
     try:
         text = open(path, encoding="utf-8", errors="ignore").read()
     except OSError:
-        return []
+        text = ""
     out: list[dict] = []
     for line in text.splitlines():
-        if query.upper()[:4] in line.upper() or query.upper() in line.upper():
-            out.append({"line": line.strip()[:200]})
+        q = query.upper()
+        if q[:4] in line.upper() or q in line.upper():
+            out.append({"line": line.strip()[:200], "source": "tg"})
         if len(out) >= limit:
-            break
+            return out
+
+    # 2) T-Invest API (если новостной эндпоинт доступен)
+    try:
+        from .tinkoff_invest import TinkoffInvest
+
+        inv = TinkoffInvest()
+        api_news = inv.get_news(query, limit=limit)
+        for n in api_news:
+            title = n.get("title") or n.get("text") or ""
+            if title:
+                out.append({"line": title.strip()[:200],
+                            "source": "t-invest", "time": n.get("time", "")})
+        if len(out) >= limit:
+            return out
+    except Exception:
+        pass
+
+    # 3) Браузер: страница Т-Инвестиций по тикеру
+    try:
+        from .web_agent import visit
+
+        ticker = query.split()[0].upper()
+        r = visit(f"https://www.tbank.ru/invest/stocks/{ticker}/",
+                  timeout_ms=35000)
+        if r.get("status") == "ok":
+            lines = [l.strip() for l in r.get("text", "").split("\n")
+                     if l.strip() and len(l.strip()) > 25]
+            # строки с признаками новости/анализа
+            import re
+
+            keys = re.compile(r"\d{1,2}\s+[а-яё]+\s+\d{4}|уровн|вход|анализ|"
+                              r"прогноз|маржин|сюрприз|отчёт|отчет|дивиденд|"
+                              r"точка входа", re.IGNORECASE)
+            for line in lines:
+                if keys.search(line):
+                    out.append({"line": line[:200], "source": "t-bank-web"})
+                if len(out) >= limit:
+                    break
+    except Exception:
+        pass
+
     return out
 
 

@@ -62,7 +62,8 @@ def _find_live_session() -> Path | None:
             continue
         try:
             async def _check():
-                client = TelegramClient(str(path), api_id, api_hash)
+                from .telegram_monitor import _make_client
+                client = _make_client(path, api_id, api_hash)
                 await client.connect()
                 try:
                     return bool(await client.is_user_authorized())
@@ -85,7 +86,8 @@ async def _search_impl(
     dialog_filter: list[str] | None = None,
 ) -> list[dict]:
     """Search every dialog for `query`, collect top messages."""
-    client = TelegramClient(str(session_path), api_id, api_hash)
+    from .telegram_monitor import _make_client
+    client = _make_client(session_path, api_id, api_hash)
     results: list[dict] = []
     try:
         await client.connect()

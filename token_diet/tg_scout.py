@@ -259,7 +259,8 @@ def scout(topic: str, limit: int = 8, register: bool = True) -> dict[str, Any]:
         import asyncio
 
         async def _run() -> list[dict[str, Any]]:
-            client = TelegramClient(str(usable), api_id, api_hash)
+            from .telegram_monitor import _make_client
+            client = _make_client(usable, api_id, api_hash)
             await client.connect()
             try:
                 metas = []

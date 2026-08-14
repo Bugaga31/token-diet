@@ -50,6 +50,8 @@ ENDPOINTS = {
     "post_stop_order": f"{API_BASE}.StopOrdersService/PostStopOrder",
     "get_stop_orders": f"{API_BASE}.StopOrdersService/GetStopOrders",
     "cancel_stop_order": f"{API_BASE}.StopOrdersService/CancelStopOrder",
+    "news": f"{API_BASE}.NewsService/GetNews",
+    "news_by_instrument": f"{API_BASE}.NewsService/GetNewsByInstrument",
 }
 
 
@@ -607,6 +609,38 @@ class TinkoffInvest:
         return result
 
     # ── ордера ───────────────────────────────────────────────────────────
+    def get_news(self, ticker: str = "", limit: int = 10) -> list[dict]:
+        """Новости по инструменту или по всему рынку (Т-Инвестиции).
+
+        Если ticker задан — GetNewsByInstrument (новости по бумаге),
+        иначе GetNews (лента рынка). Возвращает список dict'ов:
+        {"time", "title", "text", "source", "link"}. Никогда не бросает.
+        """
+        if not self.available:
+            return []
+        if ticker:
+            figi = self.find_figi(ticker)
+            if not figi:
+                return []
+            resp = self._rpc("news_by_instrument",
+                             {"figi": figi, "limit": limit})
+        else:
+            resp = self._rpc("news", {"limit": limit})
+        if not resp:
+            return []
+        out: list[dict] = []
+        for item in resp.get("items", []) or []:
+            if not isinstance(item, dict):
+                continue
+            out.append({
+                "time": str(item.get("time", "")),
+                "title": item.get("title", "") or "",
+                "text": item.get("text", "") or "",
+                "source": item.get("source", "") or "",
+                "link": item.get("link", "") or "",
+            })
+        return out
+
     def post_order(
         self,
         ticker: str,
