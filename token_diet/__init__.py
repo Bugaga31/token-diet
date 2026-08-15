@@ -788,6 +788,20 @@ from .reasoning_kit import (
     retention_prompt,
     verify_claims,
 )
+from .audit_chain import (
+    AuditChain,
+    AuditEntry,
+    canonical_json,
+    default_chain_path,
+    GENESIS_HASH,
+    KNOWN_ACTIONS,
+)
+from .event_batcher import (
+    BatchEvent,
+    EventBatcher,
+    FlushBatch,
+    QueuedEvent,
+)
 
 __all__ = [
     "__version__",
@@ -1263,4 +1277,10 @@ __all__ = [
     "snapshot",
     "full_status",
     "render_status",
+    "AuditChain",
+    "AuditEntry",
+    "EventBatcher",
+    "FlushBatch",
+    "QueuedEvent",
+    "canonical_json",
 ]

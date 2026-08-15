@@ -302,6 +302,25 @@ def main(argv: list[str] | None = None) -> int:
     p_memo = sub.add_parser("memo", help="память Obsidian (см. token-diet memo -h)")
     p_memo.add_argument("args", nargs=argparse.REMAINDER, help="подкоманды memory_cli")
 
+    p_audit = sub.add_parser("audit", help="hash-chain журнал: прогнозы и решения без подделки (из Buzz)")
+    audit_sub = p_audit.add_subparsers(dest="audit_cmd")
+    p_aud_log = audit_sub.add_parser("log", help="записать действие в цепочку")
+    p_aud_log.add_argument("action", help="действие (prediction_made, decision_made, ...)")
+    p_aud_log.add_argument("--detail", default="{}", help="JSON-детали")
+    p_aud_log.add_argument("--actor", default="assistant", help="кто сделал")
+    p_aud_log.add_argument("--object", default=None, help="объект действия")
+    p_aud_pred = audit_sub.add_parser("predict", help="записать прогноз (не подделать!)")
+    p_aud_pred.add_argument("ticker", help="тикер (PLZL)")
+    p_aud_pred.add_argument("target", type=float, help="целевая цена")
+    p_aud_pred.add_argument("--by", default="", help="к какой дате")
+    p_aud_pred.add_argument("--note", default="", help="комментарий")
+    audit_sub.add_parser("verify", help="проверить целостность цепочки")
+    p_aud_last = audit_sub.add_parser("last", help="последние записи")
+    p_aud_last.add_argument("n", nargs="?", type=int, default=5, help="сколько (по умолчанию 5)")
+
+    p_batch = sub.add_parser("batch", help="батчинг событий в 1 промпт + экономия токенов (из Buzz)")
+    p_batch.add_argument("--demo", action="store_true", help="живая демонстрация")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
@@ -340,7 +359,53 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "memo":
         from token_diet.memory_cli import main as memo_main
         return memo_main(args.args)
+    if args.cmd == "audit":
+        return _audit(args)
+    if args.cmd == "batch":
+        from token_diet.event_batcher import EventBatcher
+        if args.demo:
+            print(EventBatcher().demo())
+        else:
+            for overhead in (200, 400, 800):
+                est = EventBatcher.estimate_savings(10, overhead)
+                print(f"10 событий, оверхед {overhead}т/промпт: "
+                      f"экономия {est['saved_tokens']}т ({est['saved_percent']}%)")
+        return 0
     p.print_help()
+    return 2
+
+
+def _audit(args) -> int:
+    """hash-chain журнал: log / predict / verify / last."""
+    from token_diet.audit_chain import AuditChain
+    chain = AuditChain()
+    if args.audit_cmd in (None, "verify"):
+        print(chain.tamper_evidence())
+        if args.audit_cmd is None:
+            return 0
+        return 0
+    if args.audit_cmd == "last":
+        for e in chain.last(args.n):
+            print(e.summary())
+        return 0
+    if args.audit_cmd == "log":
+        import json as _json
+        try:
+            detail = _json.loads(args.detail)
+        except _json.JSONDecodeError:
+            print(f"bad --detail JSON: {args.detail}")
+            return 2
+        e = chain.log(args.action, detail=detail, actor=args.actor,
+                      object_id=args.object)
+        print(f"✓ записано: {e.summary()}")
+        return 0
+    if args.audit_cmd == "predict":
+        e = chain.predict(args.ticker, args.target, by=args.by, note=args.note)
+        print(f"✓ прогноз записан в цепочку: {args.ticker.upper()} -> {args.target} "
+              f"к {args.by or '?'} {('(' + args.note + ')') if args.note else ''}")
+        print(f"  {e.summary()}")
+        print("  Подделать задним числом невозможно — verify() докажет.")
+        return 0
     return 2
 
 
