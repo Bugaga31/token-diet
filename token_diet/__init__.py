@@ -1311,4 +1311,9 @@ __all__ = [
     "is_trading_day",
     "parse_workflow",
     "watch",
+    "SessionHandoff",
+    "build_handoff",
+    "compress_history",
+    "extract_facts",
+    "render_handoff",
 ]

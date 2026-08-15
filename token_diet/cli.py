@@ -318,8 +318,12 @@ def main(argv: list[str] | None = None) -> int:
     p_aud_last = audit_sub.add_parser("last", help="последние записи")
     p_aud_last.add_argument("n", nargs="?", type=int, default=5, help="сколько (по умолчанию 5)")
 
-    p_batch = sub.add_parser("batch", help="батчинг событий в 1 промпт + экономия токенов (из Buzz)")
-    p_batch.add_argument("--demo", action="store_true", help="живая демонстрация")
+    p_army = sub.add_parser("army", help="армия LLM-моделей (AnyModel): спросить всех и собрать голоса")
+    p_army.add_argument("question", nargs="?", default="", help="вопрос армии")
+    p_army.add_argument("--role", default="brain",
+                        help="brain/analyst/fast/generator (по умолчанию brain)")
+    p_army.add_argument("--all", action="store_true", help="спросить ВСЮ армию (вердикт)")
+    p_army.add_argument("--system", default=None, help="системный промпт")
 
     p_rules = sub.add_parser("rules", help="YAML-правила автоматизации (из Buzz buzz-workflow)")
     p_rules.add_argument("--rules", default=None, help="путь к файлу правил (по умолчанию ~/token-diet-memory/rules.yaml)")
@@ -332,6 +336,12 @@ def main(argv: list[str] | None = None) -> int:
     p_rules_run.add_argument("--rules", default=None, help="путь к файлу правил")
     p_rules_run.add_argument("--event", default="{}", help="JSON события (ticker, price, change_pct...)")
     p_rules_run.add_argument("--dry-run", action="store_true", help="без побочных эффектов")
+
+    p_handoff = sub.add_parser("handoff", help="слепок себя: сжать сессию и продолжить с того же места (из Buzz buzz-agent)")
+    p_handoff.add_argument("text", nargs="?", default="", help="текст истории сессии для сжатия")
+    p_handoff.add_argument("--history", default=None, help="путь к файлу истории (если не текст)")
+    p_handoff.add_argument("--max-chars", type=int, default=6000, help="лимит сжатой истории")
+    p_handoff.add_argument("--save", default=None, help="куда сохранить handoff (по умолчанию печать)")
 
     p_watch = sub.add_parser("watch", help="сторож рынка: цена -> правила докупки/продажи (см. -h)")
     p_watch.add_argument("ticker", help="тикер (SNGSP)")
@@ -381,6 +391,15 @@ def main(argv: list[str] | None = None) -> int:
         return memo_main(args.args)
     if args.cmd == "audit":
         return _audit(args)
+    if args.cmd == "army":
+        from token_diet.model_army import ask, army_verdict
+        if args.all:
+            print("🤖 АРМИЯ ГОЛОСУЕТ")
+            for role, vote in army_verdict(args.question, system=args.system).items():
+                print(f"\n🎯 {role}: {vote[:300]}")
+        else:
+            print(ask(args.question, role=args.role, system=args.system))
+        return 0
     if args.cmd == "batch":
         from token_diet.event_batcher import EventBatcher
         if args.demo:
@@ -393,6 +412,20 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "rules":
         return _rules(args)
+    if args.cmd == "handoff":
+        from token_diet.session_handoff import build_handoff, render_handoff
+        if args.history:
+            args.text = Path(args.history).read_text(encoding="utf-8")
+        h = build_handoff(args.text, max_history_chars=args.max_chars)
+        rendered = h["handoff_text"]
+        st = h["stats"]
+        if args.save:
+            Path(args.save).write_text(rendered, encoding="utf-8")
+            print(f"Handoff сохранён: {args.save}")
+        print(rendered)
+        print(f"\n[handoff] {st['source_chars']} симв. → {st['handoff_chars']} симв."
+              f" (экономия {st['saved_pct']}%)")
+        return 0
     if args.cmd == "watch":
         from token_diet.market_watcher import main as watch_main
         return watch_main([args.ticker] + (["--init"] if args.init else [])

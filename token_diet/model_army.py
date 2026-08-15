@@ -1,20 +1,21 @@
 """Model Army — армия LLM-моделей AnyModel с распределением задач.
 
-ГЕНЕРАЛ ПРОВЕРИЛ (14.08.2026) — все модели живые через прокси Karing:
-  am/deepseek-v4-pro:      10.9с → главный мозг (сложный анализ)
-  am/glm-5.2:              21.6с → сильный аналитик (глубокие разборы)
-  am/minimax-m3:            1.3с → скоростной (быстрые ответы, классификация)
-  am/diffusiongemma-26b:    8.4с → генерация/креатив
+ГЕНЕРАЛ ПРОВЕРИЛ (15.08.2026) — живые модели через прокси Karing:
+  am/deepseek-v4-pro:      главный мозг (сложный анализ)
+  am/deepseek-v4-flash:    скоростной (быстрая классификация) ✅ проверено
+  am/glm-5.2:              сильный аналитик (глубокие разборы)
+  am/diffusiongemma-26b:   генерация/креатив
 
 Роли в армии:
 - ask_brain()    → deepseek-v4-pro: сложные решения, анализ
 - ask_analyst()  → glm-5.2: глубокие разборы, отчёты
-- ask_fast()     → minimax-m3: быстрая классификация, короткие ответы
+- ask_fast()     → deepseek-v4-flash: быстрая классификация, короткие ответы
 - ask_generator()-> diffusiongemma: креатив, генерация
 
-Все запросы через прокси Karing (127.0.0.1:3066) — напрямую SSL режет DPI.
-Ключ из .env (ANYMODEL_API_KEY) — НЕ захардкожен.
-Ретраи до 3 раз — сеть капризничает.
+⚠️ УРОК 15.08.2026: мини-max-m3 отдавал 404 (модель недоступна на ключе),
+а старый urllib-путь с глобальной подменой socket падал с SSL EOF.
+Теперь: requests + socks5h через Karing, авто-fallback на прямой запрос
+(если прокси лежит), ретраи до 3 раз. Ключ из .env — НЕ захардкожен.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ PROXY_PORT = 3066
 ROLES = {
     "brain": "am/deepseek-v4-pro",      # главный мозг
     "analyst": "am/glm-5.2",            # аналитик
-    "fast": "am/minimax-m3",            # скоростной
+    "fast": "am/deepseek-v4-flash",     # скоростной ✅ (minimax-m3 отдавал 404)
     "generator": "am/diffusiongemma-26b-a4b-it",  # генератор
 }
 
@@ -56,12 +57,45 @@ def _key() -> str:
     return ""
 
 
-def _proxy_socket():
-    """Подключить глобальный сокет к прокси Karing."""
-    import socks
+def _proxy_env() -> dict:
+    """Прокси-словарь для requests: socks5h через Karing, если жив."""
     import socket
-    socks.set_default_proxy(socks.SOCKS5, PROXY_HOST, PROXY_PORT)
-    socket.socket = socks.socksocket
+    try:
+        s = socket.create_connection((PROXY_HOST, PROXY_PORT), timeout=2)
+        s.close()
+        return {"http": f"socks5h://{PROXY_HOST}:{PROXY_PORT}",
+                "https": f"socks5h://{PROXY_HOST}:{PROXY_PORT}"}
+    except OSError:
+        return {}
+
+
+def _post(payload: dict, timeout: int = 60) -> dict:
+    """POST с авто-fallback: через Karing → напрямую. Возвращает json или бросает."""
+    import requests
+    key = _key()
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    proxies = _proxy_env()
+    last_err = None
+    for attempt in range(2):
+        try:
+            if proxies:
+                r = requests.post(API_URL, json=payload, headers=headers,
+                                  proxies=proxies, timeout=timeout)
+            else:
+                r = requests.post(API_URL, json=payload, headers=headers,
+                                  timeout=timeout)
+            if r.status_code == 200:
+                return r.json()
+            err = r.text[:120]
+            raise RuntimeError(f"HTTP {r.status_code} {err}")
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            # прокси умер — падаем на прямой запрос
+            if proxies:
+                proxies = {}
+            else:
+                time.sleep(2 * (attempt + 1))
+    raise last_err  # type: ignore[misc]
 
 
 def ask(
@@ -81,41 +115,25 @@ def ask(
     if not key:
         return "ERR: ANYMODEL_API_KEY не найден (нет .env)"
 
-    _proxy_socket()
-
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    body = json.dumps({
+    payload = {
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
-    }).encode()
-
-    import urllib.request
+    }
 
     last_err = ""
     for attempt in range(retries):
-        req = urllib.request.Request(API_URL, data=body, headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        })
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                data = json.loads(resp.read())
-                return data["choices"][0]["message"]["content"].strip()
-        except urllib.error.HTTPError as e:
-            msg = ""
-            try:
-                msg = json.loads(e.read()).get("error", {}).get("message", "")[:80]
-            except Exception:
-                pass
-            last_err = f"HTTP {e.code} {msg}"
-        except Exception as e:
-            last_err = str(e)[:80]
+            data = _post(payload)
+            return data["choices"][0]["message"]["content"].strip()
+        except Exception as e:  # noqa: BLE001
+            last_err = str(e)[:100]
         time.sleep(2 * (attempt + 1))
     return f"ERR: {last_err} (модель {model})"
 

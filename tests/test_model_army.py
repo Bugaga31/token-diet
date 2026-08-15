@@ -54,6 +54,20 @@ def test_army_verdict_structure():
     assert "prompt" in sig.parameters
 
 
+def test_fast_role_is_working_model():
+    """Урок 15.08: minimax-m3 отдавал 404 — fast должна указывать на живую модель."""
+    assert "minimax" not in ma.ROLES.values(), "minimax-m3 отдавал 404 — fast должна быть живой моделью"
+    assert "fast" in ma.ROLES
+
+
+def test_proxy_env_returns_socks_when_alive():
+    """Прокси-окружение: если Karing жив — socks5h, иначе пусто (fallback на прямой)."""
+    env = ma._proxy_env()
+    assert isinstance(env, dict)
+    for v in env.values():
+        assert v.startswith("socks5h://")
+
+
 # ── bootstrap: инструкция для любой нейронки ─────────────────────────
 
 def _bootstrap_text() -> str:
