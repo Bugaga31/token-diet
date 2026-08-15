@@ -333,6 +333,14 @@ def main(argv: list[str] | None = None) -> int:
     p_rules_run.add_argument("--event", default="{}", help="JSON события (ticker, price, change_pct...)")
     p_rules_run.add_argument("--dry-run", action="store_true", help="без побочных эффектов")
 
+    p_watch = sub.add_parser("watch", help="сторож рынка: цена -> правила докупки/продажи (см. -h)")
+    p_watch.add_argument("ticker", help="тикер (SNGSP)")
+    p_watch.add_argument("--rules", default=None, help="файл правил YAML")
+    p_watch.add_argument("--init", action="store_true", help="сгенерировать правила докупки и выйти")
+    p_watch.add_argument("--interval", type=int, default=300, help="сек между опросами")
+    p_watch.add_argument("--dry-run", action="store_true", help="не исполнять заявки")
+    p_watch.add_argument("--once", action="store_true", help="один опрос и выход")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
@@ -385,6 +393,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "rules":
         return _rules(args)
+    if args.cmd == "watch":
+        from token_diet.market_watcher import main as watch_main
+        return watch_main([args.ticker] + (["--init"] if args.init else [])
+                          + (["--rules", args.rules] if args.rules else [])
+                          + (["--dry-run"] if args.dry_run else [])
+                          + (["--once"] if args.once else [])
+                          + ["--interval", str(args.interval)])
     p.print_help()
     return 2
 

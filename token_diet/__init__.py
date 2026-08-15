@@ -813,6 +813,14 @@ from .workflow_engine import (
     parse_workflow,
     resolve_template,
 )
+from .market_watcher import (
+    change_vs_last,
+    feed_price_event,
+    init_rules,
+    is_market_open,
+    is_trading_day,
+    watch,
+)
 
 __all__ = [
     "__version__",
@@ -1297,6 +1305,10 @@ __all__ = [
     "canonical_json",
     "cron_matches",
     "evaluate_condition",
+    "init_rules",
+    "is_market_open",
     "is_private_ip",
+    "is_trading_day",
     "parse_workflow",
+    "watch",
 ]

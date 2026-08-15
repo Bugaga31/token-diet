@@ -86,7 +86,7 @@ RULES_PATH_DEFAULT = "~/token-diet-memory/rules.yaml"
 
 KNOWN_ACTIONS = {
     "send_message", "send_alert", "audit_log", "call_webhook",
-    "request_approval", "delay",
+    "request_approval", "delay", "place_order",
 }
 KNOWN_TRIGGERS = {
     "message_posted", "reaction_added", "schedule", "webhook",
@@ -715,6 +715,8 @@ class WorkflowEngine:
             return {"status": "suspended",
                     "approval_token": token,
                     "output": {"from": step.get("from"), "message": step.get("message")}}
+        if action == "place_order":
+            return self._place_order(step, ctx, step_outputs, dry_run)
         if action == "delay":
             try:
                 secs = parse_duration_secs(str(step.get("duration", "1s")))
@@ -724,6 +726,63 @@ class WorkflowEngine:
             time.sleep(secs)
             return {"status": "ok", "output": {"slept_secs": secs}}
         return {"status": "error", "output": {"error": f"неизвестное действие: {action}"}}
+
+    def _place_order(self, step: dict[str, Any], ctx: dict[str, Any],
+                     step_outputs: dict[str, Any], dry_run: bool) -> dict[str, Any]:
+        """Действие: купить/продать акции с лимитом суммы на сделку.
+
+        Безопасность (вранью/лишним тратам — нет):
+        - max_amount — жёсткий потолок на сделку в рублях;
+        - каждая сделка пишется в hash-chain (audit_log) — доказательство;
+        - без TinkoffInvest (нет токена) — честная ошибка, а не тишина.
+        """
+        ticker = resolve_template(str(step.get("ticker", "")), ctx, step_outputs).upper()
+        try:
+            shares = int(resolve_template(str(step.get("shares", 0)), ctx, step_outputs))
+        except ValueError:
+            return {"status": "error", "output": {"error": f"shares не число: {step.get('shares')}"}}
+        side = str(step.get("side", "buy")).lower()
+        if side not in ("buy", "sell"):
+            return {"status": "error", "output": {"error": f"side должен быть buy/sell: {side}"}}
+        if shares <= 0:
+            return {"status": "error", "output": {"error": "shares должно быть > 0"}}
+        max_amount = float(step.get("max_amount", 0) or 0)
+        if dry_run:
+            return {"status": "dry_run", "output": {
+                "action": "place_order", "ticker": ticker, "shares": shares,
+                "side": side, "max_amount": max_amount}}
+        try:
+            from token_diet.tinkoff_invest import TinkoffInvest
+            inv = TinkoffInvest()
+            if not inv.available:
+                return {"status": "error", "output": {
+                    "error": "TinkoffInvest недоступен: нет токена"}}
+            quote = inv.get_quote(ticker)
+            if quote is None:
+                return {"status": "error", "output": {"error": f"нет котировки {ticker}"}}
+            est = quote.price * shares
+            if max_amount and est > max_amount:
+                return {"status": "error", "output": {
+                    "error": f"лимит превышен: {est:.0f}₽ > {max_amount:.0f}₽ ({ticker} {shares}шт)"}}
+            result = inv.buy_shares(ticker, shares) if side == "buy" \
+                else inv.sell_shares(ticker, shares)
+            if result is None:
+                return {"status": "error", "output": {"error": f"заявка не прошла ({side} {ticker} {shares}шт)"}}
+            # доказательство в цепочке
+            try:
+                from token_diet.audit_chain import AuditChain
+                AuditChain().log(
+                    action="trade_executed",
+                    detail={"ticker": ticker, "side": side, "shares": shares,
+                            "price": quote.price, "est_amount": round(est, 2)},
+                    actor="workflow", object_id=f"{side}:{ticker}:{shares}")
+            except Exception:  # noqa: BLE001
+                pass
+            return {"status": "ok", "output": {"action": "place_order",
+                    "ticker": ticker, "side": side, "shares": shares,
+                    "price": quote.price, "est_amount": round(est, 2)}}
+        except Exception as ex:  # noqa: BLE001
+            return {"status": "error", "output": {"error": str(ex)}}
 
     def _webhook(self, step: dict[str, Any], ctx: dict[str, Any],
                  step_outputs: dict[str, Any]) -> dict[str, Any]:
