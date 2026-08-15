@@ -99,6 +99,11 @@ from .loss_router import (
     compress_with_routing,
     reduce_output,
 )
+from .compression_arsenal import (
+    compress_csv,
+    compress_json_schema,
+    make_document_toc,
+)
 from .optimization_runner import (
     OptimizationProposal,
     OptimizationReport,

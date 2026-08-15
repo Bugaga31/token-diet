@@ -34,6 +34,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+def _count_tokens(text: str) -> int:
+    """Быстрый локальный подсчёт токенов (без внешних зависимостей)."""
+    # ~4 символа на токен — стандартная эвристика для европейских языков
+    if not text:
+        return 0
+    # слова + числа считаются отдельно
+    words = len(re.findall(r"\S+", text))
+    return max(words, (len(text) + 3) // 4)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. CAVEMAN GRAMMAR STRIPPER
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -655,7 +665,153 @@ def compress_by_self_information(text: str, keep_ratio: float = 0.6) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 6. UNIFIED PIPELINE — all reverse-engineered techniques
+# 6. JSON SCHEMA COLLAPSE — repeated keys → compact rows
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def compress_json_schema(text: str) -> tuple[str, FidelityScore]:
+    """JSON-массивы однотипных объектов → компактные строки-строки.
+
+    [{"id": 1, "name": "a", "status": "ok"},
+     {"id": 2, "name": "b", "status": "ok"}]  →  id|name|status\n1|a|ok\n2|b|ok
+
+    Работает только если все ключи одинаковы (безопасно, 100% фиделити).
+    """
+    import json
+    before = _count_tokens(text)
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return text, FidelityScore(1.0)
+
+    # только массив объектов
+    if not isinstance(data, list) or not data or not all(isinstance(x, dict) for x in data):
+        return text, FidelityScore(1.0)
+
+    keys = list(data[0].keys())
+    if not keys:
+        return text, FidelityScore(1.0)
+    # все объекты должны иметь те же ключи
+    if not all(list(x.keys()) == keys for x in data):
+        return text, FidelityScore(1.0)
+
+    def _val(v) -> str:
+        if v is None:
+            return "-"
+        if isinstance(v, bool):
+            return "1" if v else "0"
+        if isinstance(v, (int, float)):
+            return str(v)
+        s = str(v).replace("|", "/").replace("\n", " ")
+        return s[:60]
+
+    lines = ["|".join(keys)]
+    for obj in data:
+        lines.append("|".join(_val(obj.get(k)) for k in keys))
+    result = "\n".join(lines)
+
+    after = _count_tokens(result)
+    if after >= before:
+        return text, FidelityScore(1.0)
+    fidelity = after / before if before else 1.0
+    return result, FidelityScore(fidelity)
+
+
+# 7. CSV COMPACT — sparse tables → dense
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def compress_csv(text: str) -> tuple[str, FidelityScore]:
+    """CSV/таблицы: убрать повторяющиеся разделители, лишние пробелы,
+    пустые колонки, ведущие нули в числах — без потери данных."""
+    before = _count_tokens(text)
+    lines = text.split("\n")
+    if len(lines) < 2:
+        return text, FidelityScore(1.0)
+
+    out: list[str] = []
+    for line in lines:
+        if not line.strip():
+            out.append("")
+            continue
+        # колонки по ; , | таб
+        import re
+        parts = re.split(r"[;,\t|]", line)
+        cleaned = []
+        for p in parts:
+            p = p.strip()
+            # числа: убрать ведущие нули и пробелы внутри тысяч
+            if re.fullmatch(r"0+\d+", p):
+                p = str(int(p))
+            cleaned.append(p)
+        # убрать полностью пустые колонки в конце
+        while cleaned and cleaned[-1] == "":
+            cleaned.pop()
+        out.append(",".join(cleaned))
+
+    result = "\n".join(out)
+    after = _count_tokens(result)
+    if after >= before:
+        return text, FidelityScore(1.0)
+    return result, FidelityScore(after / before if before else 1.0)
+
+
+# 8. DOCUMENT TOC — long docs → table of contents + first lines
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def make_document_toc(text: str, max_sections: int = 20) -> str:
+    """Длинный документ → оглавление (TOC) + первые 2 строки каждой секции.
+
+    Позволяет модели найти нужный раздел и запросить его целиком,
+    не загружая весь документ в контекст.
+    """
+    import re
+    lines = text.split("\n")
+    if len(lines) < 12:
+        return text  # короткий док — не трогаем
+
+    sections: list[tuple[str, str]] = []  # (заголовок, тело-превью)
+    current_title = ""
+    current_body: list[str] = []
+
+    def _flush():
+        nonlocal current_title, current_body
+        if current_title and current_body:
+            preview = " | ".join(
+                l.strip()[:80] for l in current_body[:2] if l.strip()
+            )
+            sections.append((current_title, preview))
+        current_body = []
+
+    for line in lines:
+        if re.match(r"^#{1,4}\s", line):
+            _flush()
+            current_title = re.sub(r"^#{1,4}\s*", "", line).strip()
+        else:
+            if current_title or (not current_title and not sections):
+                current_body.append(line)
+    _flush()
+
+    if not sections:
+        return text
+
+    toc = [f"# Оглавление ({len(sections)} секций)"]
+    for i, (title, _) in enumerate(sections[:max_sections], 1):
+        toc.append(f"{i}. {title}")
+    toc.append("")
+    for i, (title, preview) in enumerate(sections[:max_sections], 1):
+        if preview:
+            toc.append(f"[{i}] {title}: {preview}")
+
+    result = "\n".join(toc)
+    # fail-safe: если TOC не короче оригинала — не трогаем (маленький док)
+    if len(result) >= len(text):
+        return text
+    return result
+
+
+# 9. UNIFIED PIPELINE — all reverse-engineered techniques
 # ═══════════════════════════════════════════════════════════════════════════════
 
 

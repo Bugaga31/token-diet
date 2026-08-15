@@ -199,6 +199,7 @@ class OmniRouter:
         self.providers: list[Provider] = []
         for p in providers or DEFAULT_PROVIDERS:
             self.add(p)
+        self._empty_retried: set[str] = set()
 
     def add(self, spec: dict) -> Provider:
         p = Provider(**spec)
@@ -237,11 +238,26 @@ class OmniRouter:
                     strategy=strategy, fallbacks=fallbacks)
             try:
                 text = _call_model(provider, system, task, max_tokens, timeout)
-                if not text.strip() and fallbacks == 0:
-                    # холодный старт на CPU / обрезанный инференс — ретрай
-                    time.sleep(1.0)
-                    text = _call_model(provider, system, task,
-                                       max_tokens, timeout)
+                if not text.strip():
+                    # Пустой ответ — это НЕ успех (бывает у локального Ollama).
+                    # Ретрай один раз, затем fallback на следующую модель.
+                    if provider.name not in self._empty_retried:
+                        self._empty_retried.add(provider.name)
+                        time.sleep(0.8)
+                        text = _call_model(provider, system, task,
+                                           max_tokens, timeout)
+                    if not text.strip():
+                        tried.add(provider.name)
+                        fallbacks += 1
+                        last_err = f"{provider.name}: пустой ответ"
+                        if fallbacks >= len(self.providers):
+                            return SubAgentResult(
+                                task=task, provider="none", model="",
+                                summary="", ok=False,
+                                error=f"все модели пусты: {last_err}",
+                                strategy=strategy, fallbacks=fallbacks)
+                        time.sleep(0.4)
+                        continue
                 return SubAgentResult(
                     task=task, provider=provider.name, model=provider.model,
                     summary=text, tokens_approx=int(len(text) / 4),
