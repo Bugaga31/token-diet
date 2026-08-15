@@ -45,6 +45,17 @@ STATE = "/tmp/autopilot_state.json"
 # ═══════════════════════════════════
 
 
+def is_trading_day(dt=None) -> bool:
+    """Пн-Пт = торговый день. Сб/Вс — рынок закрыт, не сканируем.
+
+    Урок 15.08: в выходные автопилот долбил API впустую — это и была
+    одна из причин лагов компа. Теперь в Сб/Вс — сон до понедельника.
+    """
+    import datetime as _dt
+    dt = dt or _dt.datetime.now()
+    return dt.weekday() < 5  # 0=Пн ... 4=Пт
+
+
 def log(msg: str) -> None:
     line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
     print(line, flush=True)
@@ -250,6 +261,13 @@ def main() -> None:
 
     while True:
         try:
+            # Урок 15.08: в Сб/Вс рынок закрыт — не долбим API впустую.
+            # (Это была одна из причин лагов компа.) Спим до понедельника.
+            if not is_trading_day():
+                log("выходной — рынок закрыт, сплю до понедельника")
+                time.sleep(3600)  # проверяем день раз в час
+                continue
+
             if state.get("ticker"):
                 # Есть позиция → следим за стопом
                 if check_stop(inv, state) == "exit":
