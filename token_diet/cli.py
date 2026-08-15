@@ -321,6 +321,18 @@ def main(argv: list[str] | None = None) -> int:
     p_batch = sub.add_parser("batch", help="батчинг событий в 1 промпт + экономия токенов (из Buzz)")
     p_batch.add_argument("--demo", action="store_true", help="живая демонстрация")
 
+    p_rules = sub.add_parser("rules", help="YAML-правила автоматизации (из Buzz buzz-workflow)")
+    p_rules.add_argument("--rules", default=None, help="путь к файлу правил (по умолчанию ~/token-diet-memory/rules.yaml)")
+    rules_sub = p_rules.add_subparsers(dest="rules_cmd")
+    rules_sub.add_parser("list", help="список загруженных правил")
+    p_rules_ex = rules_sub.add_parser("example", help="сгенерировать пример правил")
+    p_rules_ex.add_argument("--path", default=None, help="куда сохранить")
+    p_rules_run = rules_sub.add_parser("run", help="подать событие в движок")
+    p_rules_run.add_argument("on", help="тип события: price_event / news_event / webhook / message_posted")
+    p_rules_run.add_argument("--rules", default=None, help="путь к файлу правил")
+    p_rules_run.add_argument("--event", default="{}", help="JSON события (ticker, price, change_pct...)")
+    p_rules_run.add_argument("--dry-run", action="store_true", help="без побочных эффектов")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
@@ -371,7 +383,57 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"10 событий, оверхед {overhead}т/промпт: "
                       f"экономия {est['saved_tokens']}т ({est['saved_percent']}%)")
         return 0
+    if args.cmd == "rules":
+        return _rules(args)
     p.print_help()
+    return 2
+
+
+def _rules(args) -> int:
+    """YAML-движок правил: list / example / run."""
+    from pathlib import Path
+    from token_diet.workflow_engine import WorkflowEngine
+    # --rules работает и до подкоманды, и на самой подкоманде (общий namespace)
+    eng = WorkflowEngine(Path(args.rules) if args.rules else None)
+    n = eng.load_rules()
+    if args.rules_cmd == "list" or args.rules_cmd is None:
+        if n == 0:
+            print("Правил не найдено. Сгенерируй пример: token-diet rules example")
+            print(f"  файл: {eng.rules_path}")
+        else:
+            print(f"Загружено правил: {n} (из {eng.rules_path})")
+            for wf in eng.workflows:
+                trig = (wf.get("trigger") or {}).get("on")
+                print(f"  • {wf.get('name')}  [{trig}]")
+        return 0
+    if args.rules_cmd == "example":
+        path = eng.save_example(Path(args.path) if args.path else None)
+        print(f"✓ Пример правил: {path}")
+        print("  Отредактируй под себя и запусти: token-diet rules run price_event")
+        return 0
+    if args.rules_cmd == "run":
+        import json as _json
+        try:
+            event = _json.loads(args.event)
+        except _json.JSONDecodeError:
+            print(f"bad --event JSON: {args.event}")
+            return 2
+        if n == 0:
+            print(f"Нет загруженных правил ({eng.rules_path}). Сначала: token-diet rules example")
+            return 1
+        results = eng.trigger(args.on, event, dry_run=args.dry_run)
+        if not results:
+            print(f"Событие '{args.on}' не сработало ни по одному правилу")
+            return 0
+        for r in results:
+            print(f"⚡ {r['workflow']} → {r['status']}")
+            for s in r.get("steps", []):
+                tag = s.get("status")
+                extra = s.get("output", {})
+                print(f"    [{tag}] {s['id']}")
+                if extra and tag not in ("ok", "dry_run"):
+                    print(f"        {extra}")
+        return 0
     return 2
 
 

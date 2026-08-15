@@ -802,6 +802,17 @@ from .event_batcher import (
     FlushBatch,
     QueuedEvent,
 )
+from .workflow_engine import (
+    KNOWN_ACTIONS as WORKFLOW_ACTIONS,
+    KNOWN_TRIGGERS as WORKFLOW_TRIGGERS,
+    WorkflowEngine,
+    cron_matches,
+    evaluate_condition,
+    is_private_ip,
+    parse_duration_secs,
+    parse_workflow,
+    resolve_template,
+)
 
 __all__ = [
     "__version__",
@@ -1282,5 +1293,10 @@ __all__ = [
     "EventBatcher",
     "FlushBatch",
     "QueuedEvent",
+    "WorkflowEngine",
     "canonical_json",
+    "cron_matches",
+    "evaluate_condition",
+    "is_private_ip",
+    "parse_workflow",
 ]
