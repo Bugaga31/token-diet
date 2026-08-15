@@ -166,6 +166,7 @@ KNOWN_FIGI: dict[str, str] = {
     "VTBR": None,  # ВТБ
     "MOEX": None,  # Мосбиржа
     "SNGS": None,  # Сургутнефтегаз
+    "SNGSP": "BBG004S681M2",  # Сургутнефтегаз-п (проверено: в портфеле)
     "TCSG": None,  # Т-Банк
 }
 KNOWN_FIGI = {k: v for k, v in KNOWN_FIGI.items() if v}
@@ -884,10 +885,14 @@ class TinkoffInvest:
         positions = self.get_portfolio() or []
         results = []
         for pos in positions:
-            if pos.ticker == "UNKNOWN" or pos.ticker.startswith("uid:"):
-                continue
+            ticker = pos.ticker
+            if ticker == "UNKNOWN" or ticker.startswith("uid:"):
+                # Пробуем дорезолвить FIGI -> тикер (SNGSP и др.)
+                ticker = figi_unknown(pos.figi)
+            if ticker == "UNKNOWN" or ticker.startswith("uid:"):
+                continue  # по-настоящему неизвестный инструмент — пропускаем
             try:
-                sig = self.get_signal(pos.ticker)
+                sig = self.get_signal(ticker)
                 if sig:
                     sig["quantity"] = pos.quantity
                     sig["avg_price"] = pos.avg_price

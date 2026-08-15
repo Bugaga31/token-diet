@@ -65,6 +65,7 @@ class TestTickers:
 
     def test_figi_unknown(self):
         assert figi_unknown("BBG004730N88") == "SBER"
+        assert figi_unknown("BBG004S681M2") == "SNGSP"  # Сургут-п (в портфеле)
         assert figi_unknown("XXXXXXX") == "UNKNOWN"
 
 
