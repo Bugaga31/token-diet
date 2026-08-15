@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.18.0"
+__version__ = "3.19.2"
 
 from .cache_breakpoints import (
     Breakpoint,

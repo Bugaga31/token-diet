@@ -221,6 +221,48 @@ def _scan() -> int:
     return 0
 
 
+# ── snapshot: мгновенный снимок рынка ────────────────────────────────────────
+
+def _snapshot(brief: bool) -> int:
+    """Быстрый снимок: геополитика + портфель + лучший кандидат. Без демонов."""
+    lines: list[str] = []
+    try:
+        from token_diet.geopolitics import market_context_block
+        lines.append(market_context_block())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from token_diet.invest_hub import InvestHub
+        hub = InvestHub()
+        if hasattr(hub, "portfolio_snapshot"):
+            snap = hub.portfolio_snapshot()
+            lines.append(str(snap))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from token_diet.live_scan import scan_market
+        best = None
+        for r in scan_market():
+            if best is None or r.score > best.score:
+                best = r
+        if best:
+            lines.append(f"\n🏆 Лучший кандидат: {best.ticker} {best.price:.1f} "
+                         f"({best.change_pct:+.2f}%) скор {best.score:.1f} "
+                         f"— {' '.join(best.signals)}")
+        else:
+            lines.append("\n🏆 Кандидатов нет — никто не растёт с объёмом.")
+    except Exception:  # noqa: BLE001
+        lines.append("\n⚠️ сканер недоступен")
+    text = "\n".join(lines)
+    if brief:
+        # одна строка: фон + кандидат
+        brief_line = " ".join(l for l in lines if "🏆" in l) or "кандидатов нет"
+        print(brief_line)
+        return 0
+    print(text)
+    return 0
+
+
 # ── главный парсер ────────────────────────────────────────────────────────────
 
 def main(argv: list[str] | None = None) -> int:
@@ -244,6 +286,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("self-test", help="быстрый офлайн-тест ядра")
     sub.add_parser("serve", help="прокси-сервер экономии токенов")
     sub.add_parser("setup", help="автоконфигурация под Claude Code/OpenCode/...")
+    p_boot = sub.add_parser("bootstrap", help="самонастройка любой ИИ по одной ссылке")
+    p_boot.add_argument("--link", action="store_true",
+                        help="показать готовую инструкцию-ссылку")
+
+    p_snap = sub.add_parser("snapshot", help="мгновенный снимок рынка и портфеля")
+    p_snap.add_argument("--brief", action="store_true",
+                        help="только одна строка: фон + лучший кандидат")
 
     p_panel = sub.add_parser("panel", help="пульт Рика: модули под задачу")
     p_panel.add_argument("query", nargs="*", default=[], help="что ищем (деньги, память, кризис...)")
@@ -271,6 +320,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "setup":
         from token_diet.auto_setup import main as setup_main
         return setup_main()
+    if args.cmd == "bootstrap":
+        from token_diet.bootstrap import generate, show_link
+        if args.link:
+            print(show_link())
+        else:
+            path = generate()
+            print(f"✓ BOOTSTRAP.md сгенерирован: {path}")
+            print("  Кинув этот файл (или его текст) любой ИИ, она сама настроится:")
+            print("  установит инструмент, загрузит память, узнает правила и команды.")
+            print("  token-diet bootstrap --link  # показать инструкцию")
+        return 0
+    if args.cmd == "snapshot":
+        return _snapshot(args.brief)
     if args.cmd == "panel":
         return _panel(" ".join(args.query) if args.query else None)
     if args.cmd == "scan":

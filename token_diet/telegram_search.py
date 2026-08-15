@@ -1,8 +1,8 @@
 """telegram_search — search Telegram channels/groups and save findings.
 
 The owner wanted a GOOD search across Telegram channels. This module:
-  1. Connects via the live session (telegram_live.session — Артём,
-     +PHONE_FROM_ENV), falling back to other local sessions.
+  1. Connects via the live session (telegram_live.session — владелец,
+     local number), falling back to other local sessions.
   2. Searches ALL dialogs (or a curated subset) for a query using
      Telegram's native search (fast, server-side).
   3. Collects the best messages (title, channel, date, text).

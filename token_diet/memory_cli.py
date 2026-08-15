@@ -127,17 +127,20 @@ def export_all(vault: ObsidianVault) -> str:
     videos, lessons — without carrying a private conversation cache.
     """
     out = Path("/media/ro/KINGSTON1/token-diet-memory/CONTEXT_ALL.md")
+    # Служебные файлы не экспортируем (иначе файл копирует сам себя).
+    skip = {"CONTEXT_ALL.md", "BOOTSTRAP.md"}
     parts = [
         "# token-diet MEMORY — полный контекст",
         "# Загрузи этот файл в любую ИИ-сессию, чтобы она помнила всё.",
-        f"# Экспортировано: {Path('/tmp/token-diet-clone').exists() and 'token-diet' or ''}",
         "",
     ]
     for f in vault.notes():
+        if f.name in skip:
+            continue
         text = f.read_text(encoding="utf-8")
         parts.append(f"\n\n---\n\n{text}")
     out.write_text("\n".join(parts), encoding="utf-8")
-    print(f"✓ Экспорт: {out} ({sum(len(p) for p in parts)} символов)")
+    print(f"✓ Экспорт: {out} ({sum(len(p) for p in parts)} символов, {len(vault.notes()) - len(skip)} заметок)")
     return str(out)
 
 
