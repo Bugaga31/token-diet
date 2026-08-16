@@ -86,22 +86,55 @@ REQUIRED_ARTIFACTS = [
 
 
 def build_artifact_zip(pkg_dir: str, out_zip: str) -> tuple[list[str], list[str]]:
-    """Package the whole library (excluding __pycache__) and verify contents.
+    """Package the library WHITELIST-only and verify contents.
+
+    Rule #7 (secrets never in releases): the artifact may contain ONLY the
+    paths below. Anything else (.env, .git, state/, memory/, zips, logs)
+    is structurally unable to enter the artifact.
 
     Returns (names_in_zip, missing_required_files). This is the "artifact is
     not empty" proof for the CI report.
     """
     import zipfile
 
-    root = os.path.dirname(os.path.abspath(pkg_dir))
-    with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-        for dirpath, dirnames, filenames in os.walk(pkg_dir):
-            dirnames[:] = [d for d in dirnames if d != "__pycache__"]
+    # whitelist: (подкаталог, суффик-фильтр или None = все файлы)
+    _ALLOWED = [
+        ("token_diet", ".py"),
+        ("tests", ".py"),
+        ("assets", None),
+    ]
+    _ALLOWED_ROOT_FILES = {
+        "README.md", "pyproject.toml", "ci_check.py", "LICENSE",
+        ".env.example", "run.sh",
+    }
+    _ALLOWED_ROOT_GLOBS = ("RELEASE_NOTES",)
+
+    pkg = os.path.abspath(pkg_dir)
+    picked: list[str] = []
+    for subdir, suffix in _ALLOWED:
+        base = os.path.join(pkg, subdir)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [d for d in dirnames
+                           if d not in ("__pycache__",) and not d.startswith(".")]
             for name in filenames:
-                if name.endswith(".pyc") or name.endswith(".tmp"):
+                if suffix and not name.endswith(suffix):
+                    continue
+                if name.endswith((".pyc", ".tmp")):
                     continue
                 full = os.path.join(dirpath, name)
-                zf.write(full, os.path.relpath(full, root))
+                picked.append(os.path.relpath(full, pkg))
+    for name in os.listdir(pkg):
+        full = os.path.join(pkg, name)
+        if not os.path.isfile(full):
+            continue
+        if name in _ALLOWED_ROOT_FILES or name.startswith(_ALLOWED_ROOT_GLOBS):
+            picked.append(name)
+
+    with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+        for rel in picked:
+            zf.write(os.path.join(pkg, rel), os.path.join("token-diet", rel))
 
     with zipfile.ZipFile(out_zip) as zf:
         names = zf.namelist()

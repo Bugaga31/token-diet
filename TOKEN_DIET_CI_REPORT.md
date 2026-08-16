@@ -50,6 +50,6 @@ case=ci_regression decision=PASS similarity=0.900 (1 samples)
 
 ## Packaging
 
-artifact: `/tmp/token-diet-clone/token-diet-lib.zip` (552 files)
+artifact: `/home/ro/token-diet/token-diet-lib.zip` (235 files)
 
 artifact complete: all promised modules + tests + README present.

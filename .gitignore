@@ -28,6 +28,15 @@ htmlcov/
 TELEGRAM_*
 *.tdata*
 *tdata.zip
+
+# ─────────────────────────────────────────────────────────────
+# 🔒 Build artifacts — the CI zip must never be tracked (rule #7:
+# artifacts can contain workspace state; rebuilt by ci_check.py).
+# ─────────────────────────────────────────────────────────────
+token-diet-lib.zip
+state/
+logs/
+memory/
 *_telethon.session
 *_telethon(1).session
 *.jsonl.bak

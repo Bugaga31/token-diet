@@ -27,6 +27,14 @@ if str(_TOKEN_DIET_DIR) not in sys.path:
 from token_diet.core import count_tokens, PriceTable
 from token_diet.green_calculator import GreenCalculator, GreenMetrics
 
+# PEP 563 (from __future__ import annotations): FastAPI резолвит аннотацию
+# `request: Request` в globals модуля, поэтому импорт обязан быть на уровне
+# модуля, а не внутри create_app() — иначе параметр трактуется как query.
+try:
+    from fastapi import Request  # noqa: F401
+except ImportError:
+    Request = None
+
 # ── Global stats ─────────────────────────────────────────────────────────────
 
 
@@ -171,7 +179,7 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
 
 def create_app():
     try:
-        from fastapi import FastAPI, Request
+        from fastapi import FastAPI
         from fastapi.responses import JSONResponse
         import httpx
     except ImportError:
