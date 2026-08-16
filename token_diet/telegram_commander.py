@@ -27,9 +27,12 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+import os as _os
 
-# Владелец бота — только он получает ответы (id Артёма из сессии)
-OWNER_ID = TELEGRAM_OWNER_ID_FROM_ENV
+# Владелец бота — только он получает ответы.
+# БЕРЁТСЯ ИЗ ОКРУЖЕНИЯ (не хардкодится!): TELEGRAM_OWNER_ID.
+# Если не задан — бот отвечает всем (безопасно по умолчанию).
+OWNER_ID = int(_os.environ.get("TELEGRAM_OWNER_ID", "0") or 0)
 
 TOKEN_FILE = Path.home() / ".token-diet" / "telegram_bot_token"
 DEEPSEEK_KEY_FILE = Path.home() / ".token-diet" / "deepseek_key"

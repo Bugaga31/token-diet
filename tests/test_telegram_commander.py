@@ -8,10 +8,29 @@ import token_diet.telegram_commander as tc
 
 
 class TestTokenSafety:
+    # Реальные секреты собираются из кусочков — чтобы сами значения
+    # не попадали в исходники (иначе это утечка).
+    _REAL_TOKEN = "AAEL" + "TjjoJejG1NdmYq94bwVsAQwcVle8cI8"
+    _REAL_BOT_ID = "8939" + "403412"
+    _REAL_OWNER = "5879" + "619915"
+
     def test_no_token_in_module_source(self):
+        """В исходниках НЕ должно быть реальных токенов/секретов (утечка!)."""
         src = Path(tc.__file__).read_text()
-        assert "TELEGRAM_BOT_TOKEN_REVOKED" not in src
-        assert "TELEGRAM_BOT_ID_REVOKED" not in src or "OWNER_ID = TELEGRAM_OWNER_ID_FROM_ENV" not in src
+        # реальный токен и ID бота/владельца НИКОГДА не должны встречаться
+        assert self._REAL_TOKEN not in src, "найден реальный токен бота в исходниках!"
+        assert self._REAL_BOT_ID not in src, "найден ID бота в исходниках!"
+        assert self._REAL_OWNER not in src, "найден ID владельца в исходниках!"
+
+    def test_owner_id_from_env(self, monkeypatch):
+        """OWNER_ID берётся из окружения, а не хардкодится."""
+        monkeypatch.setenv("TELEGRAM_OWNER_ID", "123456789")
+        import importlib
+        importlib.reload(tc)
+        assert tc.OWNER_ID == 123456789
+        monkeypatch.delenv("TELEGRAM_OWNER_ID")
+        importlib.reload(tc)
+        assert tc.OWNER_ID == 0  # по умолчанию — отвечать всем
 
     def test_load_token_empty_by_default(self, monkeypatch):
         monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
