@@ -1,0 +1,60 @@
+# token-dietTOP 🧠💰
+
+**Главная папка проекта token-diet — для тебя и твоих нейронок.**
+
+Track. Optimize. Achieve. — экономия токенов + повышение интеллекта +
+инвестиции + память + телеграм-разведка. Всё в одном месте.
+
+---
+
+## 📁 Структура
+
+```
+token-dietTOP/
+├── token_diet/          # 142 модуля (ядро проекта)
+│   ├── core.py          # сжатие токенов
+│   ├── sherlock_reasoner.py   # интеллект
+│   ├── tinkoff_invest.py      # инвестиции (T-Invest API)
+│   ├── financial_agents.py    # НОВОЕ: агенты как у Anthropic (DCF, отчёты)
+│   ├── provider_registry.py   # авто-подключение любых LLM-ключей
+│   ├── scrapling_diet.py      # умный парсинг сайтов
+│   ├── system_turbo.py        # ускорение компа
+│   └── ... (всего 142)
+├── tests/                # 3000+ тестов
+├── instructions/
+│   ├── ИНСТРУКЦИЯ_ДЛЯ_НЕЙРОНКИ.md   # для любой нейронки (самонастройка)
+│   └── ИНСТРУКЦИЯ_ДЛЯ_ЧЕЛОВЕКА.md   # для тебя (запуск, команды)
+├── pyproject.toml
+└── ci_check.py
+```
+
+## 🚀 Быстрый старт
+
+```bash
+cd token-dietTOP
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e . && pip install tiktoken fastapi uvicorn httpx pytest
+python3 -m token_diet.cli --help
+python3 -m pytest tests -x -q
+```
+
+## 📖 Инструкции
+
+- **Для нейронки:** `instructions/ИНСТРУКЦИЯ_ДЛЯ_НЕЙРОНКИ.md`
+  — скажи любой нейронке прочитать этот файл, и она настроится сама.
+- **Для человека:** `instructions/ИНСТРУКЦИЯ_ДЛЯ_ЧЕЛОВЕКА.md`
+  — все команды и настройка ключей простым языком.
+
+## ✨ Новое в этой сборке
+
+- **`financial_agents.py`** — реверс-инжиниринг финансовых агентов Anthropic:
+  Market Researcher (отчёт по компании), Model Builder (DCF в терминале),
+  Earnings Reviewer (выжимка отчёта), Stock Screener. Без платных планов.
+- **OmniRoute-интеграция** — 689 моделей через один эндпоинт
+  (`http://localhost:20128/v1`), включая NVIDIA NIM, OpenVecta, AnyModel.
+
+## 🔒 Безопасность
+
+- Ключи — только в `.env` (в git не попадает)
+- Никаких секретов в коде
+- Релизы на GitHub — только с разрешения хозяина

@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "token-diet"
+version = "3.25.0"
+description = "Track. Optimize. Achieve. — AI cost optimization for the planet and the people."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "token-diet", email = "hello@token-diet.dev"}]
+keywords = ["llm", "token-compression", "context-engineering", "prompt-caching", "agent-memory"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/Bugaga31/token-diet"
+Repository = "https://github.com/Bugaga31/token-diet"
+
+[project.scripts]
+token-diet = "token_diet.cli:main"
+token-diet-setup = "token_diet.auto_setup:main"
+
+[project.optional-dependencies]
+server = ["fastapi", "uvicorn", "httpx"]
+tinkoff = ["tinkoff-invest-python"]
+tiktoken = ["tiktoken"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.4"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["token_diet*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+# legacy single-file archive, intentionally minified
+extend-exclude = ["token_diet/original_full.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# long regex lines in loss_router/context_memory; style-only concern
+ignore = ["E501"]

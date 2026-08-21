@@ -1,0 +1,42 @@
+# ── Секреты и приватные данные (никогда в git) ──────────────────────────────
+.env
+.env.*
+TELEGRAM_*
+*.session
+*_telethon.session
+*.tdata*
+*.session-journal
+tdata/
+account.json
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Данные и состояние ───────────────────────────────────────────────────────
+logs/
+state/
+memory/
+*.db
+*.sqlite3
+
+# ── Редакторы и ОС ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
