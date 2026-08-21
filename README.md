@@ -20,7 +20,7 @@ token-dietTOP/
 │   ├── scrapling_diet.py      # умный парсинг сайтов
 │   ├── system_turbo.py        # ускорение компа
 │   └── ... (всего 142)
-├── tests/                # 3000+ тестов
+├── tests/                # 1300+ тестов (pytest tests -q — ~9 минут)
 ├── instructions/
 │   ├── ИНСТРУКЦИЯ_ДЛЯ_НЕЙРОНКИ.md   # для любой нейронки (самонастройка)
 │   └── ИНСТРУКЦИЯ_ДЛЯ_ЧЕЛОВЕКА.md   # для тебя (запуск, команды)
@@ -35,7 +35,7 @@ cd token-dietTOP
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e . && pip install tiktoken fastapi uvicorn httpx pytest
 python3 -m token_diet.cli --help
-python3 -m pytest tests -x -q
+python3 -m pytest tests -x -q           # 1300+ тестов
 ```
 
 ## 📖 Инструкции

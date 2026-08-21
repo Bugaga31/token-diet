@@ -6,7 +6,9 @@
     token-diet                 # обзор арсенала
     token-diet doctor          # проверить, что все модули живы
     token-diet self-test       # быстрый офлайн-тест ядра (без сети)
+    token-diet diet <текст>    # сжать текст: меньше токенов
     token-diet memo ...        # память Obsidian (все подкоманды memory_cli)
+    token-diet recall <запрос> # найти в памяти
     token-diet panel <запрос>  # пульт Рика: что есть на ситуацию
     token-diet scan            # живой сканер рынка (рост + объём + стакан)
     token-diet serve           # прокси-сервер экономии токенов
@@ -16,6 +18,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -223,14 +226,8 @@ def _scan() -> int:
 
 # ── snapshot: мгновенный снимок рынка ────────────────────────────────────────
 
-def _snapshot(brief: bool) -> int:
-    """Быстрый снимок: геополитика + портфель + лучший кандидат. Без демонов."""
-    lines: list[str] = []
-    try:
-        from token_diet.geopolitics import market_context_block
-        lines.append(market_context_block())
-    except Exception:  # noqa: BLE001
-        pass
+def _portfolio_block() -> str:
+    """Блок портфеля из T-Invest API (пустая строка, если недоступен)."""
     try:
         # Живой портфель из API (Д10: раньше snapshot его не показывал)
         from token_diet.tinkoff_invest import TinkoffInvest
@@ -252,12 +249,23 @@ def _snapshot(brief: bool) -> int:
                 total += val
                 pnl_s = f" ({pnl:+.2f}%)" if pnl is not None else ""
                 rows.append(f"  {t}: {q:g} шт @ {ap:.2f} = {val:,.0f} ₽{pnl_s}")
-            lines.append("\n📊 ПОРТФЕЛЬ:\n" + "\n".join(rows)
-                         + f"\n  ИТОГО: {total:,.0f} ₽")
-        else:
-            lines.append("\n📊 ПОРТФЕЛЬ: пусто")
+            return "\n📊 ПОРТФЕЛЬ:\n" + "\n".join(rows) + f"\n  ИТОГО: {total:,.0f} ₽"
+        return "\n📊 ПОРТФЕЛЬ: пусто"
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _snapshot(brief: bool) -> int:
+    """Быстрый снимок: геополитика + портфель + лучший кандидат. Без демонов."""
+    lines: list[str] = []
+    try:
+        from token_diet.geopolitics import market_context_block
+        lines.append(market_context_block())
     except Exception:  # noqa: BLE001
         pass
+    pf_block = _portfolio_block()
+    if pf_block:
+        lines.append(pf_block)
     try:
         from token_diet.live_scan import scan_market
         best = None
@@ -293,9 +301,13 @@ def main(argv: list[str] | None = None) -> int:
             "Примеры:\n"
             "  token-diet doctor          # здоровье всех модулей\n"
             "  token-diet self-test       # быстрый офлайн-тест\n"
+            "  token-diet diet <текст>    # сжать текст — экономия токенов\n"
             "  token-diet memo remember 'урок: ...'\n"
+            "  token-diet recall 'полюс'  # найти в памяти\n"
+            "  token-diet portfolio       # живой портфель T-Invest\n"
             "  token-diet panel деньги    # что есть на «деньги»\n"
             "  token-diet scan            # живой сканер рынка\n"
+            "  token-diet eyes 'что на экране?'  # зрение через OmniRoute\n"
             "  token-diet serve           # прокси экономии токенов\n"
         ),
     )
@@ -383,13 +395,67 @@ def main(argv: list[str] | None = None) -> int:
     p_watch.add_argument("--dry-run", action="store_true", help="не исполнять заявки")
     p_watch.add_argument("--once", action="store_true", help="один опрос и выход")
 
+    # ── алиасы из инструкций: diet / recall / portfolio / status / eyes / server ──
+    p_diet = sub.add_parser("diet", help="сжать текст: меньше токенов, тот же смысл")
+    p_diet.add_argument("text", nargs="+", help="текст для сжатия")
+    p_diet.add_argument("--aggressive", action="store_true", help="режим сильнее (допустимы потери)")
+
+    p_recall = sub.add_parser("recall", help="найти в памяти Obsidian")
+    p_recall.add_argument("query", nargs="+", help="поисковый запрос")
+
+    sub.add_parser("portfolio", help="портфель из T-Invest API (живые позиции)")
+
+    sub.add_parser("status", help="статус всего: фон + портфель + лучший кандидат (alias snapshot)")
+
+    p_eyes = sub.add_parser("eyes", help="глаза: вопрос vision-модели про экран или картинку")
+    p_eyes.add_argument("question", nargs="?", default="Опиши кратко, что сейчас на экране.",
+                        help="что спросить (по умолчанию — описать экран)")
+    p_eyes.add_argument("--image", default=None, help="путь к изображению (по умолчанию скриншот экрана)")
+    p_eyes.add_argument("--model", default=None, help="модель роутера (например agentrouter/claude-opus-5)")
+
+    sub.add_parser("server", help="alias для serve: прокси-сервер экономии токенов")
+
+    p_batch = sub.add_parser("batch", help="батчинг событий: меньше промптов — меньше токенов")
+    p_batch.add_argument("--demo", action="store_true", help="наглядный демо-прогон")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
         from token_diet.rick_panel import panel_block
         print(panel_block())
-        print("\nКоманды: doctor | self-test | serve | setup | panel <что> | scan | memo ...")
+        print("\nКоманды: doctor | self-test | diet <текст> | serve | portfolio | scan | memo ... | eyes <вопрос>")
         return 0
+
+    if args.cmd == "diet":
+        from token_diet.loss_router import compress_with_routing
+        text = " ".join(args.text)
+        out, before, after = compress_with_routing(text, aggressive=args.aggressive)
+        saved = max(0, before - after)
+        pct = (saved / before * 100) if before else 0.0
+        print(out)
+        print(f"\n[диета] {before} → {after} токенов (−{pct:.1f}%)"
+              + ("  [агрессивно]" if args.aggressive else ""))
+        return 0
+    if args.cmd == "recall":
+        from token_diet.memory_cli import main as memo_main
+        return memo_main(["recall", " ".join(args.query)])
+    if args.cmd == "portfolio":
+        block = _portfolio_block()
+        print(block or "📊 Портфель недоступен: нет TINKOFF_TOKEN или сети (см. .env)")
+        return 0 if block else 1
+    if args.cmd == "status":
+        return _snapshot(False)
+    if args.cmd == "eyes":
+        if args.image:
+            from token_diet.omni_eyes import see_image
+            print(see_image(args.image, question=args.question, model=args.model))
+        else:
+            from token_diet.omni_eyes import see
+            print(see(args.question, model=args.model))
+        return 0
+    if args.cmd == "server":
+        from token_diet.server import main as serve_main
+        return serve_main()
 
     if args.cmd == "doctor":
         return _doctor()
