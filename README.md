@@ -11,22 +11,36 @@ Track. Optimize. Achieve. — экономия токенов + повышени
 
 ```
 token-dietTOP/
-├── token_diet/          # 142 модуля (ядро проекта)
+├── token_diet/          # 148 модулей (ядро проекта)
 │   ├── core.py          # сжатие токенов
 │   ├── sherlock_reasoner.py   # интеллект
+│   ├── self_belief.py         # заслуженная уверенность (без slop)
+│   ├── claim_check.py         # аудит заявлений и цифр
+│   ├── factory_droid.py       # дроиды Factory AI (0 LLM)
 │   ├── tinkoff_invest.py      # инвестиции (T-Invest API)
-│   ├── financial_agents.py    # НОВОЕ: агенты как у Anthropic (DCF, отчёты)
+│   ├── financial_agents.py    # агенты как у Anthropic (DCF, отчёты)
 │   ├── provider_registry.py   # авто-подключение любых LLM-ключей
 │   ├── scrapling_diet.py      # умный парсинг сайтов
 │   ├── system_turbo.py        # ускорение компа
-│   └── ... (всего 142)
-├── tests/                # 1300+ тестов (pytest tests -q — ~9 минут)
-├── instructions/
-│   ├── ИНСТРУКЦИЯ_ДЛЯ_НЕЙРОНКИ.md   # для любой нейронки (самонастройка)
-│   └── ИНСТРУКЦИЯ_ДЛЯ_ЧЕЛОВЕКА.md   # для тебя (запуск, команды)
-├── pyproject.toml
-└── ci_check.py
+│   └── ... (всего 148)
+├── tests/                # 1400+ тестов (pytest tests -q)
+├── memory/               # Obsidian-память (в git не попадает)
+├── token-diet-library/   # библиотека знаний: книги, дайджесты (локально)
+├── skills/               # скиллы: caveman, nodumb, changelog-discipline...
+├── docs/                 # release notes + манифест слияния проектов
+└── instructions/
+    ├── ИНСТРУКЦИЯ_ДЛЯ_НЕЙРОНКИ.md   # для любой нейронки (самонастройка)
+    └── ИНСТРУКЦИЯ_ДЛЯ_ЧЕЛОВЕКА.md   # для тебя (запуск, команды)
 ```
+
+## 🔀 Один проект вместо пяти
+
+Эта папка — слияние всех копий проекта (манифест: `docs/MERGE_MANIFEST.md`):
+из `~/token-diet` перенесены `self_belief`/`claim_check`, из
+`~/token-diet-project` — `factory_droid`, скиллы и release notes,
+из `~/token-diet-memory` — всё хранилище памяти (107 заметок),
+из `~/token-diet-library` — база знаний. Старые копии в домашней папке
+можно удалить (сначала проверь, что всё на месте).
 
 ## 🚀 Быстрый старт
 

@@ -418,6 +418,22 @@ def main(argv: list[str] | None = None) -> int:
     p_batch = sub.add_parser("batch", help="батчинг событий: меньше промптов — меньше токенов")
     p_batch.add_argument("--demo", action="store_true", help="наглядный демо-прогон")
 
+    p_droid = sub.add_parser("droid", help="Factory-дроиды: delegate/ask/knowledge/status (0 LLM)")
+    p_droid.add_argument("action", nargs="?", default=None,
+                         help="status (по умолчанию) | knowledge | delegate 'задача' | ask 'задача'. "
+                              "Если первое слово не команда — считается задачей")
+    p_droid.add_argument("task", nargs="*", help="задача для delegate/ask")
+    p_droid.add_argument("--repo", default=None, help="корень репозитория (по умолчанию cwd)")
+    p_droid.add_argument("--role", default=None,
+                         choices=["code", "review", "test", "docs", "knowledge"],
+                         help="форсировать роль дроида (по умолчанию — авто)")
+    p_droid.add_argument("--omni", action="store_true", help="ask: живая модель через OmniRoute")
+
+    p_belief = sub.add_parser("belief", help="самоуверенность по правилам: чистит извинения, "
+                                             "убирает хедж только там, где есть доказательство")
+    p_belief.add_argument("text", nargs="+", help="текст ответа для калибровки тона")
+    p_belief.add_argument("--prompt", action="store_true", help="напечатать системный промпт уверенности")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
@@ -511,6 +527,61 @@ def main(argv: list[str] | None = None) -> int:
                 est = EventBatcher.estimate_savings(10, overhead)
                 print(f"10 событий, оверхед {overhead}т/промпт: "
                       f"экономия {est['saved_tokens']}т ({est['saved_percent']}%)")
+        return 0
+    if args.cmd == "belief":
+        from token_diet.self_belief import belief_prompt, earned_confidence
+        if args.prompt:
+            print(belief_prompt())
+            return 0
+        text = " ".join(args.text)
+        verdict = earned_confidence(text)
+        print(verdict.text.strip() or "(пусто)")
+        label = {"firm": "твёрдо", "firm_with_caveat": "твёрдо-с-оговоркой",
+                 "needs_proof": "нужна проверка"}.get(verdict.tone, verdict.tone)
+        print(f"\n[belief] тон: {label} · доказательств: {verdict.evidence_count} "
+              f"· хеджей снято: {verdict.hedges_removed} "
+              f"· извинений вычищено: {verdict.apologies_removed}")
+        if verdict.tone == "needs_proof":
+            print("         доказательств нет — хедж оставлен (это честность, не слабость)")
+        return 0
+    if args.cmd == "droid":
+        import json as _json
+        import os as _os
+        from token_diet.factory_droid import (
+            Coordinator, droid_status_block)
+        if args.action == "status" and not args.task:
+            print(droid_status_block())
+            return 0
+        if args.action == "knowledge":
+            repo = args.repo or _os.getcwd()
+            print(Coordinator(repo).knowledge_block())
+            return 0
+        task_parts = list(args.task)
+        if args.action not in (None, "status", "knowledge", "delegate", "ask"):
+            task_parts.insert(0, args.action)  # первое слово — задача, не команда
+            args.action = None
+        task = " ".join(task_parts)
+        if not task:
+            print("нужна задача: token-diet droid delegate 'напиши функцию X'")
+            return 1
+        c = Coordinator(args.repo or _os.getcwd())
+        if args.action == "ask":
+            print(c.ask_droid(task, args.role, omni=args.omni))
+            return 0
+        dec = c.delegate(task, args.role)  # delegate и быстрый режим без action
+        if dec["mode"] == "ask":
+            print("🤔 Нужно уточнение:")
+            for q in dec["questions"]:
+                print(f"   - {q}")
+            return 0
+        print(f"🎯 {dec['droid']} ({dec['role']})")
+        print("   план:")
+        for s in dec["plan"]:
+            print(f"     • {s}")
+        for h in dec["handoffs"]:
+            print(f"   хендофф: {h['from']} → {h['to']} ({h['artifact']})")
+        if args.action == "delegate":
+            print(_json.dumps(dec, ensure_ascii=False, indent=1))
         return 0
     if args.cmd == "rules":
         return _rules(args)
