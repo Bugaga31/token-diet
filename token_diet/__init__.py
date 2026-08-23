@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.26.0"
+__version__ = "3.27.0"
 
 __all__ = [
     "__version__",

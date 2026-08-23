@@ -43,8 +43,16 @@ token-diet diet "Refund policy: refunds within 14 days, RMA required. Shipping f
 token-diet think "Как сжать промпт на 50%?" --haiku
 # → 3 угла → синтез → 💎 твёрдо + 🍃 хайку
 
+# доки-тесты (каждый ``` — тест)
+token-diet docs
+# → 📚 DocGuardian: 12 блоков — ok:8 fail:0
+
+# самолечение
+token-diet heal
+# → 🔧 AutoHeal: проверка doctor → следующий приём
+
 # уверенность
-token-diet belief "проверил token_diet/__init__.py:5 версия 3.26.0"
+token-diet belief "проверил token_diet/__init__.py:5 версия 3.27.0"
 # → [belief] тон: твёрдо · доказательств: 2
 
 # память
@@ -76,4 +84,4 @@ python3 ci_check.py                                # → CI RESULT: PASS
 
 Всё. Ты включён. Дальше — изобретай язык вместо сжатия: `§0` ждёт.
 
-*v3.26.0, 2026-08-23*
+*v3.27.0, 2026-08-23*
