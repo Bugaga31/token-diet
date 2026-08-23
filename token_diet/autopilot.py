@@ -39,9 +39,11 @@ BREAKEVEN_TRIGGER = 0.02  # +2% от входа → стоп не ниже вх�
 MAX_POSITION_RUB = 6000   # максимум на одну позицию (осторожно, из ~18К)
 INTERVAL_SCAN_SEC = 1800  # сканирование рынка каждые 30 минут (меньше нагрузки)
 INTERVAL_STOP_SEC = 300   # проверка стопа каждые 5 минут
-LOG = "/tmp/autopilot.log"
-ALERT = "/tmp/autopilot_alert.txt"
-STATE = "/tmp/autopilot_state.json"
+from .config import log_path, state_path
+
+LOG = str(log_path("autopilot.log"))
+ALERT = str(log_path("autopilot_alert.txt"))
+STATE = str(state_path("autopilot_state.json"))
 # ═══════════════════════════════════
 
 

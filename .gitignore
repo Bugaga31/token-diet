@@ -1,51 +1,50 @@
-__pycache__/
-*.pyc
-*.pyo
-.pytest_cache/
-*.egg-info/
-dist/
-build/
-.venv/
-venv/
-.graphvenv/
-*.session
-.DS_Store
-*.log
-.coverage
-htmlcov/
-
-# ─────────────────────────────────────────────────────────────
-# 🔒 Telegram credentials & sessions — NEVER commit these.
-# A .session file or TELEGRAM_SESSION_STRING grants full access
-# to a Telegram account. These patterns must stay ignored forever.
-# ─────────────────────────────────────────────────────────────
+# ── Секреты и приватные данные (никогда в git) ──────────────────────────────
 .env
 .env.*
-!.env.example
+TELEGRAM_*
 *.session
 *_telethon.session
-*session*.session
-TELEGRAM_*
 *.tdata*
-*tdata.zip
+*.session-journal
+tdata/
+account.json
 
-# ─────────────────────────────────────────────────────────────
-# 🔒 Build artifacts — the CI zip must never be tracked (rule #7:
-# artifacts can contain workspace state; rebuilt by ci_check.py).
-# ─────────────────────────────────────────────────────────────
-token-diet-lib.zip
-state/
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Данные и состояние ───────────────────────────────────────────────────────
 logs/
+state/
 memory/
-*_telethon.session
-*_telethon(1).session
-*.jsonl.bak
-incoming_feed.jsonl
-aliases.json
-.telegram-mcp/
-mcp_errors.log
+*.db
+*.sqlite3
 
-# Tinkoff Invest API token (never commit!)
-.tinkoff/
-*.token
-~/.sudo_pass
+# библиотека знаний: сырые книги/дайджесты — локальные данные, не для GitHub
+token-diet-library/
+
+# ── Артефакты CI (генерируются локально, в git не нужны) ─────────────────────
+TOKEN_DIET_CI_REPORT.md
+token-diet-lib.zip
+*.zip
+
+# ── Редакторы и ОС ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

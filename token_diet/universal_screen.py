@@ -169,6 +169,8 @@ class DesktopScreen:
             pil = pil.resize((int(w * scale), int(h * scale)), Image.BILINEAR)
             w, h = pil.size
 
+        if pil.mode != "RGB":
+            pil = pil.convert("RGB")
         buf = io.BytesIO()
         pil.save(buf, format="JPEG", quality=quality, optimize=True)
         img_bytes = buf.getvalue()
@@ -184,7 +186,8 @@ class DesktopScreen:
 
     def _capture_import(self, quality: int, scale: float) -> ScreenFrame:
         """Fallback: ImageMagick import."""
-        path = "/tmp/desktop_screen.png"
+        from .config import log_path
+        path = str(log_path("desktop_screen.png"))
         env = {**os.environ, "DISPLAY": self.display}
         subprocess.run(
             ["import", "-window", "root", path],
@@ -195,6 +198,8 @@ class DesktopScreen:
         if scale != 1.0:
             pil = pil.resize((int(w * scale), int(h * scale)), Image.BILINEAR)
             w, h = pil.size
+        if pil.mode != "RGB":
+            pil = pil.convert("RGB")
         buf = io.BytesIO()
         pil.save(buf, format="JPEG", quality=quality, optimize=True)
         img_bytes = buf.getvalue()
@@ -385,6 +390,8 @@ class PhoneScreen:
             if scale != 1.0:
                 pil = pil.resize((int(w * scale), int(h * scale)), Image.BILINEAR)
                 w, h = pil.size
+            if pil.mode != "RGB":
+                pil = pil.convert("RGB")
             buf = io.BytesIO()
             pil.save(buf, format="JPEG", quality=quality, optimize=True)
             img_bytes = buf.getvalue()

@@ -5,7 +5,7 @@ Usage:
     python -m token_diet.memory_cli recall "полюс продавать"
     python -m token_diet.memory_cli path
 
-The vault lives on the external Kingston disk (/media/ro/KINGSTON1/token-diet-memory)
+The vault lives on the internal disk (TD_HOME/memory, by default ~/token-diet-memory)
 so long-term memory does NOT occupy conversation cache. Falls back to
 ~/token-diet-memory if the disk is not mounted.
 """
@@ -19,11 +19,12 @@ import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from .config import TD_VAULT
 from .obsidian_vault import ObsidianVault
 
 # Внешний диск, если смонтирован; иначе локальный fallback
 VAULT_CANDIDATES = [
-    Path("/media/ro/KINGSTON1/token-diet-memory"),
+    TD_VAULT,  # единый источник (env TD_VAULT → TD_HOME/memory)
     Path("/mnt/flash1tb/token-diet-memory"),
     Path("~/token-diet-memory").expanduser(),
 ]
@@ -126,7 +127,7 @@ def export_all(vault: ObsidianVault) -> str:
     the file and 'remember everything' — goals, rules, portfolio, books,
     videos, lessons — without carrying a private conversation cache.
     """
-    out = Path("/media/ro/KINGSTON1/token-diet-memory/CONTEXT_ALL.md")
+    out = TD_VAULT / "CONTEXT_ALL.md"
     # Служебные файлы не экспортируем (иначе файл копирует сам себя).
     skip = {"CONTEXT_ALL.md", "BOOTSTRAP.md"}
     parts = [

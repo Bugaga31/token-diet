@@ -27,15 +27,20 @@ if str(_TOKEN_DIET_DIR) not in sys.path:
 from token_diet.core import count_tokens, PriceTable
 from token_diet.green_calculator import GreenCalculator, GreenMetrics
 
-# PEP 563 (from __future__ import annotations): FastAPI резолвит аннотацию
-# `request: Request` в globals модуля, поэтому импорт обязан быть на уровне
-# модуля, а не внутри create_app() — иначе параметр трактуется как query.
-try:
-    from fastapi import Request  # noqa: F401
-except ImportError:
-    Request = None
+
+def _version() -> str:
+    """Версия из одного места (Д9): __init__ → сюда, не хардкод."""
+    try:
+        from token_diet import __version__
+        return __version__
+    except Exception:  # noqa: BLE001
+        return "dev"
 
 # ── Global stats ─────────────────────────────────────────────────────────────
+# УРОК 16.08 (Д8/Д13): статистика персистентна — переживает рестарт
+# (state/proxy_stats.json), /health честно различает «нет апстрима».
+
+_STATS_FILE = None  # set in create_app (зависит от config)
 
 
 @dataclass
@@ -46,11 +51,39 @@ class ServerStats:
     green: GreenMetrics = field(default_factory=GreenMetrics)
     uptime_start: float = field(default_factory=time.time)
 
+    def _load(self, stats_file: Path | None) -> None:
+        """Догрузить накопленное с прошлых запусков (persist)."""
+        if not stats_file or not stats_file.exists():
+            return
+        try:
+            d = json.loads(stats_file.read_text(encoding="utf-8"))
+            self.requests = int(d.get("requests", 0))
+            self.tokens_saved = int(d.get("tokens_saved", 0))
+            self.dollars_saved = float(d.get("dollars_saved", 0.0))
+            self.green.kg_co2_saved = float(d.get("co2_kg", 0.0))
+            self.green.liters_water_saved = float(d.get("water_liters", 0.0))
+        except (OSError, ValueError):
+            pass
+
+    def _save(self, stats_file: Path | None) -> None:
+        if not stats_file:
+            return
+        try:
+            stats_file.parent.mkdir(parents=True, exist_ok=True)
+            stats_file.write_text(
+                json.dumps(self.snapshot(), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
+
     def add_savings(self, tokens: int, cost: float) -> None:
         self.requests += 1
         self.tokens_saved += tokens
         self.dollars_saved += cost
         self.green = self.green + GreenCalculator().measure(tokens)
+        if _STATS_FILE is not None:
+            self._save(_STATS_FILE)
 
     def snapshot(self) -> dict:
         return {
@@ -179,22 +212,34 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
 
 def create_app():
     try:
-        from fastapi import FastAPI
+        from fastapi import FastAPI, Request
         from fastapi.responses import JSONResponse
         import httpx
     except ImportError:
         print("pip install fastapi uvicorn httpx")
         sys.exit(1)
 
-    app = FastAPI(title="token-diet", version="2.5.9")
+    app = FastAPI(title="token-diet", version=_version())
 
     UPSTREAM_URL = os.environ.get("UPSTREAM_URL", "")
     UPSTREAM_KEY = os.environ.get("UPSTREAM_KEY", "")
     PROXY_ENABLED = bool(UPSTREAM_URL)
 
+    # персистентная статистика (Д8/Д13): state/proxy_stats.json
+    global _STATS_FILE
+    from .config import state_path
+    _STATS_FILE = state_path("proxy_stats.json")
+    _stats._load(_STATS_FILE)
+
     @app.get("/health")
     async def health():
-        return {"status": "ok", "proxy": PROXY_ENABLED}
+        # честно: proxy:false с причиной, а не молча (Д8)
+        return {
+            "status": "ok",
+            "proxy": PROXY_ENABLED,
+            "upstream": "ok" if PROXY_ENABLED else "missing",
+            "stats": _stats.snapshot(),
+        }
 
     @app.get("/v1/stats")
     async def stats():

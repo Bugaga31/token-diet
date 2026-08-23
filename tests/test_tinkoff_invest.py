@@ -115,3 +115,27 @@ class TestStatus:
         assert "known_tickers" in s
         # Must NEVER leak the token value
         assert "secret" not in str(s)
+
+
+class TestStopOrderConfirmMargin:
+    """УРОК 16.08: без confirmMarginTrade API отвечает 30240."""
+
+    def test_post_stop_order_sends_confirm_margin(self, monkeypatch):
+        import token_diet.tinkoff_invest as ti
+        captured = {}
+
+        def fake_rpc(self, name, body):
+            captured["body"] = body
+            return {"stopOrderId": "test-id", "status": "ok"}
+
+        monkeypatch.setattr(ti.TinkoffInvest, "_rpc", fake_rpc)
+        tink = TinkoffInvest(token="fake-token")
+        monkeypatch.setattr(tink, "available", True)
+        monkeypatch.setattr(tink, "find_figi", lambda ticker: "BBG004S681M2")
+        monkeypatch.setattr(tink, "_account_id", lambda: "acc-1")
+        r = tink.post_stop_order("SNGSP", quantity=200, stop_price=39.5,
+                                 direction="sell", figi="BBG004S681M2")
+        assert r == {"stop_order_id": "test-id", "status": "ok"}
+        assert captured["body"].get("confirmMarginTrade") is True
+        assert captured["body"].get("stop_price") == {"units": 39, "nano": 500000000}
+        assert captured["body"].get("quantity") == 200

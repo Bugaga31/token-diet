@@ -20,7 +20,7 @@ def _snap(price, gold=None, news=None):
 
 def test_guard_config_defaults():
     cfg = GuardConfig()
-    assert cfg.ticker == "PLZL"
+    assert cfg.ticker == "SNGSP"  # УРОК 16.08: сторож переведён с PLZL на SNGSP
     assert cfg.target > cfg.entry  # цель выше входа
     assert cfg.stop < cfg.entry  # стоп ниже входа
 
@@ -37,12 +37,18 @@ def test_price_below_stop():
 
 def test_gold_below_floor():
     cfg = GuardConfig()
-    assert _evaluate_status(_snap(price=cfg.entry + 5, gold=cfg.gold_floor - 100), cfg) == "GOLD_BREACH"
+    # gold_floor=0.0 у SNGSP: золото не драйвер → GOLD_BREACH невозможен
+    if cfg.gold_floor <= 0:
+        assert _evaluate_status(_snap(price=cfg.entry + 5, gold=0.0), cfg) != "GOLD_BREACH"
+    else:
+        assert _evaluate_status(_snap(price=cfg.entry + 5, gold=cfg.gold_floor - 100), cfg) == "GOLD_BREACH"
 
 
 def test_below_red_line():
     cfg = GuardConfig()
-    assert _evaluate_status(_snap(price=cfg.red_line - 1, gold=cfg.gold_floor + 50), cfg) == "BELOW_RED"
+    # цена между стопом и красной чертой (НЕ равна стопу!)
+    mid = (cfg.stop + cfg.red_line) / 2
+    assert _evaluate_status(_snap(price=mid, gold=cfg.gold_floor + 50), cfg) == "BELOW_RED"
 
 
 def test_target_hit():
@@ -52,7 +58,9 @@ def test_target_hit():
 
 def test_green_at_entry():
     cfg = GuardConfig()
-    assert _evaluate_status(_snap(price=cfg.entry + 5, gold=cfg.gold_floor + 50), cfg) == "GREEN"
+    # между входом и целью (entry+1 не должен перевалить за target)
+    price = min(cfg.entry + 1, (cfg.entry + cfg.target) / 2)
+    assert _evaluate_status(_snap(price=price, gold=cfg.gold_floor + 50), cfg) == "GREEN"
 
 
 def test_hold_below_entry():

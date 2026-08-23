@@ -12,22 +12,29 @@
 from __future__ import annotations
 
 import datetime as _dt
+import os
 import subprocess as _sp
 from pathlib import Path
 
-VAULT_DIR = Path("/media/ro/KINGSTON1/token-diet-memory")
+from .config import TD_HOME, TD_VAULT
+
+VAULT_DIR = TD_VAULT
 BOOTSTRAP = VAULT_DIR / "BOOTSTRAP.md"
 
 
 def _git_remote() -> str:
     try:
-        out = _sp.run(
-            ["git", "-C", "/tmp/token-diet-clone", "remote", "get-url", "origin"],
-            capture_output=True, text=True, timeout=5,
-        ).stdout.strip()
-        return out or "https://github.com/Bugaga31/token-diet"
+        # ищем git-корень от TD_HOME (не хардкодим /tmp/token-diet-clone)
+        for start in (TD_HOME, Path.cwd(), Path.home()):
+            out = _sp.run(
+                ["git", "-C", str(start), "remote", "get-url", "origin"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout.strip()
+            if out:
+                return out
+        return os.environ.get("TD_GIT_REMOTE", "https://github.com/Bugaga31/token-diet")
     except Exception:  # noqa: BLE001
-        return "https://github.com/Bugaga31/token-diet"
+        return os.environ.get("TD_GIT_REMOTE", "https://github.com/Bugaga31/token-diet")
 
 
 def _vault_size() -> int:

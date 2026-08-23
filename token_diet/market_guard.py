@@ -43,24 +43,28 @@ except Exception:  # pragma: no cover
     from memory_cli import vault_path
     from obsidian_vault import ObsidianVault
 
-PLZL_FIGI = "BBG000R607Y3"
 GOLD_API = "https://api.gold-api.com/price/XAU"
 
-ALERT_FILE = Path("/tmp/market_guard_alert.txt")
-LOG_FILE = Path("/tmp/market_guard.log")
+try:
+    from .config import log_path
+except Exception:  # pragma: no cover
+    from config import log_path
+
+ALERT_FILE = log_path("market_guard_alert.txt")
+LOG_FILE = log_path("market_guard.log")
 
 # ── Уровни позиции (можно менять) ─────────────────────────────────────────
 @dataclass
 class GuardConfig:
-    entry: float = 1339.6          # цена входа
-    stop: float = 1290.0           # жёсткий стоп
-    floor: float = 1292.0          # дно лестницы покупок
-    red_line: float = 1305.0       # красная черта
-    target: float = 1400.0         # цель генерала
-    gold_floor: float = 4350.0     # золото ниже = тезис шатается
-    figi: str = PLZL_FIGI
-    ticker: str = "PLZL"
-    portfolio_size: float = 20000.0  # для оценочного P&L в рублях
+    entry: float = 41.50           # цена входа SNGSP
+    stop: float = 39.5             # жёсткий стоп (ВЫСТАВЛЕН 16.08)
+    floor: float = 40.0            # дно лестницы покупок
+    red_line: float = 40.5         # красная черта
+    target: float = 43.5           # цель (тейк)
+    gold_floor: float = 0.0        # золото не драйвер Сургута — отключено
+    figi: str = "BBG004S681M2"
+    ticker: str = "SNGSP"
+    portfolio_size: float = 18090.0  # для оценочного P&L в рублях
 
 
 def _now() -> str:
@@ -343,8 +347,8 @@ def monitor_loop(interval_min: int = 10, cfg: GuardConfig | None = None,
         # Пробой уровней → ТРЕВОГА
         if status == "STOP_HIT":
             _write_alert(
-                "СТОП ПРОБИТ — выход по правилам",
-                f"PLZL {price} ≤ стоп {cfg.stop}\n"
+                f"СТОП ПРОБИТ — {cfg.ticker} выход по правилам",
+                f"{cfg.ticker} {price} ≤ стоп {cfg.stop}\n"
                 f"P&L: {snap.get('pnl_pct')}% ({snap.get('pnl_rub')} ₽)\n"
                 f"Стакан: {snap.get('orderbook', {}).get('ratio')}:1\n"
                 f"Золото: {snap.get('gold')}",
@@ -353,12 +357,12 @@ def monitor_loop(interval_min: int = 10, cfg: GuardConfig | None = None,
             _write_alert(
                 "ЗОЛОТО ПРОБИЛО ПОЛ — тезис шатается",
                 f"XAU {snap.get('gold')} < {cfg.gold_floor}\n"
-                f"PLZL {price} (P&L {snap.get('pnl_pct')}%)",
+                f"{cfg.ticker} {price} (P&L {snap.get('pnl_pct')}%)",
             )
         elif status == "TARGET_HIT":
             _write_alert(
-                "ЦЕЛЬ ДОСТИГНУТА — 1400",
-                f"PLZL {price} ≥ {cfg.target}\n"
+                f"ЦЕЛЬ ДОСТИГНУТА — {cfg.ticker}",
+                f"{cfg.ticker} {price} ≥ {cfg.target}\n"
                 f"P&L: {snap.get('pnl_pct')}% ({snap.get('pnl_rub')} ₽)",
             )
         elif price is not None and status == "BELOW_RED" and loop % 6 == 0:
@@ -384,14 +388,15 @@ def monitor_loop(interval_min: int = 10, cfg: GuardConfig | None = None,
             except Exception as e:
                 _append_log(f"  досбор ленты: {str(e)[:100]}")
 
-        # Запись в Obsidian-память (кратко, раз в 2 цикла — не мусорить)
+        # Запись в Obsidian-память с ДЕДУПОМ: одна заметка на день/тикер
+        # (УРОК 16.08: раньше плодилось по файлу каждый цикл — 82 шт STOP_HIT)
         if loop % 2 == 1:
             try:
                 vault = ObsidianVault(vault_path())
                 ob = snap.get("orderbook", {})
                 ratio = ob.get("ratio")
                 body = (f"ДЕЖУРНЫЙ СНАПШОТ #{loop} {snap['time']}:\n"
-                        f"PLZL {price} (P&L {snap.get('pnl_pct')}%, "
+                        f"{cfg.ticker} {price} (P&L {snap.get('pnl_pct')}%, "
                         f"{snap.get('pnl_rub')} ₽) status={status}\n"
                         f"Стакан: bid {ob.get('bid_total')} / "
                         f"ask {ob.get('ask_total')} = {ratio}:1, "
@@ -400,7 +405,10 @@ def monitor_loop(interval_min: int = 10, cfg: GuardConfig | None = None,
                         f"Золото: {snap.get('gold')} "
                         f"({'(ниже пола!)' if snap.get('gold_ok') is False else ''})\n"
                         f"Новости по драйверам: {len(snap.get('news', []))} в ленте")
-                vault.write(f"market_guard #{loop} — {status} ({_now()})", body)
+                # дедуп: vault.write перезаписывает файл с тем же именем,
+                # так что за день будет ОДНА заметка на тикер (не 72 файла)
+                day_file = f"market_guard_{cfg.ticker}_{_now()[:10]}.md"
+                vault.write(day_file, body)
             except Exception as e:
                 _append_log(f"  obsidian: {str(e)[:100]}")
 

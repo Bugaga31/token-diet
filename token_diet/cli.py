@@ -6,7 +6,9 @@
     token-diet                 # обзор арсенала
     token-diet doctor          # проверить, что все модули живы
     token-diet self-test       # быстрый офлайн-тест ядра (без сети)
+    token-diet diet <текст>    # сжать текст: меньше токенов
     token-diet memo ...        # память Obsidian (все подкоманды memory_cli)
+    token-diet recall <запрос> # найти в памяти
     token-diet panel <запрос>  # пульт Рика: что есть на ситуацию
     token-diet scan            # живой сканер рынка (рост + объём + стакан)
     token-diet serve           # прокси-сервер экономии токенов
@@ -16,6 +18,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -223,6 +226,35 @@ def _scan() -> int:
 
 # ── snapshot: мгновенный снимок рынка ────────────────────────────────────────
 
+def _portfolio_block() -> str:
+    """Блок портфеля из T-Invest API (пустая строка, если недоступен)."""
+    try:
+        # Живой портфель из API (Д10: раньше snapshot его не показывал)
+        from token_diet.tinkoff_invest import TinkoffInvest
+        inv = TinkoffInvest()
+        pf = inv.get_portfolio()
+        if pf:
+            rows, total = [], 0.0
+            for p in pf:
+                t = getattr(p, "ticker", None)
+                if not t or t.startswith("uid:"):
+                    # Д11: рублёвый кэш рисуется как uid — показываем как КЭШ
+                    total += getattr(p, "quantity", 0.0) * getattr(p, "avg_price", 1.0)
+                    rows.append(f"  💵 КЭШ: {getattr(p, 'quantity', 0.0):,.0f} ₽")
+                    continue
+                q = getattr(p, "quantity", 0)
+                ap = getattr(p, "avg_price", 0.0)
+                pnl = getattr(p, "profit_pct", None)
+                val = q * ap
+                total += val
+                pnl_s = f" ({pnl:+.2f}%)" if pnl is not None else ""
+                rows.append(f"  {t}: {q:g} шт @ {ap:.2f} = {val:,.0f} ₽{pnl_s}")
+            return "\n📊 ПОРТФЕЛЬ:\n" + "\n".join(rows) + f"\n  ИТОГО: {total:,.0f} ₽"
+        return "\n📊 ПОРТФЕЛЬ: пусто"
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _snapshot(brief: bool) -> int:
     """Быстрый снимок: геополитика + портфель + лучший кандидат. Без демонов."""
     lines: list[str] = []
@@ -231,14 +263,9 @@ def _snapshot(brief: bool) -> int:
         lines.append(market_context_block())
     except Exception:  # noqa: BLE001
         pass
-    try:
-        from token_diet.invest_hub import InvestHub
-        hub = InvestHub()
-        if hasattr(hub, "portfolio_snapshot"):
-            snap = hub.portfolio_snapshot()
-            lines.append(str(snap))
-    except Exception:  # noqa: BLE001
-        pass
+    pf_block = _portfolio_block()
+    if pf_block:
+        lines.append(pf_block)
     try:
         from token_diet.live_scan import scan_market
         best = None
@@ -274,9 +301,13 @@ def main(argv: list[str] | None = None) -> int:
             "Примеры:\n"
             "  token-diet doctor          # здоровье всех модулей\n"
             "  token-diet self-test       # быстрый офлайн-тест\n"
+            "  token-diet diet <текст>    # сжать текст — экономия токенов\n"
             "  token-diet memo remember 'урок: ...'\n"
+            "  token-diet recall 'полюс'  # найти в памяти\n"
+            "  token-diet portfolio       # живой портфель T-Invest\n"
             "  token-diet panel деньги    # что есть на «деньги»\n"
             "  token-diet scan            # живой сканер рынка\n"
+            "  token-diet eyes 'что на экране?'  # зрение через OmniRoute\n"
             "  token-diet serve           # прокси экономии токенов\n"
         ),
     )
@@ -324,6 +355,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="brain/analyst/fast/generator (по умолчанию brain)")
     p_army.add_argument("--all", action="store_true", help="спросить ВСЮ армию (вердикт)")
     p_army.add_argument("--system", default=None, help="системный промпт")
+    p_army.add_argument("--omni", action="store_true",
+                        help="спросить локальный роутер OmniRoute (607 моделей, 1M контекст)")
+    p_army.add_argument("--omni-role", default="brain",
+                        help="омни-роль: brain/coding/fast/claude/gemini")
 
     p_rules = sub.add_parser("rules", help="YAML-правила автоматизации (из Buzz buzz-workflow)")
     p_rules.add_argument("--rules", default=None, help="путь к файлу правил (по умолчанию ~/token-diet-memory/rules.yaml)")
@@ -343,6 +378,15 @@ def main(argv: list[str] | None = None) -> int:
     p_handoff.add_argument("--max-chars", type=int, default=6000, help="лимит сжатой истории")
     p_handoff.add_argument("--save", default=None, help="куда сохранить handoff (по умолчанию печать)")
 
+    sub.add_parser("turbo", help="выжать комп до максимума (RAM/кеш/ZRAM/лишние браузеры)")
+    p_scrape = sub.add_parser("scrape", help="быстрый парсинг страницы (Scrapling-lite: кеш, adaptive select, find_by_text)")
+    p_scrape.add_argument("url", help="URL страницы")
+    p_scrape.add_argument("--selector", default="", help="CSS-селектор (adaptive: найдёт похожие, если дизайн сменился)")
+    p_scrape.add_argument("--text", default="", help="найти элемент по тексту")
+    p_scrape.add_argument("--no-cache", action="store_true", help="не использовать дисковый кеш")
+    p_scrape.add_argument("--proxy", default="", help="прокси http://host:port")
+    p_scrape.add_argument("--capture", default="", help="перехватить XHR/fetch по regex (CDP-браузер)")
+
     p_watch = sub.add_parser("watch", help="сторож рынка: цена -> правила докупки/продажи (см. -h)")
     p_watch.add_argument("ticker", help="тикер (SNGSP)")
     p_watch.add_argument("--rules", default=None, help="файл правил YAML")
@@ -351,13 +395,83 @@ def main(argv: list[str] | None = None) -> int:
     p_watch.add_argument("--dry-run", action="store_true", help="не исполнять заявки")
     p_watch.add_argument("--once", action="store_true", help="один опрос и выход")
 
+    # ── алиасы из инструкций: diet / recall / portfolio / status / eyes / server ──
+    p_diet = sub.add_parser("diet", help="сжать текст: меньше токенов, тот же смысл")
+    p_diet.add_argument("text", nargs="+", help="текст для сжатия")
+    p_diet.add_argument("--aggressive", action="store_true", help="режим сильнее (допустимы потери)")
+
+    p_recall = sub.add_parser("recall", help="найти в памяти Obsidian")
+    p_recall.add_argument("query", nargs="+", help="поисковый запрос")
+
+    sub.add_parser("portfolio", help="портфель из T-Invest API (живые позиции)")
+
+    sub.add_parser("status", help="статус всего: фон + портфель + лучший кандидат (alias snapshot)")
+
+    p_eyes = sub.add_parser("eyes", help="глаза: вопрос vision-модели про экран или картинку")
+    p_eyes.add_argument("question", nargs="?", default="Опиши кратко, что сейчас на экране.",
+                        help="что спросить (по умолчанию — описать экран)")
+    p_eyes.add_argument("--image", default=None, help="путь к изображению (по умолчанию скриншот экрана)")
+    p_eyes.add_argument("--model", default=None, help="модель роутера (например agentrouter/claude-opus-5)")
+
+    sub.add_parser("server", help="alias для serve: прокси-сервер экономии токенов")
+
+    p_batch = sub.add_parser("batch", help="батчинг событий: меньше промптов — меньше токенов")
+    p_batch.add_argument("--demo", action="store_true", help="наглядный демо-прогон")
+
+    p_droid = sub.add_parser("droid", help="Factory-дроиды: delegate/ask/knowledge/status (0 LLM)")
+    p_droid.add_argument("action", nargs="?", default=None,
+                         help="status (по умолчанию) | knowledge | delegate 'задача' | ask 'задача'. "
+                              "Если первое слово не команда — считается задачей")
+    p_droid.add_argument("task", nargs="*", help="задача для delegate/ask")
+    p_droid.add_argument("--repo", default=None, help="корень репозитория (по умолчанию cwd)")
+    p_droid.add_argument("--role", default=None,
+                         choices=["code", "review", "test", "docs", "knowledge"],
+                         help="форсировать роль дроида (по умолчанию — авто)")
+    p_droid.add_argument("--omni", action="store_true", help="ask: живая модель через OmniRoute")
+
+    p_belief = sub.add_parser("belief", help="самоуверенность по правилам: чистит извинения, "
+                                             "убирает хедж только там, где есть доказательство")
+    p_belief.add_argument("text", nargs="+", help="текст ответа для калибровки тона")
+    p_belief.add_argument("--prompt", action="store_true", help="напечатать системный промпт уверенности")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
         from token_diet.rick_panel import panel_block
         print(panel_block())
-        print("\nКоманды: doctor | self-test | serve | setup | panel <что> | scan | memo ...")
+        print("\nКоманды: doctor | self-test | diet <текст> | serve | portfolio | scan | memo ... | eyes <вопрос>")
         return 0
+
+    if args.cmd == "diet":
+        from token_diet.loss_router import compress_with_routing
+        text = " ".join(args.text)
+        out, before, after = compress_with_routing(text, aggressive=args.aggressive)
+        saved = max(0, before - after)
+        pct = (saved / before * 100) if before else 0.0
+        print(out)
+        print(f"\n[диета] {before} → {after} токенов (−{pct:.1f}%)"
+              + ("  [агрессивно]" if args.aggressive else ""))
+        return 0
+    if args.cmd == "recall":
+        from token_diet.memory_cli import main as memo_main
+        return memo_main(["recall", " ".join(args.query)])
+    if args.cmd == "portfolio":
+        block = _portfolio_block()
+        print(block or "📊 Портфель недоступен: нет TINKOFF_TOKEN или сети (см. .env)")
+        return 0 if block else 1
+    if args.cmd == "status":
+        return _snapshot(False)
+    if args.cmd == "eyes":
+        if args.image:
+            from token_diet.omni_eyes import see_image
+            print(see_image(args.image, question=args.question, model=args.model))
+        else:
+            from token_diet.omni_eyes import see
+            print(see(args.question, model=args.model))
+        return 0
+    if args.cmd == "server":
+        from token_diet.server import main as serve_main
+        return serve_main()
 
     if args.cmd == "doctor":
         return _doctor()
@@ -392,7 +506,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "audit":
         return _audit(args)
     if args.cmd == "army":
-        from token_diet.model_army import ask, army_verdict
+        from token_diet.model_army import ask, ask_gemini, ask_omni, army_verdict
+        if getattr(args, "omni", False):
+            print(f"🛰️  OMNIROUTE ({args.omni_role}):")
+            print(ask_omni(args.question, role=args.omni_role, system=args.system))
+            return 0
         if args.all:
             print("🤖 АРМИЯ ГОЛОСУЕТ")
             for role, vote in army_verdict(args.question, system=args.system).items():
@@ -410,6 +528,61 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"10 событий, оверхед {overhead}т/промпт: "
                       f"экономия {est['saved_tokens']}т ({est['saved_percent']}%)")
         return 0
+    if args.cmd == "belief":
+        from token_diet.self_belief import belief_prompt, earned_confidence
+        if args.prompt:
+            print(belief_prompt())
+            return 0
+        text = " ".join(args.text)
+        verdict = earned_confidence(text)
+        print(verdict.text.strip() or "(пусто)")
+        label = {"firm": "твёрдо", "firm_with_caveat": "твёрдо-с-оговоркой",
+                 "needs_proof": "нужна проверка"}.get(verdict.tone, verdict.tone)
+        print(f"\n[belief] тон: {label} · доказательств: {verdict.evidence_count} "
+              f"· хеджей снято: {verdict.hedges_removed} "
+              f"· извинений вычищено: {verdict.apologies_removed}")
+        if verdict.tone == "needs_proof":
+            print("         доказательств нет — хедж оставлен (это честность, не слабость)")
+        return 0
+    if args.cmd == "droid":
+        import json as _json
+        import os as _os
+        from token_diet.factory_droid import (
+            Coordinator, droid_status_block)
+        if args.action == "status" and not args.task:
+            print(droid_status_block())
+            return 0
+        if args.action == "knowledge":
+            repo = args.repo or _os.getcwd()
+            print(Coordinator(repo).knowledge_block())
+            return 0
+        task_parts = list(args.task)
+        if args.action not in (None, "status", "knowledge", "delegate", "ask"):
+            task_parts.insert(0, args.action)  # первое слово — задача, не команда
+            args.action = None
+        task = " ".join(task_parts)
+        if not task:
+            print("нужна задача: token-diet droid delegate 'напиши функцию X'")
+            return 1
+        c = Coordinator(args.repo or _os.getcwd())
+        if args.action == "ask":
+            print(c.ask_droid(task, args.role, omni=args.omni))
+            return 0
+        dec = c.delegate(task, args.role)  # delegate и быстрый режим без action
+        if dec["mode"] == "ask":
+            print("🤔 Нужно уточнение:")
+            for q in dec["questions"]:
+                print(f"   - {q}")
+            return 0
+        print(f"🎯 {dec['droid']} ({dec['role']})")
+        print("   план:")
+        for s in dec["plan"]:
+            print(f"     • {s}")
+        for h in dec["handoffs"]:
+            print(f"   хендофф: {h['from']} → {h['to']} ({h['artifact']})")
+        if args.action == "delegate":
+            print(_json.dumps(dec, ensure_ascii=False, indent=1))
+        return 0
     if args.cmd == "rules":
         return _rules(args)
     if args.cmd == "handoff":
@@ -425,6 +598,26 @@ def main(argv: list[str] | None = None) -> int:
         print(rendered)
         print(f"\n[handoff] {st['source_chars']} симв. → {st['handoff_chars']} симв."
               f" (экономия {st['saved_pct']}%)")
+        return 0
+    if args.cmd == "turbo":
+        from token_diet.system_turbo import report_text, turbo
+        print(report_text(turbo(sudo=True)))
+        return 0
+    if args.cmd == "scrape":
+        if args.capture:
+            from token_diet.scrapling_diet import browser_api_grab
+            caps = browser_api_grab(args.url, args.capture)
+            jsons = [c for c in caps if c.is_json]
+            print(f"# {args.url} — перехвачено {len(caps)} ответов, "
+                  f"из них JSON: {len(jsons)}")
+            for c in jsons[:5]:
+                print(f"\n## {c.url} (HTTP {c.status})")
+                print(json.dumps(c.json(), ensure_ascii=False,
+                                 indent=1)[:4000])
+            return 0
+        from token_diet.scrapling_diet import scrape_cli
+        print(scrape_cli(args.url, selector=args.selector, text=args.text,
+                         use_cache=not args.no_cache, proxy=args.proxy))
         return 0
     if args.cmd == "watch":
         from token_diet.market_watcher import main as watch_main

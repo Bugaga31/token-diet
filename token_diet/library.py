@@ -20,10 +20,13 @@ Zero dependencies. Pure stdlib. For the people. For the planet.
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+from .config import TD_VAULT
 
 CHUNK_SIZE = 1500
 CHUNK_OVERLAP = 150
@@ -68,7 +71,11 @@ def chunk_text(text: str, size: int = CHUNK_SIZE,
 class Library:
     """Full-text knowledge library with chunk retrieval."""
 
-    def __init__(self, root: str | Path = "/media/ro/KINGSTON1/token-diet-library"):
+    def __init__(self, root: str | Path | None = None):
+        # УРОК 16.08: путь через config, не хардкод машины
+        if root is None:
+            env = os.environ.get("TD_LIBRARY")
+            root = env or str(TD_VAULT.parent / "token-diet-library")
         self.root = Path(root)
         self.raw_dir = self.root / "raw"
         self.raw_dir.mkdir(parents=True, exist_ok=True)

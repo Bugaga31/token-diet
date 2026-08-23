@@ -786,6 +786,10 @@ class TinkoffInvest:
             "expirationType": "STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL",
             "stopOrderType": stop_type,
             "expireDate": expire_iso,
+            # УРОК 16.08: без этого флага API отвечает 30240
+            # «Confirmation required for specified instrument» — торговля
+            # инструментом может привести к непокрытой позиции.
+            "confirmMarginTrade": True,
         }
         resp = self._rpc("post_stop_order", body)
         if not resp:

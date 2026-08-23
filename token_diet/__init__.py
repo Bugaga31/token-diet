@@ -1,7 +1,7 @@
 """token_diet: same information, fewer billed tokens."""
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.22.1"
+__version__ = "3.25.0"
 
 from .cache_breakpoints import (
     Breakpoint,
@@ -23,6 +23,31 @@ from .context_memory import (
     never_translate,
     translation_safe,
 )
+from .global_vars import GlobalVars, expand, get_var, set_var
+from .hybrid_search import autocomplete, hybrid_search, rank, search_vault
+from .cache_master import (CachePlan, Provider, align_prefix, mark_static,
+                           plan_cache, relocate)
+from .provider_registry import (ask_all as providers_ask_all,
+                                ask_any as providers_ask_any,
+                                available_providers,
+                                detect_providers)
+from .scrapling_diet import (
+    AutoThrottle,
+    CapturedResponse,
+    DiskResponseCache,
+    LinkExtractor,
+    ProxyRotator,
+    adaptive_select,
+    browser_api_grab,
+    cached_fetch,
+    find_by_text,
+    network_capture,
+    scrape_cli,
+)
+from .progressive_clone import (ClonedElement, clone_complete, clone_skeleton,
+                                expand_layer, render, savings_report)
+from .security_audit import SecurityAudit
+
 from .core import (
     STRUCTPACK_PREAMBLE,
     BlobCorruptionError,
@@ -414,11 +439,16 @@ from .autopilot import (
     check_stop as autopilot_check_stop,
 )
 from .model_army import (
+    OMNI_ROLES,
     ask as model_ask,
     ask_brain as model_brain,
     ask_analyst as model_analyst,
     ask_fast as model_fast,
     ask_generator as model_generator,
+    ask_gemini as model_gemini,
+    ask_gemini,
+    ask_omni as model_omni,
+    ask_omni,
     army_verdict as model_army_verdict,
 )
 from .rick_panel import (
@@ -738,6 +768,44 @@ from .metacognition import (
     prior_confidence,
     self_critique,
 )
+from .claim_check import (
+    Claim,
+    ClaimAudit,
+    HardcodedVerdict,
+    Incoherence,
+    Verification,
+    audit_text,
+    check_coherence,
+    claim_check_prompt,
+    extract_claims,
+    find_hardcoded_verdicts,
+    verify_claim,
+)
+from .self_belief import (
+    BeliefVerdict,
+    FirmUpResult,
+    PersistPlan,
+    belief_prompt,
+    confident_rewrite,
+    earned_confidence,
+    firm_up,
+    persist,
+    rewrite_surrender,
+    strip_apology,
+)
+from .factory_droid import (
+    Coordinator as DroidCoordinator,
+    DROIDS as DROID_REGISTRY,
+    DroidSpec,
+    Handoff,
+    RepoKnowledge,
+    ambiguity as droid_ambiguity,
+    build_repo_knowledge as droid_build_knowledge,
+    classify_task as droid_classify,
+    droid_plan,
+    droid_status_block,
+    resolve_ambiguity as droid_resolve,
+)
 from .step_back import (
     Case,
     analogy_keywords,
@@ -820,6 +888,18 @@ from .market_watcher import (
     is_market_open,
     is_trading_day,
     watch,
+)
+from .session_handoff import (
+    build_handoff,
+    compress_history,
+    extract_facts,
+    render_handoff,
+)
+from .system_turbo import (
+    TurboReport,
+    report_text,
+    top_memory_processes,
+    turbo,
 )
 
 __all__ = [
@@ -1224,10 +1304,9 @@ __all__ = [
     "news_block",
     "news_sweep",
     "snapshot",
-    "snapshot_block",
     "stress_block",
     "stress_test",
-    "TangetAlert",
+    "TangentAlert",
     "RapidContext",
     "analyze_focus",
     "check_action",
@@ -1241,11 +1320,9 @@ __all__ = [
     "strip_fluff",
     "detect_platform",
     "click_text",
-    "strip_fluff",
     "FileGraphStore",
     "GraphitiBackend",
     "GraphMemory",
-    "extract_entities",
     "extract_numbers",
     "TdqsLinter",
     "TdqsResult",
@@ -1258,7 +1335,6 @@ __all__ = [
     "prune_history",
     "DEFAULT_PROVIDERS",
     "OmniRouter",
-    "Provider",
     "SubAgentResult",
     "_judge",
     "_split_tasks",
@@ -1273,6 +1349,37 @@ __all__ = [
     "metacognition_prompt",
     "prior_confidence",
     "self_critique",
+    "BeliefVerdict",
+    "FirmUpResult",
+    "PersistPlan",
+    "belief_prompt",
+    "confident_rewrite",
+    "earned_confidence",
+    "firm_up",
+    "persist",
+    "rewrite_surrender",
+    "strip_apology",
+    "Claim",
+    "ClaimAudit",
+    "HardcodedVerdict",
+    "Incoherence",
+    "Verification",
+    "audit_text",
+    "check_coherence",
+    "claim_check_prompt",
+    "find_hardcoded_verdicts",
+    "verify_claim",
+    "DroidCoordinator",
+    "DROID_REGISTRY",
+    "DroidSpec",
+    "Handoff",
+    "RepoKnowledge",
+    "droid_ambiguity",
+    "droid_build_knowledge",
+    "droid_classify",
+    "droid_plan",
+    "droid_status_block",
+    "droid_resolve",
     "Case",
     "analogy_keywords",
     "analogy_prompt",
@@ -1287,13 +1394,10 @@ __all__ = [
     "from_fresh_news",
     "from_pulse",
     "gather_sentiment_texts",
-    "Decision",
-    "decide",
     "full_plan",
     "history",
     "journal_block",
     "record",
-    "snapshot",
     "full_status",
     "render_status",
     "AuditChain",
@@ -1302,7 +1406,6 @@ __all__ = [
     "FlushBatch",
     "QueuedEvent",
     "WorkflowEngine",
-    "canonical_json",
     "cron_matches",
     "evaluate_condition",
     "init_rules",
@@ -1311,9 +1414,38 @@ __all__ = [
     "is_trading_day",
     "parse_workflow",
     "watch",
-    "SessionHandoff",
     "build_handoff",
     "compress_history",
     "extract_facts",
     "render_handoff",
+    "search_vault",
+    "rank",
+    "autocomplete",
+    "hybrid_search",
+    "SecurityAudit",
+    "GlobalVars",
+    "expand",
+    "set_var",
+    "get_var",
+    "ask_omni",
+    "OMNI_ROLES",
+    "available_providers",
+    "detect_providers",
+    "providers_ask_any",
+    "providers_ask_all",
+    "CachePlan",
+    "align_prefix",
+    "mark_static",
+    "plan_cache",
+    "relocate",
+    "ClonedElement",
+    "clone_complete",
+    "clone_skeleton",
+    "expand_layer",
+    "render",
+    "savings_report",
+    "TurboReport",
+    "turbo",
+    "report_text",
+    "top_memory_processes",
 ]
