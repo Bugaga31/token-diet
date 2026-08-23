@@ -11,18 +11,19 @@ Track. Optimize. Achieve. — экономия токенов + повышени
 
 ```
 token-dietTOP/
-├── token_diet/          # 148 модулей (ядро проекта)
+├── token_diet/          # 149 модулей (ядро проекта)
 │   ├── core.py          # сжатие токенов
 │   ├── sherlock_reasoner.py   # интеллект
 │   ├── self_belief.py         # заслуженная уверенность (без slop)
 │   ├── claim_check.py         # аудит заявлений и цифр
 │   ├── factory_droid.py       # дроиды Factory AI (0 LLM)
+│   ├── creative_mind.py       # нестандартное мышление (3 угла + хайку)
 │   ├── tinkoff_invest.py      # инвестиции (T-Invest API)
 │   ├── financial_agents.py    # агенты как у Anthropic (DCF, отчёты)
 │   ├── provider_registry.py   # авто-подключение любых LLM-ключей
 │   ├── scrapling_diet.py      # умный парсинг сайтов
 │   ├── system_turbo.py        # ускорение компа
-│   └── ... (всего 148)
+│   └── ... (всего 149)
 ├── tests/                # 1400+ тестов (pytest tests -q)
 ├── memory/               # Obsidian-память (в git не попадает)
 ├── token-diet-library/   # библиотека знаний: книги, дайджесты (локально)
@@ -61,6 +62,7 @@ python3 -m pytest tests -x -q           # 1400+ тестов (1436)
 
 ## ✨ Новое в этой сборке
 
+- **`creative_mind.py`** — нестандартное мышление: Inverted Dictionary (изобрести язык вместо сжатия), Dream Consolidation (ночная консолидация паттернов), Haiku Compressor (70% экономии в 3 строки) + `token-diet think` (3 угла → синтез → калибровка `self_belief`).
 - **`financial_agents.py`** — реверс-инжиниринг финансовых агентов Anthropic:
   Market Researcher (отчёт по компании), Model Builder (DCF в терминале),
   Earnings Reviewer (выжимка отчёта), Stock Screener. Без платных планов.

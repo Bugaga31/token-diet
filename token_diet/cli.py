@@ -434,6 +434,10 @@ def main(argv: list[str] | None = None) -> int:
     p_belief.add_argument("text", nargs="+", help="текст ответа для калибровки тона")
     p_belief.add_argument("--prompt", action="store_true", help="напечатать системный промпт уверенности")
 
+    p_think = sub.add_parser("think", help="нестандартное мышление: 3 угла + синтез + калибровка (creative_mind)")
+    p_think.add_argument("question", nargs="+", help="вопрос для креативного разбора")
+    p_think.add_argument("--haiku", action="store_true", help="показать хайку-дистиллят синтеза")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
@@ -543,6 +547,12 @@ def main(argv: list[str] | None = None) -> int:
               f"· извинений вычищено: {verdict.apologies_removed}")
         if verdict.tone == "needs_proof":
             print("         доказательств нет — хедж оставлен (это честность, не слабость)")
+        return 0
+    if args.cmd == "think":
+        from token_diet.creative_mind import creative_solve
+        q = " ".join(args.question)
+        v = creative_solve(q, use_haiku=args.haiku)
+        print(v.render())
         return 0
     if args.cmd == "droid":
         import json as _json
