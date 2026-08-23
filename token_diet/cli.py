@@ -438,6 +438,9 @@ def main(argv: list[str] | None = None) -> int:
     p_think.add_argument("question", nargs="+", help="вопрос для креативного разбора")
     p_think.add_argument("--haiku", action="store_true", help="показать хайку-дистиллят синтеза")
 
+    sub.add_parser("heal", help="самолечение: doctor → следующий приём (auto_heal)")
+    sub.add_parser("docs", help="проверить доки: каждый ```код``` — тест (doc_guardian)")
+
     args = p.parse_args(argv)
 
     if args.cmd is None:
@@ -554,6 +557,14 @@ def main(argv: list[str] | None = None) -> int:
         v = creative_solve(q, use_haiku=args.haiku)
         print(v.render())
         return 0
+    if args.cmd == "heal":
+        from token_diet.auto_heal import heal_cli
+        return heal_cli()
+    if args.cmd == "docs":
+        from token_diet.doc_guardian import verify_docs, render_report
+        blocks = verify_docs()
+        print(render_report(blocks))
+        return 0 if all(b.status != "fail" for b in blocks) else 1
     if args.cmd == "droid":
         import json as _json
         import os as _os

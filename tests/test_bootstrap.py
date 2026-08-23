@@ -69,14 +69,17 @@ def test_show_link_points_to_memory(fake_vault: Path) -> None:
 
 def test_cli_has_snapshot_command(fake_vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """CLI принимает snapshot: офлайн-снимок не падает даже без сети."""
-    import sys
+    import importlib
+
     from token_diet import cli
 
     # Мокаем тяжёлые сетевые вызовы — без них snapshot виснет >10с офлайн
     monkeypatch.setattr("token_diet.cli._portfolio_block", lambda: "📊 ПОРТФЕЛЬ: (мок)")
-    # live_scan модуль в sys.modules, хотя token_diet.live_scan перетёрт функцией в __init__
-    monkeypatch.setattr(sys.modules["token_diet.live_scan"], "scan_market", lambda: [])
-    monkeypatch.setattr(sys.modules["token_diet.geopolitics"], "market_context_block", lambda: "гео: ок")
+    # live_scan/geopolitics — подгружаем модули явно, т.к. импорт token_diet теперь lazy (0.03с) и модули ещё не в sys.modules
+    live_scan_mod = importlib.import_module("token_diet.live_scan")
+    geo_mod = importlib.import_module("token_diet.geopolitics")
+    monkeypatch.setattr(live_scan_mod, "scan_market", lambda: [])
+    monkeypatch.setattr(geo_mod, "market_context_block", lambda: "гео: ок")
 
     # snapshot ловит все исключения внутри — должен вернуть 0 без сети
     rc = cli.main(["snapshot"])
