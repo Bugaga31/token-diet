@@ -16,17 +16,42 @@ from token_diet.cache_master import (  # noqa: E402
 
 
 def _long_text(n: int) -> str:
-    """Text of EXACTLY n tokens (по реальному count_tokens)."""
+    """Text of EXACTLY n tokens (по реальному count_tokens) — O(log n) версия."""
     from token_diet.core import count_tokens
 
-    # набираем с запасом, потом режем по одному токену до точного N
-    parts = [f"слово{i}" for i in range(n * 3)]
-    text = " ".join(parts)
-    while count_tokens(text) > n:
-        text = text.rsplit(" ", 1)[0]
-    # если недошли (нечётная токенизация) — добавляем по слову
+    # Быстрый детерминированный текст: одно слово ≈ 1-2 токена, ~3000 слов = 5000 токенов.
+    # Вместо по-токенного rsplit в цикле (8с на 1024 токена) делаем бинарный поиск.
+    base = " ".join(f"слово{i}" for i in range(n * 3))
+    if count_tokens(base) == n:
+        return base
+    # Бинарный поиск по префиксу слов (по количеству слов, не символов)
+    words = base.split(" ")
+    lo, hi = 0, len(words)
+    # hi - точно > n по конструкции, lo - 0 токенов
+    best = ""
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        cand = " ".join(words[:mid])
+        c = count_tokens(cand)
+        if c == n:
+            return cand
+        if c < n:
+            best = cand
+            lo = mid
+        else:
+            hi = mid - 1
+        if hi - lo <= 1:
+            break
+    # lo - последний < n, начинаем с best и добиваем по слову "1" (дешёво, <5 итераций)
+    text = best or " ".join(words[:lo])
+    # добивка с шагом 1 слово, но не более 10 итераций — иначе увеличиваем быстрее
     while count_tokens(text) < n:
         text += " 1"
+        if len(text) > 50000:  # защита от бесконечного цикла
+            break
+    # если перебор — подрезать по одному слову с конца (макс 10 итераций)
+    while count_tokens(text) > n:
+        text = text.rsplit(" ", 1)[0]
     return text
 
 

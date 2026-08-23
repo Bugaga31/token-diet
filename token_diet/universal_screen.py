@@ -169,6 +169,8 @@ class DesktopScreen:
             pil = pil.resize((int(w * scale), int(h * scale)), Image.BILINEAR)
             w, h = pil.size
 
+        if pil.mode != "RGB":
+            pil = pil.convert("RGB")
         buf = io.BytesIO()
         pil.save(buf, format="JPEG", quality=quality, optimize=True)
         img_bytes = buf.getvalue()
@@ -196,6 +198,8 @@ class DesktopScreen:
         if scale != 1.0:
             pil = pil.resize((int(w * scale), int(h * scale)), Image.BILINEAR)
             w, h = pil.size
+        if pil.mode != "RGB":
+            pil = pil.convert("RGB")
         buf = io.BytesIO()
         pil.save(buf, format="JPEG", quality=quality, optimize=True)
         img_bytes = buf.getvalue()
@@ -386,6 +390,8 @@ class PhoneScreen:
             if scale != 1.0:
                 pil = pil.resize((int(w * scale), int(h * scale)), Image.BILINEAR)
                 w, h = pil.size
+            if pil.mode != "RGB":
+                pil = pil.convert("RGB")
             buf = io.BytesIO()
             pil.save(buf, format="JPEG", quality=quality, optimize=True)
             img_bytes = buf.getvalue()

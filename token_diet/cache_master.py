@@ -108,11 +108,25 @@ def align_prefix(prefix: str, provider: Provider = Provider.ANTHROPIC) -> str:
         return prefix
     if keep == tokens:
         return prefix
-    # режем посимвольно до тех пор, пока длина не станет <= keep
-    cur = prefix
-    while _token_len(cur) > keep and cur:
-        cur = cur[:-1]
-    return cur
+    # режем до <= keep — бинарный поиск по префиксу (было cur[:-1] по 1 символу → 3k итераций)
+    if _token_len(prefix) <= keep:
+        return prefix
+    lo, hi = 0, len(prefix)
+    best = prefix[:0]
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        cand = prefix[:mid]
+        if _token_len(cand) <= keep:
+            best = cand
+            lo = mid
+        else:
+            hi = mid - 1
+        if hi - lo <= 1:
+            # добьём линейно не более 2 шагов
+            while hi > lo and _token_len(prefix[:hi]) > keep:
+                hi -= 1
+            return prefix[:hi]
+    return best
 
 
 def mark_static(prompt: str, static_prefix: str,

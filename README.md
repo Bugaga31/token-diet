@@ -49,7 +49,7 @@ cd token-dietTOP
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e . && pip install tiktoken fastapi uvicorn httpx pytest
 python3 -m token_diet.cli --help
-python3 -m pytest tests -x -q           # 1300+ тестов
+python3 -m pytest tests -x -q           # 1400+ тестов (1436)
 ```
 
 ## 📖 Инструкции

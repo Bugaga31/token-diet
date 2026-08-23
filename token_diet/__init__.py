@@ -439,6 +439,7 @@ from .autopilot import (
     check_stop as autopilot_check_stop,
 )
 from .model_army import (
+    OMNI_ROLES,
     ask as model_ask,
     ask_brain as model_brain,
     ask_analyst as model_analyst,
@@ -888,6 +889,18 @@ from .market_watcher import (
     is_trading_day,
     watch,
 )
+from .session_handoff import (
+    build_handoff,
+    compress_history,
+    extract_facts,
+    render_handoff,
+)
+from .system_turbo import (
+    TurboReport,
+    report_text,
+    top_memory_processes,
+    turbo,
+)
 
 __all__ = [
     "__version__",
@@ -1291,10 +1304,9 @@ __all__ = [
     "news_block",
     "news_sweep",
     "snapshot",
-    "snapshot_block",
     "stress_block",
     "stress_test",
-    "TangetAlert",
+    "TangentAlert",
     "RapidContext",
     "analyze_focus",
     "check_action",
@@ -1308,11 +1320,9 @@ __all__ = [
     "strip_fluff",
     "detect_platform",
     "click_text",
-    "strip_fluff",
     "FileGraphStore",
     "GraphitiBackend",
     "GraphMemory",
-    "extract_entities",
     "extract_numbers",
     "TdqsLinter",
     "TdqsResult",
@@ -1325,7 +1335,6 @@ __all__ = [
     "prune_history",
     "DEFAULT_PROVIDERS",
     "OmniRouter",
-    "Provider",
     "SubAgentResult",
     "_judge",
     "_split_tasks",
@@ -1340,7 +1349,6 @@ __all__ = [
     "metacognition_prompt",
     "prior_confidence",
     "self_critique",
-    # self_belief — заслуженная уверенность (дополняет metacognition)
     "BeliefVerdict",
     "FirmUpResult",
     "PersistPlan",
@@ -1351,7 +1359,6 @@ __all__ = [
     "persist",
     "rewrite_surrender",
     "strip_apology",
-    # claim_check — числовые заявления против фактического вывода
     "Claim",
     "ClaimAudit",
     "HardcodedVerdict",
@@ -1360,10 +1367,8 @@ __all__ = [
     "audit_text",
     "check_coherence",
     "claim_check_prompt",
-    "extract_claims",
     "find_hardcoded_verdicts",
     "verify_claim",
-    # factory_droid — реверс-инжиниринг Factory AI (Coordinator + дроиды)
     "DroidCoordinator",
     "DROID_REGISTRY",
     "DroidSpec",
@@ -1389,13 +1394,10 @@ __all__ = [
     "from_fresh_news",
     "from_pulse",
     "gather_sentiment_texts",
-    "Decision",
-    "decide",
     "full_plan",
     "history",
     "journal_block",
     "record",
-    "snapshot",
     "full_status",
     "render_status",
     "AuditChain",
@@ -1404,7 +1406,6 @@ __all__ = [
     "FlushBatch",
     "QueuedEvent",
     "WorkflowEngine",
-    "canonical_json",
     "cron_matches",
     "evaluate_condition",
     "init_rules",
@@ -1413,12 +1414,10 @@ __all__ = [
     "is_trading_day",
     "parse_workflow",
     "watch",
-    "SessionHandoff",
     "build_handoff",
     "compress_history",
     "extract_facts",
     "render_handoff",
-    # SonicJS-реверс (16.08): hybrid_search, security_audit, global_vars
     "search_vault",
     "rank",
     "autocomplete",
@@ -1428,29 +1427,23 @@ __all__ = [
     "expand",
     "set_var",
     "get_var",
-    # OmniRoute (16.08): локальный роутер 607 моделей
     "ask_omni",
     "OMNI_ROLES",
-    # Provider Registry (16.08): авто-обнаружение провайдеров из env
     "available_providers",
     "detect_providers",
     "providers_ask_any",
     "providers_ask_all",
-    # Gemini-аудит (16.08): cache_master — выравнивание кэш-блоков провайдера
     "CachePlan",
-    "Provider",
     "align_prefix",
     "mark_static",
     "plan_cache",
     "relocate",
-    # Strix-реверс (16.08): progressive_clone
     "ClonedElement",
     "clone_complete",
     "clone_skeleton",
     "expand_layer",
     "render",
     "savings_report",
-    # System Turbo (17.08): выжать комп до максимума
     "TurboReport",
     "turbo",
     "report_text",
