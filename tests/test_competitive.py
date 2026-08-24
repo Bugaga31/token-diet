@@ -1,16 +1,23 @@
 """Tests for competitive modules: ML Compressor, AST JSON, Model Router."""
 
 import json
-import sys, os, unittest
+import os
+import sys
+import unittest
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PROJECT = os.path.dirname(_HERE)
 if _PROJECT not in sys.path:
     sys.path.insert(0, _PROJECT)
 
-from token_diet.ml_compressor import compress_ml
 from token_diet.ast_json_compressor import compress_json_ast
-from token_diet.model_router import route_query, route_and_estimate, estimate_mixed_savings, RouterConfig, RoutingDecision
-from token_diet.core import count_tokens
+from token_diet.ml_compressor import compress_ml
+from token_diet.model_router import (
+    RouterConfig,
+    estimate_mixed_savings,
+    route_and_estimate,
+    route_query,
+)
 
 
 class TestMLCompressor(unittest.TestCase):

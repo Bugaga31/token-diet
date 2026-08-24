@@ -9,7 +9,7 @@ from token_diet.candlestick_patterns import (
 
 def test_doji():
     # body 0.2 of range 4 = 5% ≤ 10% → doji
-    pats = single_bar_patterns(o=100, h=102, l=98, c=100.2)
+    pats = single_bar_patterns(o=100, h=102, low=98, c=100.2)
     assert any(p.name == "Doji" for p in pats)
 
 
@@ -56,7 +56,7 @@ def test_latest_only_recent():
     highs = [112, 112, 121, 117, 102]
     lows = [104, 102, 118, 113, 98]
     closes = [105, 111, 114, 114.5, 99]
-    all_pats = detect_patterns(opens, highs, lows, closes)
+    detect_patterns(opens, highs, lows, closes)
     recent = latest_patterns(opens, highs, lows, closes, lookback=2)
     assert recent
     assert max(p.bar for p in recent) >= len(opens) - 2

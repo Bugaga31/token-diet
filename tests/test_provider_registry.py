@@ -36,8 +36,9 @@ class TestDiscovery:
     def test_no_keys_in_code(self):
         # ни один РЕАЛЬНЫЙ ключ не должен быть захардкожен в модуле
         # (префиксы-детекторы nvapi-/ov_sk_live_ — это паттерны, не секреты)
-        import token_diet.provider_registry as pr
         import inspect
+
+        import token_diet.provider_registry as pr
 
         src = inspect.getsource(pr)
         for secret in ("sk-WYC4xiKpu", "ov_sk_live_37t", "nvapi-QjLi"):

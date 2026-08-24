@@ -6,15 +6,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "token_diet"))
 
 from token_diet.cognition_arsenal import (
+    _parse_score,
     assess_complexity,
     choose_cognition_strategy,
     cognitive_solve,
     decompose_and_solve,
     multi_agent_debate,
     tree_of_thoughts,
-    _parse_score,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Helpers: scripted fake LLMs (deterministic, offline)

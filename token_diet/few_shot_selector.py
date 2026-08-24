@@ -9,8 +9,8 @@ A bank of 20 examples costs ~2000 tokens. Picking the top 3 saves ~85%.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -89,7 +89,7 @@ class FewShotSelector:
         q_vec = self.embed(query)
 
         def _dot(a: list[float], b: list[float]) -> float:
-            return sum(x * y for x, y in zip(a, b))
+            return sum(x * y for x, y in zip(a, b, strict=False))
 
         scored: list[tuple[float, Example]] = []
         for ex in self.bank:

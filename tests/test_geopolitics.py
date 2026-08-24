@@ -4,13 +4,12 @@
 Эти тесты защищают, что классификация работает правильно.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from token_diet.geopolitics import classify_title, GeoVerdict, GeoItem
-
+from token_diet.geopolitics import GeoItem, GeoVerdict, classify_title
 
 # ── classify_title: негатив ──────────────────────────────────────────
 

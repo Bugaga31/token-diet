@@ -1,11 +1,11 @@
 """Тесты rick_panel: пульт Рика — поиск модулей по ситуации."""
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from token_diet.rick_panel import find, categories, panel_block, ARSENAL
+from token_diet.rick_panel import ARSENAL, categories, find, panel_block
 
 
 def test_arsenal_not_empty():
@@ -54,5 +54,5 @@ def test_panel_block_unknown_helpful():
 def test_all_entries_have_call():
     """Каждая запись арсенала должна содержать команду вызова."""
     for cat, items in ARSENAL.items():
-        for name, desc, call in items:
+        for name, _desc, call in items:
             assert call.strip(), f"{cat}/{name}: пустая команда вызова"

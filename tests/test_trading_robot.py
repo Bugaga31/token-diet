@@ -3,10 +3,6 @@
 from datetime import datetime, timezone
 
 from token_diet.trading_robot import (
-    BacktestResult,
-    IntervalSignal,
-    MaCrossSignal,
-    VolumeProfileResult,
     backtest,
     interval_strategy,
     ma_cross,
@@ -50,7 +46,7 @@ class TestVolumeProfile:
     def test_poc_detected(self):
         highs = [100 + i * 0.5 for i in range(20)]
         lows = [99 + i * 0.5 for i in range(20)]
-        closes = [(h + l) / 2 for h, l in zip(highs, lows)]
+        closes = [(h + lo) / 2 for h, lo in zip(highs, lows, strict=False)]
         volumes = [10.0] * 15 + [1000.0] * 5  # heavy volume at top
         vp = volume_profile(highs, lows, closes, volumes)
         assert vp is not None
@@ -60,7 +56,7 @@ class TestVolumeProfile:
     def test_insight_nonempty(self):
         highs = list(range(100, 120))
         lows = list(range(95, 115))
-        closes = [(h + l) / 2 for h, l in zip(highs, lows)]
+        closes = [(h + lo) / 2 for h, lo in zip(highs, lows, strict=False)]
         vp = volume_profile(highs, lows, closes, [5.0] * 20)
         assert vp is not None
         assert len(vp.insight) > 5

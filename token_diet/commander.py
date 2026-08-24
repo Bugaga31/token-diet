@@ -14,8 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .risk_metrics import position_size, trade_plan
-
+from .risk_metrics import trade_plan
 
 BUY_THRESHOLD = 0.15   # lean выше этого → кандидат на покупку
 SELL_THRESHOLD = -0.15

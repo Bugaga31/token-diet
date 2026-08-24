@@ -7,7 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import token_diet.pulse_reader as pr
 
-
 SAMPLE_POST = {
     "id": "12345",
     "text": "{$PLZL} Золото растёт, Полюс догонит. Держу!",

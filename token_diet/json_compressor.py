@@ -37,7 +37,7 @@ def _flatten(obj: Any, prefix: str = "") -> list[tuple[str, str]]:
             path = f"{prefix}.{k}" if prefix else str(k)
             if v in _SKIP_VALUES:
                 continue
-            if isinstance(v, (dict, list)):
+            if isinstance(v, dict | list):
                 out.extend(_flatten(v, path))
             else:
                 out.append((path, str(v)))
@@ -46,7 +46,7 @@ def _flatten(obj: Any, prefix: str = "") -> list[tuple[str, str]]:
             path = f"{prefix}[{i}]" if prefix else str(i)
             if v in _SKIP_VALUES:
                 continue
-            if isinstance(v, (dict, list)):
+            if isinstance(v, dict | list):
                 out.extend(_flatten(v, path))
             else:
                 out.append((path, str(v)))
@@ -68,7 +68,7 @@ def compress_json(data: Any) -> str:
         return ""
     if isinstance(data, str):
         return _truncate(data)[: _MAX_VALUE * 2]
-    if isinstance(data, (int, float, bool)):
+    if isinstance(data, int | float | bool):
         return str(data)
 
     lines: list[str] = []

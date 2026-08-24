@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 _WORD_RE = re.compile(r"[0-9A-Za-zА-Яа-яЁё_]{3,}")
 

@@ -22,7 +22,7 @@ from __future__ import annotations
 import re
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Any
 

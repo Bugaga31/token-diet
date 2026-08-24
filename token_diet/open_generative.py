@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import time
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 # HTTP-ish statuses that trigger failover (mirrors provider gateways).
 _RETRYABLE = {408, 429, 500, 502, 503, 504}

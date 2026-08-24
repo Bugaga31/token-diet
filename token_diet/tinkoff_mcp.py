@@ -31,8 +31,8 @@ from __future__ import annotations
 
 import json
 import ssl
-import urllib.request
 import urllib.error
+import urllib.request
 from typing import Any
 
 from .tinkoff_invest import get_token
@@ -108,9 +108,9 @@ class TinkoffMCP:
             with urllib.request.urlopen(req, timeout=self.timeout, context=self._ctx) as resp:
                 return dict(resp.headers), resp.read().decode()
         except urllib.error.HTTPError as e:
-            raise TinkoffMCPError(f"HTTP {e.code}: {e.read().decode()[:300]}")
+            raise TinkoffMCPError(f"HTTP {e.code}: {e.read().decode()[:300]}") from e
         except Exception as e:  # network, ssl, timeout
-            raise TinkoffMCPError(f"{type(e).__name__}: {e}")
+            raise TinkoffMCPError(f"{type(e).__name__}: {e}") from e
 
     @staticmethod
     def _parse_sse(raw: str) -> list[dict]:

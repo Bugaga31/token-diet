@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "token-diet"
-version = "3.27.0"
+version = "3.27.1"
 description = "Track. Optimize. Achieve. — AI cost optimization for the planet and the people."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,7 +19,9 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 [project.urls]
@@ -53,3 +55,19 @@ extend-exclude = ["token_diet/original_full.py"]
 select = ["E", "F", "I", "UP", "B"]
 # long regex lines in loss_router/context_memory; style-only concern
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# sys.path bootstrap before imports is the standard standalone-test pattern
+"tests/test_competitive.py" = ["E402"]
+"tests/test_distiller_selector.py" = ["E402"]
+"tests/test_green.py" = ["E402"]
+"tests/test_intelligence_booster.py" = ["E402"]
+"tests/test_sherlock.py" = ["E402"]
+"tests/test_smart_multiplier.py" = ["E402"]
+# __init__: lazy-import table must exist before the importlib hook
+"token_diet/__init__.py" = ["E402"]
+# server/tg modules: path bootstrap / telethon log-silencing precede imports
+"token_diet/autopilot.py" = ["E402"]
+"token_diet/server.py" = ["E402"]
+"token_diet/tg_intel.py" = ["E402"]
+"token_diet/tg_scout.py" = ["E402"]

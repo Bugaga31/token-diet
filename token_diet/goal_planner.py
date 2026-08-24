@@ -39,12 +39,10 @@ from __future__ import annotations
 
 import heapq
 import json
-import os
 import sqlite3
-import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Optional
-
+from typing import Any
 
 # ── world state ──────────────────────────────────────────────────────────────
 
@@ -54,7 +52,7 @@ class WorldState:
 
     __slots__ = ("facts",)
 
-    def __init__(self, facts: Optional[dict[str, Any]] = None) -> None:
+    def __init__(self, facts: dict[str, Any] | None = None) -> None:
         self.facts: dict[str, Any] = dict(facts or {})
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -70,7 +68,7 @@ class WorldState:
                 return False
         return True
 
-    def apply(self, effects: dict[str, Any]) -> "WorldState":
+    def apply(self, effects: dict[str, Any]) -> WorldState:
         """Return a NEW state with effects applied (immutable for A*)."""
         merged = dict(self.facts)
         merged.update(effects)
@@ -121,7 +119,7 @@ class TrajectoryMemory:
     keeps the cheapest known plan per goal signature.
     """
 
-    def __init__(self, db_path: Optional[str] = None) -> None:
+    def __init__(self, db_path: str | None = None) -> None:
         self._mem: dict[str, dict[str, Any]] = {}
         self._db_path = db_path
         if db_path:
@@ -161,7 +159,7 @@ class TrajectoryMemory:
                 except sqlite3.Error:
                     pass
 
-    def recall(self, goal_sig: str) -> Optional[list[str]]:
+    def recall(self, goal_sig: str) -> list[str] | None:
         entry = self._mem.get(goal_sig)
         return list(entry["plan"]) if entry else None
 
@@ -208,8 +206,8 @@ class GoalPlanner:
 
     def __init__(
         self,
-        actions: Optional[Iterable[GOAPAction]] = None,
-        memory: Optional[TrajectoryMemory] = None,
+        actions: Iterable[GOAPAction] | None = None,
+        memory: TrajectoryMemory | None = None,
         max_visits: int = 2000,
     ) -> None:
         self.actions: dict[str, GOAPAction] = {}
@@ -239,7 +237,7 @@ class GoalPlanner:
     def plan(
         self,
         goal: dict[str, Any],
-        initial: Optional[WorldState] = None,
+        initial: WorldState | None = None,
         use_memory: bool = True,
     ) -> PlanResult:
         """Find the cheapest action sequence that achieves `goal`."""
@@ -317,7 +315,7 @@ class GoalPlanner:
         goal: dict[str, Any],
         initial: WorldState,
         failed_action: str,
-        new_facts: Optional[dict[str, Any]] = None,
+        new_facts: dict[str, Any] | None = None,
     ) -> PlanResult:
         """Re-plan after `failed_action` broke: update state, plan again."""
         if new_facts:

@@ -7,13 +7,11 @@ live_trade is THE product we sell in Pulse. Rules tested here:
   4. post_order maps buy/sell to the correct Tinkoff enums.
 """
 
-import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pytest
 
 from token_diet.trading_robot import live_trade
 

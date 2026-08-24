@@ -18,16 +18,13 @@ from __future__ import annotations
 
 import json
 import os
-import re
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from dataclasses import dataclass
 
 try:
-    from .core import count_tokens, PriceTable, Usage
-    from .loss_router import reduce_output
+    from .core import PriceTable, Usage, count_tokens
+    from .loss_router import reduce_output  # noqa: F401
 except ImportError:
-    from core import count_tokens, PriceTable, Usage  # type: ignore[no-redef]
-    from loss_router import reduce_output  # type: ignore[no-redef]
+    from core import PriceTable, Usage, count_tokens  # type: ignore[no-redef]
 
 # Default price tables per provider
 PROVIDER_PRICES = {

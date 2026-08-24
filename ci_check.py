@@ -70,6 +70,7 @@ COST_REGRESSION_SLACK = 1.02  # optimized request may cost at most 102% of basel
 # Every file the package promises to ship (review: packaging must not be empty).
 REQUIRED_ARTIFACTS = [
     "README.md",
+    "LICENSE",
     "pyproject.toml",
     "token_diet/core.py",
     "token_diet/context_memory.py",
@@ -95,6 +96,8 @@ _ARTIFACT_WHITELIST = {
     "ci_check.py",
     "run.sh",
     ".env.example",
+    "LICENSE",
+    ".github",
 }
 
 # Что ЗАПРЕЩЕНО внутри whitelist-директорий (защита от случайностей).

@@ -25,16 +25,16 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 try:
-    from .tinkoff_invest import TinkoffInvest
     from . import telegram_monitor as tgm
+    from .tinkoff_invest import TinkoffInvest
 except Exception:  # pragma: no cover — сырые импорты для прямого запуска
-    from tinkoff_invest import TinkoffInvest
     import telegram_monitor as tgm
+    from tinkoff_invest import TinkoffInvest
 
 try:
     from .memory_cli import vault_path

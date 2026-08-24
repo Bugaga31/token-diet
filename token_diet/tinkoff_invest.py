@@ -23,8 +23,8 @@ from __future__ import annotations
 import json
 import os
 import ssl
-import urllib.request
 import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -238,7 +238,7 @@ class TinkoffInvest:
         self._sdk = False
         # Пробуем SDK, если установлен
         try:
-            from tinkoff.invest import Client, CandleInterval  # type: ignore
+            from tinkoff.invest import CandleInterval, Client  # type: ignore
             self._sdk = True
             self._Client = Client
             self._CandleInterval = CandleInterval
@@ -395,8 +395,8 @@ class TinkoffInvest:
         # SDK path
         if self._sdk:
             try:
-                from tinkoff.invest import Client as C
                 from tinkoff.invest import CandleInterval as CI
+                from tinkoff.invest import Client as C
                 interval = interval or CI.CANDLE_INTERVAL_DAY
                 with C(self.token) as client:
                     resp = client.market_data.get_candles(
@@ -475,7 +475,7 @@ class TinkoffInvest:
         if len(candles) < 20:
             return None
 
-        from .market_intelligence import generate_signal, estimate_price_range
+        from .market_intelligence import estimate_price_range, generate_signal
 
         closes = [c.close for c in candles]
         highs = [c.high for c in candles]

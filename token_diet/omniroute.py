@@ -228,7 +228,6 @@ class OmniRouter:
         tried: set[str] = set()
         fallbacks = 0
         last_err = ""
-        start = time.time()
         while True:
             provider = self.pick(strategy, exclude=sorted(tried))
             if provider is None:

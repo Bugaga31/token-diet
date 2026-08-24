@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Step-Back: конкретное → общий принцип
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -128,11 +127,11 @@ def analogy_prompt(question: str, cases: list[Case], top_k: int = 2) -> str:
     if not hits:
         return ""
     lines = []
-    for c, ov in hits:
+    for c, _ov in hits:
         title = f"[{c.title}] " if c.title else ""
         lines.append(f"• {title}Задача: {c.problem}\n  Решение: {c.solution or '(нет записи решения)'}")
     return (
-        f"Похожие уже решённые задачи (примени тот же подход):\n"
+        "Похожие уже решённые задачи (примени тот же подход):\n"
         + "\n".join(lines)
         + f"\n\nТеперь реши исходную задачу по аналогии: «{question}»"
     )

@@ -1,20 +1,15 @@
 """Tests for tinkoff_invest.py — token security + API integration."""
 
-import os
-import pytest
 from pathlib import Path
 
 from token_diet.tinkoff_invest import (
     KNOWN_FIGI,
     TinkoffInvest,
-    TinkoffQuote,
-    TinkoffCandle,
-    PortfolioPosition,
+    figi_unknown,
     get_token,
     resolve_figi,
     save_token,
     status,
-    figi_unknown,
 )
 
 

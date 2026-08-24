@@ -48,14 +48,14 @@ def test_compress_history_drops_duplicates_and_limits():
     history = "\n".join(["строка A", "строка A", "строка B", "x" * 1000])
     kept = compress_history(history, max_chars=300)
     assert len(kept) <= 3
-    assert all(len(l) <= 220 for l in kept)  # дампы обрезаны
+    assert all(len(ln) <= 220 for ln in kept)  # дампы обрезаны
     assert kept[0] == "строка A"
 
 
 def test_compress_history_respects_max_chars():
     history = "\n".join(f"строка номер {i} с данными" for i in range(200))
     kept = compress_history(history, max_chars=500)
-    total = sum(len(l) for l in kept)
+    total = sum(len(ln) for ln in kept)
     assert total <= 500 + 200  # последняя строка может чуть перескочить
 
 
@@ -100,7 +100,7 @@ def test_vault_lessons(tmp_path):
     from token_diet.session_handoff import vault_lessons
     lessons = vault_lessons(vault)
     assert len(lessons) == 2
-    assert all("Урок" in l for l in lessons)
+    assert all("Урок" in ln for ln in lessons)
 
 
 def test_render_handoff_sections():

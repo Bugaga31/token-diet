@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # ТГ через DPI/прокси шумит «Server closed» — не даём этому мусору
 # засорять вывод разведчика.
@@ -138,7 +139,7 @@ def tg_intel(query: str, limit: int = 10, save: bool = True,
 
     # ретраи: сеть через DPI капризничает, повторный вызов часто проходит
     def _with_retries(fn, seconds: float) -> list[dict]:
-        for attempt in range(retries + 1):
+        for _attempt in range(retries + 1):
             res = _run_with_timeout(fn, seconds=seconds)
             if res:
                 return res
@@ -157,7 +158,8 @@ def tg_intel(query: str, limit: int = 10, save: bool = True,
 
     t1 = threading.Thread(target=_worker_glob, daemon=True)
     t2 = threading.Thread(target=_worker_dial, daemon=True)
-    t1.start(); t2.start()
+    t1.start()
+    t2.start()
     t1.join(timeout=95)
     t2.join(timeout=95)
 

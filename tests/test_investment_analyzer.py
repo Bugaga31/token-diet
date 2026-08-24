@@ -6,6 +6,8 @@
 - Yandex: record report but stock FELL 2.23%   -> already priced in -> avoid
 """
 
+from datetime import date
+
 import pytest
 
 from token_diet.investment_analyzer import (
@@ -13,15 +15,11 @@ from token_diet.investment_analyzer import (
     CommitteeVote,
     DividendEvent,
     InvestmentAnalyzer,
-    InvestmentVerdict,
     NewsItem,
-    PricedInAssessment,
     assess_news_priced_in,
     build_events_from_calendar_rows,
     parse_date,
 )
-
-from datetime import date
 
 TODAY = date(2026, 8, 10)  # Monday
 

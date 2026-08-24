@@ -24,7 +24,7 @@ _TOKEN_DIET_DIR = _HERE.parent if (_HERE / "core.py").exists() else _HERE
 if str(_TOKEN_DIET_DIR) not in sys.path:
     sys.path.insert(0, str(_TOKEN_DIET_DIR))
 
-from token_diet.core import count_tokens, PriceTable
+from token_diet.core import count_tokens
 from token_diet.green_calculator import GreenCalculator, GreenMetrics
 
 
@@ -135,7 +135,7 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
             # ── System prompt: rewrite + action bias ──
             if role == "system":
                 try:
-                    from token_diet.promptology import rewrite_system_prompt, inject_action_bias
+                    from token_diet.promptology import inject_action_bias, rewrite_system_prompt
                     content = rewrite_system_prompt(content)
                     content = inject_action_bias(content)
                 except Exception:
@@ -159,8 +159,10 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
                     pass
                 try:
                     from token_diet.promptology import (
-                        rewrite_user_prompt, reframe_positive,
-                        remove_russian_filler, adapt_for_language,
+                        adapt_for_language,
+                        reframe_positive,
+                        remove_russian_filler,
+                        rewrite_user_prompt,
                     )
                     content = rewrite_user_prompt(content)
                     content = reframe_positive(content)
@@ -212,9 +214,9 @@ def _apply_token_diet(messages: list[dict], model: str) -> tuple[list[dict], int
 
 def create_app():
     try:
+        import httpx
         from fastapi import FastAPI, Request
         from fastapi.responses import JSONResponse
-        import httpx
     except ImportError:
         print("pip install fastapi uvicorn httpx")
         sys.exit(1)
@@ -300,8 +302,9 @@ def main():
     args = parser.parse_args()
 
     if args.command in ("setup", "detect", "list"):
-        from token_diet.auto_setup import main as setup_main
         import sys as _sys
+
+        from token_diet.auto_setup import main as setup_main
         _sys.argv = ["token-diet-setup", args.command]
         setup_main()
         return

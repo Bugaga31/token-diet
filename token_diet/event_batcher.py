@@ -25,7 +25,6 @@ import random
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Optional
 
 MAX_PENDING_PER_CHANNEL = 500   # кап глубины очереди канала
 MAX_BATCH_EVENTS = 50           # максимум событий в одном батче
@@ -61,7 +60,7 @@ class FlushBatch:
     channel: str
     events: list[BatchEvent] = field(default_factory=list)
     cancelled_events: list[BatchEvent] = field(default_factory=list)
-    cancel_reason: Optional[str] = None
+    cancel_reason: str | None = None
 
 
 class EventBatcher:
@@ -100,7 +99,7 @@ class EventBatcher:
             self.in_flight_deadlines.pop(c, None)
             self.in_flight_batch_sizes.pop(c, None)
 
-    def flush_next(self) -> Optional[FlushBatch]:
+    def flush_next(self) -> FlushBatch | None:
         """Слить следующий батч: канал со старейшим событием, до 50 событий."""
         now = time.monotonic()
         self._expire_stuck_in_flight(now)
@@ -160,7 +159,7 @@ class EventBatcher:
         capped = min(base, MAX_RETRY_DELAY_SECS)
         return capped * random.uniform(0.8, 1.2)
 
-    def requeue(self, batch: FlushBatch) -> Optional[FlushBatch]:
+    def requeue(self, batch: FlushBatch) -> FlushBatch | None:
         """Пере-поставить батч с backoff. Вернёт батч при dead-letter."""
         attempt = self.retry_counts.get(batch.channel, 0) + 1
         self.retry_counts[batch.channel] = attempt

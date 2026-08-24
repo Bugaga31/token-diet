@@ -15,10 +15,12 @@ it targets, so the caller (or an agent) can decide what to apply.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
-try:from .core import (
+try:
+    from .core import (
     BlobStore,
     PriceTable,
     SemanticCache,
@@ -44,12 +46,16 @@ except ImportError:  # standalone use
 
 try:
     from .equivalence_gate import EquivalenceGate, GateResult, RegressionCase
-    from .tool_schema_compressor import guarded_tool_schemas
     from .question_normalizer import normalize_question
+    from .tool_schema_compressor import guarded_tool_schemas
 except ImportError:
-    from equivalence_gate import EquivalenceGate, GateResult, RegressionCase  # type: ignore[no-redef]
-    from tool_schema_compressor import guarded_tool_schemas  # type: ignore[no-redef]
+    from equivalence_gate import (  # type: ignore[no-redef]
+        EquivalenceGate,
+        GateResult,
+        RegressionCase,
+    )
     from question_normalizer import normalize_question  # type: ignore[no-redef]
+    from tool_schema_compressor import guarded_tool_schemas  # type: ignore[no-redef]
 
 try:
     from .cache_breakpoints import CacheBreakpointAnalyzer
@@ -59,7 +65,10 @@ except ImportError:
 try:
     from .loss_router import compress_prose_aggressive, compress_with_routing
 except ImportError:
-    from loss_router import compress_prose_aggressive, compress_with_routing  # type: ignore[no-redef]
+    from loss_router import (  # type: ignore[no-redef]
+        compress_prose_aggressive,
+        compress_with_routing,
+    )
 
 try:
     from .neural_scorer import strip_noise
@@ -476,7 +485,6 @@ def _prose_proposal(profile: RequestProfile) -> OptimizationProposal:
     section = "history"
     if not profile.history_text:
         return OptimizationProposal(name="compress_prose", target_section=section, applicable=False)
-    before = profile.counter(profile.history_text)
     compressed, before_t, after_t = compress_with_routing(profile.history_text)
     return OptimizationProposal(
         name="compress_prose",

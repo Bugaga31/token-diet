@@ -27,17 +27,18 @@ import re
 import threading
 import time
 import urllib.parse
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable, Iterator
+from typing import Any
 
 import requests
 from lxml import etree, html
 
 try:
-    from .core import count_tokens
+    from .core import count_tokens  # noqa: F401
 except ImportError:  # pragma: no cover
-    from core import count_tokens  # type: ignore[no-redef]
+    pass  # type: ignore[no-redef]
 
 CACHE_DIR = os.path.expanduser("~/.cache/token-diet/response-cache")
 
@@ -96,7 +97,6 @@ def network_capture(ws_url: str, url_pattern: str = "",
 
 def _send(ws: Any, method: str, params: dict | None = None) -> dict:
     """Отправить CDP-команду и дождаться ответа с её id."""
-    import websocket
 
     ws.send(json.dumps({"id": 0, "method": method, "params": params or {}}))
     while True:

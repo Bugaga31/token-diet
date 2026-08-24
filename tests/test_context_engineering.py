@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import unittest
 
+from token_diet import count_tokens
 from token_diet.context_engineering import (
     analyze_prompt,
     minimize_system_prompt,
     optimize_system_prompt,
     reorder_prompt,
 )
-from token_diet import count_tokens
-
 
 BLOATED_PROMPT = """You are a helpful, accurate, concise assistant.
 You are an AI assistant designed to be helpful.

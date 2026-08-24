@@ -30,11 +30,10 @@ from __future__ import annotations
 import hashlib
 import re
 import time
-from collections import Counter, defaultdict
+from collections import Counter
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Callable, Iterable, Optional
-
+from typing import Any
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Предсказательное кодирование (predictive coding)
@@ -65,7 +64,6 @@ def predictive_compress(new_text: str, history: Iterable[str],
     if not novel:
         return "", {"novel_ngrams": 0, "ratio": 1.0, "saved_tokens": 0}
 
-    words = re.findall(r"\w+", new_text.lower())
     # Оставляем предложения, где есть новые n-граммы
     sentences = re.split(r"(?<=[.!?])\s+", new_text)
     kept = []
@@ -152,7 +150,6 @@ def sleep_consolidate(notes: dict[str, str],
     в поле deleted/merged; сам словарь НЕ мутирует.
     """
     rep = SleepReport()
-    now = time.time()
     cleaned: dict[str, str] = {}
     seen_keys: dict[str, str] = {}  # ключ похожести → имя первой заметки
 
@@ -193,7 +190,7 @@ class Action:
     payload: Any = None
 
 
-def select_action(candidates: list[Action], noise: float = 0.0) -> Optional[Action]:
+def select_action(candidates: list[Action], noise: float = 0.0) -> Action | None:
     """Выбрать одно лучшее действие, подавив конфликтующие (no-go)."""
     if not candidates:
         return None
@@ -282,7 +279,7 @@ def thalamus_gate(items: Iterable[str], focus: str, k: int = 3,
 
 STOPWORDS_RU = {"и", "в", "на", "с", "по", "для", "из", "о", "от", "не",
                 "что", "как", "это", "при", "до", "за", "у", "к", "же",
-                "бы", "от", "но", "а", "то", "все", "она", "он"}
+                "бы", "но", "а", "то", "все", "она", "он"}
 
 
 def hebbian_link(notes: dict[str, str], top_pairs: int = 10) -> list[tuple[str, str, int]]:

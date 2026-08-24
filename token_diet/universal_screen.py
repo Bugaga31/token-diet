@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFont  # noqa: F401
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
@@ -103,8 +103,8 @@ class UINode:
 
     @property
     def center(self) -> tuple[int, int]:
-        l, t, r, b = self.bounds
-        return ((l + r) // 2, (t + b) // 2)
+        left, top, right, bottom = self.bounds
+        return ((left + right) // 2, (top + bottom) // 2)
 
     @property
     def label(self) -> str:
@@ -158,7 +158,6 @@ class DesktopScreen:
 
     def _capture_mss(self, quality: int, scale: float) -> ScreenFrame:
         """Fast capture via MSS (C library)."""
-        env = {**os.environ, "DISPLAY": self.display}
         with mss.MSS(display=self.display) as sct:
             monitor = sct.monitors[0]
             img = sct.grab(monitor)
@@ -240,7 +239,6 @@ class DesktopScreen:
 
     def click_text(self, text: str) -> bool:
         """Find text on screen via OCR and click it. Returns True if found."""
-        import re as _re
         frame = self.capture()
         positions = self.ocr_find(frame, text)
         if positions:
@@ -271,8 +269,6 @@ class DesktopScreen:
                 [tesseract, tmp_in, tmp_out, "--psm", "6"],
                 timeout=15, capture_output=True,
             )
-            with open(tmp_out + ".txt") as f:
-                ocr_text = f.read()
 
             # tesseract with --psm 6 gives word positions via tsv output
             # Try tsv for precise positions

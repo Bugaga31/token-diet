@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Callable
 from math import log2
-from typing import Callable
 
 try:
     from .core import count_tokens

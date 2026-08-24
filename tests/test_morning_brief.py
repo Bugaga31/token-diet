@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from token_diet.morning_brief import MorningBrief, brief, brief_block
+from token_diet.morning_brief import MorningBrief, brief
 
 
 def test_block_assembles_sections(monkeypatch):

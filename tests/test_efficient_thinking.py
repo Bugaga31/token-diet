@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 
+from token_diet import count_tokens
 from token_diet.efficient_thinking import (
     adaptive_effort_prompt,
     chain_of_draft_compress,
@@ -12,7 +13,6 @@ from token_diet.efficient_thinking import (
     estimate_effort,
     optimize_thinking,
 )
-from token_diet import count_tokens
 
 
 class TestChainOfDraft(unittest.TestCase):

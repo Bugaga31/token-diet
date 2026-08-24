@@ -23,8 +23,6 @@ from __future__ import annotations
 import os
 import re
 import subprocess
-import sys
-import time
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -415,7 +413,7 @@ def build_apk(
         # link compiled resources + manifest
         rc, so, se = _run([str(aapt2), "link", "-o", str(build_dir / "base.apk"),
                            "-I", str(jar), "--manifest", str(manifest),
-                           *[f"--java", str(gen_dir)],
+                           *["--java", str(gen_dir)],
                            *[str(f) for f in compiled.rglob("*")]])
         if rc == 0:
             steps.append("aapt2 link")

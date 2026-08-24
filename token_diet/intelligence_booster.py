@@ -16,23 +16,23 @@ EquivalenceGate confirming that no critical facts were lost.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 try:
     from .context_memory import AdaptiveContext, EventStore
     from .core import BlobStore, count_tokens
     from .optimization_runner import (
-        OptimizationRunner,
         OptimizationReport,
+        OptimizationRunner,
         RequestProfile,
     )
 except ImportError:  # standalone
     from context_memory import AdaptiveContext, EventStore  # type: ignore[no-redef]
     from core import BlobStore, count_tokens  # type: ignore[no-redef]
     from optimization_runner import (  # type: ignore[no-redef]
-        OptimizationRunner,
         OptimizationReport,
+        OptimizationRunner,
         RequestProfile,
     )
 

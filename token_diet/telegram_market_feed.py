@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 
 from .investment_analyzer import NewsItem
 
@@ -355,7 +355,7 @@ class TelegramMarketFeed:
     def _make_client(self):
         """Build a Telethon client. Returns None if dependencies are missing."""
         try:
-            import telethon
+            import telethon  # noqa: F401
             from telethon import TelegramClient
         except ImportError:
             return None

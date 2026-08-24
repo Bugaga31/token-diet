@@ -5,13 +5,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from token_diet.tool_search import TdqsLinter, ToolRegistry, ToolSpec
+from token_diet.tool_search import TdqsLinter, ToolRegistry
 
 
 # ── TDQS-линтер ──────────────────────────────────────────────────────────
 def test_good_description_scores_high():
-    l = TdqsLinter()
-    r = l.check(
+    linter = TdqsLinter()
+    r = linter.check(
         "send_message",
         "Отправляет сообщение в Telegram. Когда: после получения текста от "
         "пользователя. Пишет данные в чат. Формат text.",
@@ -24,17 +24,17 @@ def test_good_description_scores_high():
 
 
 def test_smelly_description_flagged():
-    l = TdqsLinter()
-    r = l.check("do_thing", "делает что-то", parameters={"x": {}})
+    linter = TdqsLinter()
+    r = linter.check("do_thing", "делает что-то", parameters={"x": {}})
     assert r.score < 60
     assert any("параметр" in i for i in r.issues)
     assert any("глагол" in i for i in r.issues)
 
 
 def test_side_effect_transparency():
-    l = TdqsLinter()
+    linter = TdqsLinter()
     # удаление без упоминания побочного эффекта — флаг
-    r = l.check("delete_user", "удаляет пользователя из системы",
+    r = linter.check("delete_user", "удаляет пользователя из системы",
                 parameters={})
     assert r.axes["transparency"] is True or "побочн" in " ".join(r.issues)
 

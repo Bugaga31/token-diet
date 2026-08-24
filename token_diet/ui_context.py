@@ -95,7 +95,7 @@ class AccessibilityNode:
     tag: str
     role: str
     text: str = ""
-    children: list["AccessibilityNode"] = field(default_factory=list)
+    children: list[AccessibilityNode] = field(default_factory=list)
     depth: int = 0
 
 

@@ -371,7 +371,7 @@ def _is_regex_arg(node: ast.AST) -> bool:
 
 def _is_keyword_list(node: ast.AST) -> bool:
     """Контейнер из трёх и более коротких строк — список ключевых слов."""
-    if not isinstance(node, (ast.List, ast.Set, ast.Tuple)):
+    if not isinstance(node, ast.List | ast.Set | ast.Tuple):
         return False
     elts = node.elts
     if len(elts) < 3:
@@ -387,7 +387,7 @@ def _computed(node: ast.AST) -> bool:
     """В подстановке f-строки или в тернарнике — значит, вычисляется."""
     if isinstance(node, ast.JoinedStr):
         return any(isinstance(v, ast.FormattedValue) for v in node.values)
-    return isinstance(node, (ast.Compare, ast.IfExp))
+    return isinstance(node, ast.Compare | ast.IfExp)
 
 
 def find_hardcoded_verdicts(source: str) -> list[HardcodedVerdict]:
@@ -419,8 +419,7 @@ def find_hardcoded_verdicts(source: str) -> list[HardcodedVerdict]:
         if isinstance(parent, ast.JoinedStr):
             for v in parent.values:
                 inside_fstring.add(id(v))
-        if isinstance(parent, (ast.Module, ast.ClassDef, ast.FunctionDef,
-                               ast.AsyncFunctionDef)):
+        if isinstance(parent, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             body = getattr(parent, "body", [])
             if body and isinstance(body[0], ast.Expr) and \
                     isinstance(body[0].value, ast.Constant) and \
@@ -453,13 +452,13 @@ def find_hardcoded_verdicts(source: str) -> list[HardcodedVerdict]:
 
         skip = False
         for anc in ancestors(node):
-            if isinstance(anc, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Module)):
+            if isinstance(anc, ast.FunctionDef | ast.AsyncFunctionDef | ast.Module):
                 break
             if _is_regex_arg(anc) or _is_keyword_list(anc) or _computed(anc):
                 skip = True
                 break
-            if isinstance(anc, (ast.If, ast.While)) and any(
-                    isinstance(n, (ast.Compare, ast.IfExp)) for n in ast.walk(anc.test)):
+            if isinstance(anc, ast.If | ast.While) and any(
+                    isinstance(n, ast.Compare | ast.IfExp) for n in ast.walk(anc.test)):
                 skip = True
                 break
         if skip:

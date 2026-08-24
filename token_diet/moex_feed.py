@@ -22,11 +22,11 @@ from __future__ import annotations
 
 import json
 import ssl
-import urllib.request
-import urllib.parse
 import urllib.error
-from dataclasses import dataclass, field
-from datetime import datetime, date
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
 
 ISS_BASE = "https://iss.moex.com/iss"
@@ -111,7 +111,7 @@ class MoexFeed:
         for block in ("securities", "marketdata"):
             cols, rows = _table(data, block)
             if rows:
-                out.update(dict(zip(cols, rows[0])))
+                out.update(dict(zip(cols, rows[0], strict=False)))
         if not out.get("SECID"):
             return None
         price = _as_float(out.get("LAST") or out.get("CURRENTPRICE"))
@@ -143,13 +143,13 @@ class MoexFeed:
         cols, rows = _table(data, "securities")
         if not rows:
             return None
-        row = dict(zip(cols, rows[0]))
+        row = dict(zip(cols, rows[0], strict=False))
         prev = _as_float(row.get("PREVPRICE"))
         price = prev  # закрытие вчера — baseline
         # текущая цена из marketdata block, если доступен
         mcols, mrows = _table(data, "marketdata")
         if mrows:
-            mrow = dict(zip(mcols, mrows[0]))
+            mrow = dict(zip(mcols, mrows[0], strict=False))
             cur = _as_float(mrow.get("LAST") or mrow.get("CURRENTPRICE"))
             if cur and cur > 0:
                 price = cur
@@ -189,7 +189,7 @@ class MoexFeed:
             return []
         candles = []
         for r in rows:
-            row = dict(zip(cols, r))
+            row = dict(zip(cols, r, strict=False))
             t = row.get("begin")
             try:
                 dt = datetime.fromisoformat(t.replace("Z", "+00:00")) if t else datetime.now()
@@ -221,7 +221,7 @@ class MoexFeed:
             return []
         result = []
         for r in rows[:limit]:
-            row = dict(zip(cols, r))
+            row = dict(zip(cols, r, strict=False))
             rd = row.get("registryclosedate")
             try:
                 rdate = date.fromisoformat(rd) if rd else None

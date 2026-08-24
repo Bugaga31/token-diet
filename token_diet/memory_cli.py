@@ -15,8 +15,8 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 
 from .config import TD_VAULT
@@ -243,10 +243,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="show the idiomatic-code system prompt")
     p_lang.add_argument("--budget", action="store_true",
                         help="show what can be safely compressed")
-    p_tool = sub.add_parser("toolchain", help="detect compilers/interpreters on this machine")
+    sub.add_parser("toolchain", help="detect compilers/interpreters on this machine")
     p_apk = sub.add_parser("apk", help="Android APK build & inspect")
     apk_sub = p_apk.add_subparsers(dest="apk_cmd")
-    p_apk_check = apk_sub.add_parser("check", help="check APK toolchain")
+    apk_sub.add_parser("check", help="check APK toolchain")
     p_apk_new = apk_sub.add_parser("new", help="generate a minimal Android project")
     p_apk_new.add_argument("dir", help="output directory")
     p_apk_new.add_argument("--package", default="com.example.hello",
@@ -530,6 +530,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "lang":
         from pathlib import Path
+
         from .polyglot import code_budget, detect_language, system_prompt_for
         p = Path(args.path)
         if not p.exists():
@@ -559,8 +560,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "apk":
         from .apk_builder import (
-            build_apk, check_toolchain, create_android_project,
-            inspect_apk, install_instructions,
+            build_apk,
+            check_toolchain,
+            create_android_project,
+            inspect_apk,
+            install_instructions,
         )
         if not args.apk_cmd:
             print(check_toolchain().render())
@@ -594,6 +598,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "fix-prompt":
         from pathlib import Path
+
         from .context_engineering import analyze_prompt, minimize_system_prompt
         p = Path(args.file)
         if not p.exists():
@@ -653,6 +658,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "tron":
         import json as _json
         from pathlib import Path
+
         from .tron_format import savings as tron_savings
         p = Path(args.file)
         if not p.exists():
@@ -700,7 +706,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.memo_cmd == "link":
             if not store.get(args.source) or not store.get(args.target):
-                print(f"⚠️ Обе заметки должны существовать. Создайте их через `remember`.")
+                print("⚠️ Обе заметки должны существовать. Создайте их через `remember`.")
                 return 1
             ok = store.link(args.source, args.target, edge_type=args.type)
             print(f"✓ {args.source} —[{args.type}]→ {args.target}" if ok

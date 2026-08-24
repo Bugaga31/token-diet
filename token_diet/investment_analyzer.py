@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Trap detection — dividend calendar
@@ -182,7 +182,7 @@ class InvestmentVerdict:
     catalysts: list[str] = field(default_factory=list)
     risks: list[str] = field(default_factory=list)
     priced_in: PricedInAssessment | None = None
-    committee: "CommitteeVerdict | None" = None
+    committee: CommitteeVerdict | None = None
     disclaimer: str = (
         "Никто не может гарантировать движение за один день. "
         "Это оценка вероятности, не обещание."
@@ -232,7 +232,7 @@ class CommitteeVerdict:
     score: float                 # -1.0..1.0 net weighted sentiment
 
     @classmethod
-    def from_votes(cls, votes: list[CommitteeVote]) -> "CommitteeVerdict":
+    def from_votes(cls, votes: list[CommitteeVote]) -> CommitteeVerdict:
         if not votes:
             return cls(votes=[], consensus="neutral", score=0.0)
         score = sum(

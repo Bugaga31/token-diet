@@ -25,7 +25,7 @@ import json
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 GENESIS_HASH = b"\x00" * 32  # 32 нулевых байта — для первой записи цепочки
 
@@ -66,18 +66,18 @@ def canonical_json(value: Any) -> str:
             f"{json.dumps(str(k))}:{canonical_json(v)}" for k, v in items
         )
         return "{" + body + "}"
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return "[" + ",".join(canonical_json(v) for v in value) + "]"
     if value is None:
         return "null"
     if isinstance(value, bool):
         return "true" if value else "false"
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return json.dumps(value)
     return json.dumps(str(value))
 
 
-def _presence_tag(value: Optional[str]) -> bytes:
+def _presence_tag(value: str | None) -> bytes:
     """1 байт-тег: 1 — значение есть, 0 — None. Не даёт Some('') == None."""
     return b"\x01" if value is not None else b"\x00"
 
@@ -92,8 +92,8 @@ class AuditEntry:
     __slots__ = ("chain_id", "seq", "hash", "prev_hash", "action", "actor",
                  "object_id", "detail", "created_at")
 
-    def __init__(self, chain_id: str, seq: int, hash_: str, prev_hash: Optional[str],
-                 action: str, actor: Optional[str], object_id: Optional[str],
+    def __init__(self, chain_id: str, seq: int, hash_: str, prev_hash: str | None,
+                 action: str, actor: str | None, object_id: str | None,
                  detail: dict, created_at: str):
         self.chain_id = chain_id
         self.seq = seq
@@ -139,7 +139,7 @@ class AuditEntry:
         }, sort_keys=True)
 
     @classmethod
-    def from_line(cls, line: str) -> "AuditEntry":
+    def from_line(cls, line: str) -> AuditEntry:
         d = json.loads(line)
         return cls(
             chain_id=d.get("chain_id", ""),
@@ -171,7 +171,7 @@ def default_chain_path() -> Path:
 class AuditChain:
     """Append-only hash-chain журнал на JSONL-файле с потокобезопасностью."""
 
-    def __init__(self, path: Optional[Path] = None, chain_id: Optional[str] = None):
+    def __init__(self, path: Path | None = None, chain_id: str | None = None):
         self.path = Path(path) if path else default_chain_path()
         if chain_id is None:
             # стабильная привязка к месту хранения (как community_id в buzz)
@@ -184,7 +184,7 @@ class AuditChain:
         if not self.path.exists():
             return []
         entries: list[AuditEntry] = []
-        with open(self.path, "r", encoding="utf-8") as f:
+        with open(self.path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -195,13 +195,13 @@ class AuditChain:
                     continue  # битая строка не роняет чтение (но verify её поймает)
         return entries
 
-    def entries(self, limit: Optional[int] = None) -> list[AuditEntry]:
+    def entries(self, limit: int | None = None) -> list[AuditEntry]:
         with self._lock:
             return self._load()[-limit:] if limit else self._load()
 
     # ── запись ────────────────────────────────────────────────────────────
-    def log(self, action: str, detail: Optional[dict] = None,
-            actor: Optional[str] = None, object_id: Optional[str] = None) -> AuditEntry:
+    def log(self, action: str, detail: dict | None = None,
+            actor: str | None = None, object_id: str | None = None) -> AuditEntry:
         """Добавить запись в цепочку. Возвращает созданную запись."""
         with self._lock:
             head = self._load()[-1] if self.path.exists() and self._load() else None
@@ -244,7 +244,7 @@ class AuditChain:
         )
 
     # ── проверка целостности ──────────────────────────────────────────────
-    def verify(self) -> tuple[bool, Optional[int]]:
+    def verify(self) -> tuple[bool, int | None]:
         """Проверить всю цепочку. Возвращает (ok, seq_первой_проблемы).
 
         Ловит: разрыв prev_hash-связи, подмену любого поля, вставку чужой
@@ -254,7 +254,7 @@ class AuditChain:
             entries = self._load()
             if not entries:
                 return False, None
-            prev_hash: Optional[str] = None
+            prev_hash: str | None = None
             for e in entries:
                 if e.chain_id != self.chain_id:
                     return False, e.seq  # запись из чужой цепочки (replay)

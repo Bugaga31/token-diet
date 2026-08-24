@@ -18,7 +18,6 @@ from token_diet.brain_engine import (
     thalamus_gate,
 )
 
-
 # ── Предсказательное кодирование ────────────────────────────────────────────
 
 def test_predictive_compress_removes_known():

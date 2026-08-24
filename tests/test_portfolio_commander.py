@@ -1,7 +1,6 @@
 """Tests for portfolio_commander.py — honest portfolio management with safety gate."""
 
 from token_diet.portfolio_commander import (
-    PositionPlan,
     leverage_analysis,
     plan_position,
 )

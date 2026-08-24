@@ -113,7 +113,6 @@ def _hex(color: dict) -> str:
 def _walk(node: dict, tokens: DesignTokens, name_prefix: str = "") -> None:
     tokens.node_count += 1
     name = str(node.get("name", "")).strip() or name_prefix
-    ntype = node.get("type", "")
 
     # Colors from fills
     for fill in node.get("fills") or []:
@@ -137,7 +136,7 @@ def _walk(node: dict, tokens: DesignTokens, name_prefix: str = "") -> None:
     for k, v in node.items():
         if k in ("paddingLeft", "paddingRight", "paddingTop", "paddingBottom",
                  "itemSpacing", "gap", "cornerRadius"):
-            if isinstance(v, (int, float)) and v > 0:
+            if isinstance(v, int | float) and v > 0:
                 if "Radius" in k or k == "cornerRadius":
                     tokens.radii.add(int(round(v)))
                 else:
@@ -197,7 +196,7 @@ def tailwind_class_for(hexv: str) -> str:
     best, best_dist = "gray-500", 1e9
     for name, candidate in _TAILWIND_COLORS.items():
         c = _hex_rgb(candidate)
-        dist = sum((a - b) ** 2 for a, b in zip(target, c))
+        dist = sum((a - b) ** 2 for a, b in zip(target, c, strict=False))
         if dist < best_dist:
             best, best_dist = name, dist
     return best

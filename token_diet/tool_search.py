@@ -18,11 +18,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+
 # ── стемминг для русской морфологии ─────────────────────────────────────
 def _stem(w: str) -> str:
     w = w.lower()
     if len(w) > 5:
-        w = w.rstrip("аяоеёуюыиэьийовымихое")
+        w = w.rstrip("аяоеёуюыиэьийовымихое")  # noqa: B005  # charset strip is the point: Russian vowel endings
         if len(w) < 3:
             w = w.lower()
     return w

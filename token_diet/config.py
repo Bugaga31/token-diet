@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+
 # ── Корень проекта ────────────────────────────────────────────────────────
 # Приоритет: TD_HOME env → родитель пакета (там run.sh/.env) → cwd
 def _default_home() -> Path:

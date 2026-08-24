@@ -13,11 +13,9 @@ Two methods to increase intelligence WITHOUT adding prompt tokens:
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 from typing import Any
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. SELF-CONSISTENCY — multiple samples, majority vote
@@ -61,7 +59,7 @@ def extract_final_answer(text: str) -> str:
             return m.group(1).strip().rstrip('.')
 
     # Last non-empty line
-    lines = [l.strip() for l in text.strip().split('\n') if l.strip()]
+    lines = [ln.strip() for ln in text.strip().split('\n') if ln.strip()]
     if lines:
         return lines[-1].rstrip('.')
 
@@ -187,7 +185,7 @@ def reflexion_loop(
     current_answer = llm_call(question)
     iterations = 1
 
-    for i in range(max_iterations):
+    for _i in range(max_iterations):
         # Step 2: Self-evaluate
         eval_prompt = _SELF_EVALUATION_PROMPT.format(response=current_answer)
         eval_result = evaluate(eval_prompt).strip().upper()

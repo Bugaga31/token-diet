@@ -5,17 +5,21 @@ Security Audit → security_audit.py
 Global Variables → global_vars.py
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from token_diet.global_vars import GlobalVars
 from token_diet.hybrid_search import (
-    autocomplete, cache_stats, hybrid_search, rank, rerank_telegram,
+    autocomplete,
+    cache_stats,
+    hybrid_search,
+    rank,
+    rerank_telegram,
     search_vault,
 )
 from token_diet.security_audit import SecurityAudit
-from token_diet.global_vars import GlobalVars
 
 DOCS = [
     {"title": "Стоп по Сургуту", "body": "SNGSP 200 шт, стоп 39.5, тейк 43.5"},

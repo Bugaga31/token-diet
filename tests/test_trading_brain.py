@@ -5,14 +5,13 @@
 - BrainDecision контракт: SKIP при RED, WAIT при отсутствии кандидатов
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from token_diet.trading_brain import BrainDecision
 from token_diet.autopilot import commission_cost
-
+from token_diet.trading_brain import BrainDecision
 
 # ── Урок 4: комиссия ─────────────────────────────────────────────────
 

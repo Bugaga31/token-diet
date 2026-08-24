@@ -26,14 +26,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from .tinkoff_invest import KNOWN_FIGI, TinkoffInvest, get_token
-from .moex_feed import MoexFeed
-from .market_intelligence import generate_signal, estimate_price_range, aggregate_sentiment
-from .trading_robot import run_strategies, backtest
-from .investment_analyzer import InvestmentAnalyzer, CommitteeVote, NewsItem
 from .date_anchor import full_date_context
+from .investment_analyzer import CommitteeVote, InvestmentAnalyzer, NewsItem
+from .market_intelligence import aggregate_sentiment, estimate_price_range, generate_signal
+from .moex_feed import MoexFeed
 from .telegram_market_feed import detect_tickers
-
+from .tinkoff_invest import KNOWN_FIGI, TinkoffInvest, get_token
+from .trading_robot import backtest, run_strategies
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Внутренние хелперы
@@ -447,7 +446,7 @@ class InvestHub:
             row["profit_rub"] = round(profit, 2)
 
             if ticker != "UNKNOWN" and not ticker.startswith("uid:"):
-                tech = _safe(lambda: self.technical(ticker, days=days), None)
+                tech = _safe(lambda t=ticker: self.technical(t, days=days), None)
                 if tech and "error" not in tech:
                     row["signal"] = {
                         "verdict": tech.get("verdict"),
@@ -506,7 +505,7 @@ class InvestHub:
             return {"ticker": ticker, "enabled": True, "messages": [],
                     "error": "Telegram недоступен (нет сессии/телефона/сети)"}
 
-        from .telegram_market_feed import parse_message, compact_digest
+        from .telegram_market_feed import parse_message
         relevant = []
         texts = []
         for m in raw:

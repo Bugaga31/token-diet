@@ -1,8 +1,7 @@
 """Tests for doc_guardian — доки, которые сами себя проверяют."""
 
-from pathlib import Path
 
-from token_diet.doc_guardian import extract_blocks, verify_block, verify_docs, render_report
+from token_diet.doc_guardian import extract_blocks, render_report, verify_block, verify_docs
 
 
 def test_extract_blocks():

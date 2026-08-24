@@ -37,10 +37,8 @@ from __future__ import annotations
 import ast
 import re
 import subprocess
-import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Findings
@@ -66,9 +64,15 @@ _MUTABLE_DEFAULT = re.compile(
 _BARE_EXCEPT = re.compile(r"^\s*except\s*:", re.MULTILINE)
 _TODO = re.compile(r"#\s*(TODO|FIXME|XXX|HACK)\b", re.IGNORECASE)
 _PRINT = re.compile(r"^\s*print\(", re.MULTILINE)
+# Do not span newlines — otherwise env-reading patterns like
+# `startswith("ANYMODEL_API_KEY="):\n  x = ...split("` match across lines
+# and trigger a false critical. Also require the `=` assignment to be
+# a real assignment, not a string comparison like startswith("API_KEY=").
 _HARDCODED_SECRET = re.compile(
-    r"(?i)(password|passwd|api_key|apikey|secret|token)\s*=\s*['\"][^'\"]{8,}['\"]"
+    r'(?i)(password|passwd|api_key|apikey|secret|token)\s*=\s*[\'"][^\'"\n]{8,}[\'"]'
 )
+# When True, `print()` in CLI/entrypoint files is expected — not library pollution
+_CLI_PRINT_ALLOWLIST = ("cli.py", "memory_cli.py", "server.py", "__main__.py", "auto_setup.py", "bootstrap.py")
 _FSTRING = re.compile(r"f['\"].*\{.*\}", re.DOTALL)
 _EXCEPT_PASS = re.compile(r"^\s*except[^:]*:\s*\n\s*pass\s*$", re.MULTILINE)
 _NESTED_DEPTH = re.compile(r"^\s{16,}\S", re.MULTILINE)  # 4+ levels of indent
@@ -115,15 +119,34 @@ def detect_code_smells(source: str, filename: str = "<code>") -> list[Finding]:
         ))
 
     for m in _PRINT.finditer(source):
-        line_no = source[: m.start()].count("\n") + 1
-        findings.append(Finding(
-            "info", "style",
-            "print() used in library code — pollutes stdout",
-            line_no, "Use logging or return values",
-        ))
+        # CLI / server entrypoints legitimately use print — don't pollute that signal
+        if any(filename.endswith(suffix) for suffix in _CLI_PRINT_ALLOWLIST):
+            pass
+        else:
+            line_no = source[: m.start()].count("\n") + 1
+            findings.append(Finding(
+                "info", "style",
+                "print() used in library code — pollutes stdout",
+                line_no, "Use logging or return values",
+            ))
 
     for m in _HARDCODED_SECRET.finditer(source):
+        # Filter false positives: env-var reading patterns like
+        # startswith("ANYMODEL_API_KEY=") or os.environ.get("TOKEN", ...)
+        # They contain `API_KEY="` inside a string literal, not an assignment
+        start = m.start()
+        # Look back ~60 chars for `startswith`, `getenv`, `environ`, `startswith`
+        context = source[max(0, start - 60): start + 20].lower()
+        if any(kw in context for kw in ("startswith", "environ", "getenv", "get(")):
+            # If the `=` is inside a string literal argument (e.g. startswith("KEY=")), skip
+            # Heuristic: the match is preceded by a quote or `(`
+            if '"' in context or "'" in context:
+                continue
         line_no = source[: m.start()].count("\n") + 1
+        # Second filter: if the line itself contains comparison/reading, skip
+        line_text = source.splitlines()[line_no - 1] if 1 <= line_no <= len(source.splitlines()) else ""
+        if any(kw in line_text.lower() for kw in ("startswith", "environ", "getenv", ".get(")):
+            continue
         findings.append(Finding(
             "critical", "security",
             "Possible hardcoded secret/credential in source",
@@ -163,7 +186,7 @@ def _ast_checks(source: str) -> list[Finding]:
     defined: set[str] = set()
     used: list[tuple[str, int]] = []
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             defined.add(node.name)
             for a in node.args.args:
                 defined.add(a.arg)
@@ -189,7 +212,7 @@ def _ast_checks(source: str) -> list[Finding]:
 
     # functions without return that have a docstring promising return
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             has_return = any(isinstance(n, ast.Return) and n.value is not None
                              for n in ast.walk(node))
             if not has_return and node.name.startswith(("get_", "is_", "has_", "calc_")):

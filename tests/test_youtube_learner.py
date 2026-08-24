@@ -12,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from token_diet.youtube_learner import _clean_vtt, extract_transcript, study_video
 
-
 _LONG_LINE = (
     "This is a long lesson line about learning systems, memory storage, "
     "and how models can read books and videos to become smarter over time. "
@@ -110,7 +109,6 @@ def test_extract_transcript_no_subs(monkeypatch, tmp_path):
 
 def test_study_video_saves_to_vault(monkeypatch, tmp_path):
     vault_dir = tmp_path / "vault"
-    calls = []
 
     def fake_run(cmd, capture_output=True, text=True, timeout=120):
         if "--print" in cmd:

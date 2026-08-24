@@ -24,14 +24,15 @@ import json
 import logging
 import re
 import time
-from dataclasses import asdict, dataclass, field
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import ClassVar
 
 try:
-    from .core import count_tokens, cosine_similarity
+    from .core import cosine_similarity, count_tokens
 except ImportError:  # standalone use (tests, scripts with token-diet-lib on path)
-    from core import count_tokens, cosine_similarity  # type: ignore[no-redef]
+    from core import cosine_similarity, count_tokens  # type: ignore[no-redef]
 
 logger = logging.getLogger(__name__)
 

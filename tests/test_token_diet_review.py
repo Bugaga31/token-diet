@@ -24,13 +24,16 @@ _TOKEN_DIET_DIR = os.path.join(_PKG, "token_diet")
 if os.path.isdir(_TOKEN_DIET_DIR) and _TOKEN_DIET_DIR not in sys.path:
     sys.path.insert(0, _TOKEN_DIET_DIR)
 
-import core  # noqa: E402
-import context_memory  # noqa: E402
-import cache_breakpoints  # noqa: E402
-import equivalence_gate  # noqa: E402
 import loss_router  # noqa: E402
-import optimization_runner  # noqa: E402
-
+from cache_breakpoints import CacheBreakpointAnalyzer  # noqa: E402
+from context_memory import (  # noqa: E402
+    AdaptiveContext,
+    ContextManager,
+    EventStore,
+    choose_language,
+    never_translate,
+    translation_safe,
+)
 from core import (  # noqa: E402
     BlobCorruptionError,
     BlobExpiredError,
@@ -38,7 +41,6 @@ from core import (  # noqa: E402
     BlobNotFoundError,
     BlobStore,
     BlobTooLargeError,
-    BudgetGuard,
     ContextLedger,
     PriceTable,
     PromptBuilder,
@@ -52,27 +54,15 @@ from core import (  # noqa: E402
     structpack_roundtrip_safe,
     unpack_records,
 )
-from context_memory import (  # noqa: E402
-    AdaptiveContext,
-    ContextManager,
-    EventStore,
-    MemoryEvent,
-    choose_language,
-    never_translate,
-    translation_safe,
-)
-from cache_breakpoints import CacheBreakpointAnalyzer  # noqa: E402
 from equivalence_gate import (  # noqa: E402
     CriticalFact,
     EquivalenceGate,
     RegressionCase,
-    check_critical_facts,
 )
 from optimization_runner import (  # noqa: E402
     OptimizationRunner,
     RequestProfile,
 )
-
 
 PRICES = PriceTable(
     input_per_million=3.0,

@@ -45,7 +45,7 @@ def test_from_fresh_news_missing_file():
 
 
 def test_gather_sentiment_texts_without_pulse(tmp_path):
-    f = _tmp_news(tmp_path)
+    _tmp_news(tmp_path)
     # include_pulse=False → только лента, без сети
     texts = gather_sentiment_texts("SBER", include_pulse=False)
     # нет гарантии, что HOME лента есть, поэтому просто тип списка

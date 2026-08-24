@@ -2,11 +2,10 @@
 
 from token_diet.creative_mind import (
     InvertedDictionary,
+    creative_solve,
     dream_consolidate,
     haiku_compress,
-    creative_solve,
 )
-from token_diet.core import count_tokens
 
 
 def test_inverted_dictionary_learn_and_compress():

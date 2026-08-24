@@ -1,14 +1,21 @@
 """Tests for market_intelligence.py — technical analysis + signals + sentiment."""
 
-import pytest
 from token_diet.market_intelligence import (
-    sma, ema, rsi, macd, bollinger_bands, atr,
-    find_support_resistance, analyze_signals, ConfluenceReport,
-    score_sentiment, aggregate_sentiment,
-    generate_signal, estimate_price_range,
-    screen_market, rank_market,
+    aggregate_sentiment,
+    analyze_signals,
+    atr,
+    bollinger_bands,
+    ema,
+    estimate_price_range,
+    find_support_resistance,
+    generate_signal,
+    macd,
+    rank_market,
+    rsi,
+    score_sentiment,
+    screen_market,
+    sma,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Indicators

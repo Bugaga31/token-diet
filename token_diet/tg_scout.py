@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import logging
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logging.getLogger("telethon").setLevel(logging.CRITICAL)
 
@@ -163,7 +164,6 @@ def _register_channels(new_channels: list[dict[str, Any]]) -> int:
     Не трогаем существующие. Пишем перед закрывающей скобкой словаря.
     Возвращает, сколько добавили.
     """
-    import re
     from pathlib import Path
 
     added = 0
@@ -230,8 +230,8 @@ def scout(topic: str, limit: int = 8, register: bool = True) -> dict[str, Any]:
                 "channels": [], "registered": 0}
 
     # достаём полные метаданные по каждому каналу (с таймаутом на канал)
-    from .telegram_monitor import _load_creds, _find_live_session, _usable_session
-    from telethon import TelegramClient
+
+    from .telegram_monitor import _find_live_session, _load_creds, _usable_session
 
     creds = _load_creds()
     session = _find_live_session()
@@ -264,7 +264,7 @@ def scout(topic: str, limit: int = 8, register: bool = True) -> dict[str, Any]:
             await client.connect()
             try:
                 metas = []
-                for cid, ch in list(by_id.items()):
+                for _cid, ch in list(by_id.items()):
                     meta = await _collect_channel_meta(client, ch)
                     if meta:
                         metas.append(meta)

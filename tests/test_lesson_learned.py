@@ -1,19 +1,22 @@
 """Tests for the 4 new lesson-learned modules: rapid_context, decisive_agent, focus_keeper, mistake_learner."""
 
-import pytest
-from token_diet.rapid_context import (
-    RapidContext, ContextClass, classify, decide_action, quick_action,
-)
 from token_diet.decisive_agent import (
-    DecisiveAgent, Decision, decide, strip_fluff,
+    DecisiveAgent,
+    strip_fluff,
 )
 from token_diet.focus_keeper import (
-    FocusKeeper, Goal, TangentAlert, analyze_focus,
+    FocusKeeper,
+    analyze_focus,
 )
 from token_diet.mistake_learner import (
-    MistakeLearner, AntiPattern, MistakeAlert, check_action, learn_from,
+    AntiPattern,
+    MistakeLearner,
+    check_action,
 )
-
+from token_diet.rapid_context import (
+    classify,
+    quick_action,
+)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Rapid Context

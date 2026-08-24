@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import token_diet.omniroute as orm
 from token_diet.omniroute import (
     OmniRouter,
-    Provider,
     _judge,
     _split_tasks,
 )

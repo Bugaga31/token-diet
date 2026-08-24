@@ -24,8 +24,8 @@ Net effect: model reasons BETTER (Sherlock template) but answer is SHORTER
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 try:
     from .core import count_tokens

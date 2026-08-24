@@ -10,10 +10,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from token_diet.event_batcher import (  # noqa: E402
-    EventBatcher,
     MAX_BATCH_EVENTS,
     MAX_PENDING_PER_CHANNEL,
     MAX_RETRIES,
+    EventBatcher,
 )
 
 
@@ -112,7 +112,7 @@ def test_dead_letter_after_max_retries():
 def test_mark_complete_resets_retry_state():
     b = EventBatcher()
     b.push("c", "a")
-    batch = b.flush_next()
+    b.flush_next()
     assert b.is_channel_in_flight("c")
     b.mark_complete("c")
     assert not b.is_channel_in_flight("c")

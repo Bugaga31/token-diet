@@ -6,9 +6,7 @@ rest of auto_setup: one command, every tool.
 """
 
 import json
-import os
-
-import pytest
+from pathlib import Path
 
 from token_diet.auto_setup import (
     MCP_CONFIG_FILES,
@@ -16,14 +14,10 @@ from token_diet.auto_setup import (
     TELEGRAM_MCP_REPO,
     TOOLS,
     _merge_mcp_server,
-    configure_telegram_mcp,
     get_telegram_mcp_env,
     telegram_mcp_env_path,
     telegram_mcp_installed,
 )
-
-from pathlib import Path
-
 
 # ── ToolConfig ───────────────────────────────────────────────────────────────
 

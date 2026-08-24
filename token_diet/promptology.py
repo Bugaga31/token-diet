@@ -24,7 +24,6 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Prompt Rewriter — verbose → compact, structured, XML-tagged
 # ═══════════════════════════════════════════════════════════════════════════════

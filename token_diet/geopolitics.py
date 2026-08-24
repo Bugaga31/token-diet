@@ -17,13 +17,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
 import json
 import os
 import re
 import tempfile
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 # Ключевые темы для поиска — можно расширять
 TOPICS: list[str] = [

@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 try:
-    from telethon import TelegramClient, events
+    from telethon import TelegramClient, events  # noqa: F401
     HAS_TELETHON = True
 except ImportError:
     HAS_TELETHON = False
@@ -330,7 +330,7 @@ def _find_live_session() -> Path | None:
             continue
         for attempt in range(3):  # сеть Telegram капризна — ретраим каждую сессию
             try:
-                async def _check():
+                async def _check(path=path, api_id=api_id, api_hash=api_hash):
                     usable = _usable_session(path)
                     client = _make_client(usable, api_id, api_hash)
                     await client.connect()

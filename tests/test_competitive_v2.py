@@ -1,11 +1,8 @@
 """Tests for agent_context, dynamic_ratio, and competitor_benchmark."""
 
 import json
-import pytest
 
 from token_diet.agent_context import (
-    AgentContextResult,
-    CompressedTurn,
     TurnKind,
     _compress_code_turn,
     _compress_prose_light,
@@ -17,18 +14,13 @@ from token_diet.agent_context import (
 )
 from token_diet.competitor_benchmark import (
     TEST_PROMPTS,
-    BenchmarkEntry,
     CompetitorBenchmark,
 )
 from token_diet.dynamic_ratio import (
-    ContentSegment,
-    DEFAULT_RATIOS,
-    DynamicRatioResult,
     _detect_content_type,
     classify_and_compress,
     dynamic_pipeline,
 )
-
 
 # ── Agent Context Manager tests ──────────────────────────────────────────────
 

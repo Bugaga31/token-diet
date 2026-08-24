@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.27.0"
+__version__ = "3.27.1"
 
 __all__ = [
     "__version__",
@@ -1282,6 +1282,7 @@ _LAZY_IMPORTS = {
 
 import importlib
 import typing as _typing
+
 
 def __getattr__(name: str) -> _typing.Any:
     if name in _LAZY_IMPORTS:

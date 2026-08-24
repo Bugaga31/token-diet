@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 try:
@@ -45,7 +45,7 @@ def _scalar(value: Any) -> str:
         return "null"
     if isinstance(value, bool):
         return "true" if value else "false"
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return str(value)
     s = str(value)
     # quote only if it has special chars; keep bare otherwise
@@ -87,7 +87,7 @@ def to_tron(obj: Any) -> str:
 
 
 def _to_tron_value(value: Any) -> str:
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return to_tron(value)
     return _scalar(value)
 

@@ -1,7 +1,7 @@
 """Tests for PromptDistiller, FewShotSelector, and cache integration."""
 
-import sys
 import os
+import sys
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -9,11 +9,11 @@ _PROJECT = os.path.dirname(_HERE)
 if _PROJECT not in sys.path:
     sys.path.insert(0, _PROJECT)
 
-from token_diet.prompt_distiller import PromptDistiller, SectionStats
-from token_diet.few_shot_selector import FewShotSelector, Example
-from token_diet.core import SemanticCache, PriceTable, count_tokens
-from token_diet.optimization_runner import OptimizationRunner, RequestProfile
+from token_diet.core import PriceTable, SemanticCache
 from token_diet.equivalence_gate import EquivalenceGate
+from token_diet.few_shot_selector import Example, FewShotSelector
+from token_diet.optimization_runner import OptimizationRunner, RequestProfile
+from token_diet.prompt_distiller import PromptDistiller
 
 
 class TestPromptDistiller(unittest.TestCase):

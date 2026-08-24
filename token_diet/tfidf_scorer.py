@@ -83,7 +83,7 @@ def score_sentences(
 
     # TF-IDF vectors for each sentence
     scores = []
-    for i, tokens in enumerate(sentence_tokens):
+    for _i, tokens in enumerate(sentence_tokens):
         tf = _compute_tf(tokens)
         vec = {w: tf.get(w, 0) * idf.get(w, 0) for w in tf}
         sim = _cosine_similarity(query_vec, vec)

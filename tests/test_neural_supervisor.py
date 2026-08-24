@@ -1,21 +1,18 @@
 """Tests for neural_scorer.py + agent_supervisor.py"""
 
-import pytest
+from token_diet.agent_supervisor import (
+    AgentSupervisor,
+    LoopAlert,
+    SupervisorState,
+    supervised_agent_loop,
+    truncate_tool_result,
+)
 from token_diet.neural_scorer import (
     NeuralScorer,
     ScoredChunk,
     score_prompt_sections,
     strip_noise,
 )
-from token_diet.agent_supervisor import (
-    AgentSupervisor,
-    AgentTurn,
-    LoopAlert,
-    SupervisorState,
-    supervised_agent_loop,
-    truncate_tool_result,
-)
-
 
 # ══════════════════════════════════════════════════════════════════════
 # NeuralScorer
@@ -137,7 +134,7 @@ class TestAgentSupervisor:
 
     def test_detect_tool_repeat(self):
         # Simulate same tool called 4 times
-        for i in range(4):
+        for _i in range(4):
             alerts = self.supervisor.observe_tool_call(
                 "search_web", {"query": "weather"}, result_tokens=50
             )
@@ -146,7 +143,7 @@ class TestAgentSupervisor:
 
     def test_detect_circular_reasoning(self):
         # Same response hash repeated
-        for i in range(10):
+        for _i in range(10):
             self.supervisor.observe_turn(
                 "assistant", "I think the answer is 42.", 7
             )
@@ -157,19 +154,19 @@ class TestAgentSupervisor:
 
     def test_detect_token_growth(self):
         # Normal turns first
-        for i in range(3):
+        for _i in range(3):
             self.supervisor.observe_turn("user", "hi", 2)
             self.supervisor.observe_turn("assistant", "hello", 2)
 
         # Then explosive growth
-        for i in range(3):
+        for _i in range(3):
             self.supervisor.observe_turn(
                 "assistant", "x" * 500, 500
             )
 
         alerts = self.supervisor._state.alerts
         growth = [a for a in alerts if a.loop_type == "token_growth"]
-        assert len(growth) > 0, f"Expected token growth alert"
+        assert len(growth) > 0, "Expected token growth alert"
 
     def test_oversized_tool_result_warns(self):
         alerts = self.supervisor.observe_tool_call(
@@ -205,7 +202,7 @@ class TestAgentSupervisor:
         called = []
         sv = AgentSupervisor(on_alert=lambda a: called.append(a))
         sv.start_session()
-        for i in range(5):
+        for _i in range(5):
             sv.observe_tool_call("search", {"q": "x"}, result_tokens=10)
         assert len(called) > 0
 

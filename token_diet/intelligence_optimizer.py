@@ -22,9 +22,7 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass, field
-from typing import Any
-
+from dataclasses import dataclass
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. SELF-DISCOVER REASONING BLUEPRINTS

@@ -12,38 +12,29 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
-from token_diet.core import count_tokens, deduplicate_chunks, PriceTable, Usage
-from token_diet.loss_router import compress_with_routing, compress_prose_aggressive
-from token_diet.json_compressor import compress_json
-from token_diet.agent_context import compress_agent_context, render_compressed_context
 from token_diet.ast_json_compressor import compress_json_ast
-from token_diet.neural_scorer import strip_noise
+from token_diet.compression_arsenal import (
+    compress_by_self_information,
+    strip_grammar_caveman,
+)
+from token_diet.core import PriceTable, Usage, count_tokens, deduplicate_chunks
 from token_diet.green_calculator import GreenCalculator
-from token_diet.pattern_collapse import (
-    collapse_json_text,
-    semantic_dedup,
-    CCRStore,
-)
-from token_diet.promptology import (
-    rewrite_system_prompt,
-    rewrite_user_prompt,
-    optimize_prompt,
-)
-from token_diet.tfidf_scorer import compress_retrieval_tfidf as _compress_retrieval_tfidf
 from token_diet.intelligence_optimizer import (
     inject_reasoning_blueprint,
     merge_tokens,
-    score_prompt,
 )
-from token_diet.compression_arsenal import (
-    strip_grammar_caveman,
-    collapse_logs,
-    compress_tool_definitions,
-    compress_by_self_information,
+from token_diet.json_compressor import compress_json
+from token_diet.loss_router import compress_prose_aggressive, compress_with_routing
+from token_diet.neural_scorer import strip_noise
+from token_diet.pattern_collapse import (
+    collapse_json_text,
+    semantic_dedup,
 )
-
+from token_diet.promptology import (
+    optimize_prompt,
+)
+from token_diet.tfidf_scorer import compress_retrieval_tfidf as _compress_retrieval_tfidf
 
 # ── Test prompts ─────────────────────────────────────────────────────────────
 
@@ -368,7 +359,7 @@ class CompetitorBenchmark:
         self.total_before = 0
         self.total_after = 0
 
-        for name, prompt in TEST_PROMPTS.items():
+        for _name, prompt in TEST_PROMPTS.items():
             ptype = prompt["type"]
             desc = prompt["description"]
 

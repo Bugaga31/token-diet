@@ -24,7 +24,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-
 # Ликвидные бумаги MOEX — база для сканирования
 LIQUID_TICKERS: list[str] = [
     "SBER", "GAZP", "LKOH", "YDEX", "OZON", "NLMK", "MAGN", "CHMF",

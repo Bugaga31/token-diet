@@ -19,7 +19,6 @@ import re
 from collections import Counter
 from typing import NamedTuple
 
-
 # ── Known filler patterns (cross-language) ──────────────────────────
 _FILLER_PATTERNS: list[tuple[str, float]] = [
     # English
@@ -105,7 +104,7 @@ class NeuralScorer:
         ]
         # Weighted average — filler pattern is strongest signal
         weights = [0.40, 0.25, 0.25, 0.10]
-        return sum(s * w for s, w in zip(scores, weights))
+        return sum(s * w for s, w in zip(scores, weights, strict=False))
 
     def classify(self, text: str) -> ScoredChunk:
         """Classify text as signal or noise with reasoning."""

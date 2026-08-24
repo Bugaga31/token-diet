@@ -27,10 +27,10 @@ Five breakthrough techniques (2025-2026), ALL algorithmic (no neural models):
 
 from __future__ import annotations
 
-import re
-import json
 import hashlib
-from dataclasses import dataclass, field
+import json
+import re
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -555,8 +555,8 @@ _FUNCTION_WORDS = frozenset({
     "between", "under", "over", "up", "down", "out", "off",
     "and", "but", "or", "not", "so", "if", "than", "that", "this", "these",
     "those", "it", "he", "she", "they", "we", "you", "me", "him", "her",
-    "us", "them", "my", "your", "his", "her", "its", "our", "their",
-    "also", "then", "now", "just", "only", "very", "really", "just", "quite",
+    "us", "them", "my", "your", "his", "its", "our", "their",
+    "also", "then", "now", "just", "only", "very", "really", "quite",
     "still", "already", "always", "never", "often", "sometimes",
 })
 
@@ -587,7 +587,6 @@ def score_self_information(text: str, context_before: str = "") -> list[Sentence
     word_freq: dict[str, int] = {}
     for w in all_words:
         word_freq[w] = word_freq.get(w, 0) + 1
-    total_words = max(1, len(all_words))
 
     # Context words (from context_before)
     ctx_words = set(re.findall(r'\b[a-zA-Zа-яА-ЯёЁ]+\b', context_before.lower()))
@@ -700,7 +699,7 @@ def compress_json_schema(text: str) -> tuple[str, FidelityScore]:
             return "-"
         if isinstance(v, bool):
             return "1" if v else "0"
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             return str(v)
         s = str(v).replace("|", "/").replace("\n", " ")
         return s[:60]
@@ -779,7 +778,7 @@ def make_document_toc(text: str, max_sections: int = 20) -> str:
         nonlocal current_title, current_body
         if current_title and current_body:
             preview = " | ".join(
-                l.strip()[:80] for l in current_body[:2] if l.strip()
+                ln.strip()[:80] for ln in current_body[:2] if ln.strip()
             )
             sections.append((current_title, preview))
         current_body = []

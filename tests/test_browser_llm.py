@@ -1,7 +1,7 @@
 """Тесты browser_llm — фикс профиля (16.08: USB-диск медленный → ~/.cache)."""
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

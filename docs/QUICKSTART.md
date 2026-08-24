@@ -52,7 +52,7 @@ token-diet heal
 # → 🔧 AutoHeal: проверка doctor → следующий приём
 
 # уверенность
-token-diet belief "проверил token_diet/__init__.py:5 версия 3.27.0"
+token-diet belief "проверил token_diet/__init__.py:5 версия 3.27.1"
 # → [belief] тон: твёрдо · доказательств: 2
 
 # память
@@ -84,4 +84,4 @@ python3 ci_check.py                                # → CI RESULT: PASS
 
 Всё. Ты включён. Дальше — изобретай язык вместо сжатия: `§0` ждёт.
 
-*v3.27.0, 2026-08-23*
+*v3.27.1, 2026-08-23 — 115 тестовых файлов, 151 модуль, CI на GitHub Actions*

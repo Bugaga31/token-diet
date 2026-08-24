@@ -20,8 +20,6 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from typing import Any
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. CAPC — Cache-Aware Prompt Compression
@@ -87,7 +85,6 @@ def build_capc_prompt(
     threshold = get_cache_threshold(model)
 
     parts: list[str] = []
-    prefix_tokens = 0
 
     # ── Tier 1: Static cache prefix (system + tools) ──
     # Query-AGNOSTIC: compress lightly, but NEVER below threshold
@@ -114,7 +111,6 @@ def build_capc_prompt(
 
         parts.append(f"<!-- CACHE_ZONE:static:{static_tokens}t -->")
         parts.append(static_content)
-        prefix_tokens = static_tokens
 
     # ── Tier 2: Semi-static (documents + history) ──
     semi_static = ""
@@ -135,7 +131,6 @@ def build_capc_prompt(
 
     # ── Tier 3: Query (full compression, no cache impact) ──
     if query:
-        query_tokens = count_tokens(query)
         # Query-AWARE: compress aggressively — no cache penalty
         if compress_fn:
             query = compress_fn(query)

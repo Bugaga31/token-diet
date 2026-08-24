@@ -6,9 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from token_diet.goal_planner import (  # noqa: E402
-    GOAPAction,
     GoalPlanner,
-    PlanResult,
     TrajectoryMemory,
     WorldState,
     coding_actions,

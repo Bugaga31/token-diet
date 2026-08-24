@@ -76,7 +76,7 @@ def _sma(values: list[float], n: int) -> float:
     return sum(window) / len(window)
 
 
-def _note_for(spot: "SweetSpot") -> str:
+def _note_for(spot: SweetSpot) -> str:
     bits = []
     if spot.vs_sma20_pct < -3:
         bits.append(f"откат {spot.vs_sma20_pct:.0f}% от SMA20 — запас до среднего")

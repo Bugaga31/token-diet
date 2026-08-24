@@ -27,9 +27,9 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from .portfolio_commander import PortfolioCommander
+from .date_anchor import full_date_context
 from .invest_hub import InvestHub
-from .date_anchor import full_date_context, now as _anchor_now
+from .portfolio_commander import PortfolioCommander
 
 REPORT_DIR = Path.home() / "token-diet-reports"
 DEEPSEEK_KEY_FILE = Path.home() / ".token-diet" / "deepseek_key"
@@ -89,7 +89,7 @@ def collect_context() -> dict:
     for p in positions:
         ticker = p["ticker"]
         hub = InvestHub()
-        pic = _safe(lambda t=ticker: hub.full_picture(
+        pic = _safe(lambda t=ticker, h=hub: h.full_picture(
             t, include_news=True, include_orderbook=True), None)
         if pic:
             pictures.append(pic)

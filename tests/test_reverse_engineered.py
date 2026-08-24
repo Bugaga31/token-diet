@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 
+from token_diet import count_tokens
 from token_diet.clean_scraper import html_to_text
 from token_diet.live_docs import (
     DEFAULT_TTL_HOURS,
@@ -19,7 +20,6 @@ from token_diet.tool_output_pruner import (
     render_pruned,
     result_hash,
 )
-from token_diet import count_tokens
 
 
 class TestResultHash(unittest.TestCase):

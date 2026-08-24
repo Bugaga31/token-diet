@@ -19,7 +19,6 @@ SSL-fallback как в остальных модулях (VPN/DPI-перехва
 
 from __future__ import annotations
 
-import html as html_mod
 import re
 import ssl
 import urllib.error
@@ -244,7 +243,6 @@ def ask_web(
     if not queue:
         queue = search(question, limit=3, timeout=timeout)
     visited: set[str] = set()
-    qwords = set(_words(question))
     evidence_parts: list[str] = []
     used = 0
     steps = 0

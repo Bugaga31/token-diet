@@ -1,18 +1,20 @@
 """Tests for SherlockReasoner — smarter at lower cost."""
 
-import sys, os, unittest
+import os
+import sys
+import unittest
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PROJECT = os.path.dirname(_HERE)
 if _PROJECT not in sys.path:
     sys.path.insert(0, _PROJECT)
 
 from token_diet.sherlock_reasoner import (
-    SherlockReasoner,
     SelfVerifier,
+    SherlockReasoner,
     VerifierResult,
-    sherlock_system_prompt,
     compress_reasoning,
-    SHERLOCK_TEMPLATE,
+    sherlock_system_prompt,
 )
 
 

@@ -71,23 +71,23 @@ def _core_checks() -> list[tuple[str, bool, str]]:
 
     def _geo() -> None:
         from token_diet.geopolitics import geo_verdict
-        geo_verdict  # импорт и имя существуют
+        assert callable(geo_verdict)
 
     def _pulse() -> None:
         from token_diet.pulse_reader import pulse_sentiment
-        pulse_sentiment  # импорт и имя существуют
+        assert callable(pulse_sentiment)
 
     def _tg() -> None:
         from token_diet.telegram_market_feed import TelegramMarketFeed
-        TelegramMarketFeed  # импорт и имя существуют
+        assert callable(TelegramMarketFeed)
 
     def _invest() -> None:
         from token_diet.invest_hub import InvestHub
-        InvestHub  # импорт и имя существуют
+        assert callable(InvestHub)
 
     def _observe() -> None:
         from token_diet.obsidian_vault import ObsidianVault
-        ObsidianVault  # импорт и имя существуют
+        assert callable(ObsidianVault)
 
     for name, fn in [
         ("core.count_tokens", _count_tokens),
@@ -154,6 +154,7 @@ def _self_test() -> int:
     def _memory_roundtrip() -> None:
         import tempfile
         from pathlib import Path
+
         from token_diet.obsidian_vault import ObsidianVault
         with tempfile.TemporaryDirectory() as d:
             v = ObsidianVault(Path(d))
@@ -216,7 +217,6 @@ def _scan() -> int:
     found = 0
     for r in scan_market():
         found += 1
-        lean = f"{r.orderbook_lean:+.2f}" if r.orderbook_lean is not None else "  -"
         print(f"{r.ticker:<7}{r.price:>9.1f}{r.change_pct:>+7.2f}%{r.volume_ratio:>7.1f}x"
               f"{r.day_position:>6.0%}{r.score:>6.1f}  {', '.join(r.signals)}")
     if not found:
@@ -283,7 +283,7 @@ def _snapshot(brief: bool) -> int:
     text = "\n".join(lines)
     if brief:
         # одна строка: фон + кандидат
-        brief_line = " ".join(l for l in lines if "🏆" in l) or "кандидатов нет"
+        brief_line = " ".join(ln for ln in lines if "🏆" in ln) or "кандидатов нет"
         print(brief_line)
         return 0
     print(text)
@@ -513,7 +513,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "audit":
         return _audit(args)
     if args.cmd == "army":
-        from token_diet.model_army import ask, ask_gemini, ask_omni, army_verdict
+        from token_diet.model_army import army_verdict, ask, ask_omni
         if getattr(args, "omni", False):
             print(f"🛰️  OMNIROUTE ({args.omni_role}):")
             print(ask_omni(args.question, role=args.omni_role, system=args.system))
@@ -561,15 +561,15 @@ def main(argv: list[str] | None = None) -> int:
         from token_diet.auto_heal import heal_cli
         return heal_cli()
     if args.cmd == "docs":
-        from token_diet.doc_guardian import verify_docs, render_report
+        from token_diet.doc_guardian import render_report, verify_docs
         blocks = verify_docs()
         print(render_report(blocks))
         return 0 if all(b.status != "fail" for b in blocks) else 1
     if args.cmd == "droid":
         import json as _json
         import os as _os
-        from token_diet.factory_droid import (
-            Coordinator, droid_status_block)
+
+        from token_diet.factory_droid import Coordinator, droid_status_block
         if args.action == "status" and not args.task:
             print(droid_status_block())
             return 0
@@ -607,7 +607,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "rules":
         return _rules(args)
     if args.cmd == "handoff":
-        from token_diet.session_handoff import build_handoff, render_handoff
+        from token_diet.session_handoff import build_handoff
         if args.history:
             args.text = Path(args.history).read_text(encoding="utf-8")
         h = build_handoff(args.text, max_history_chars=args.max_chars)
@@ -654,6 +654,7 @@ def main(argv: list[str] | None = None) -> int:
 def _rules(args) -> int:
     """YAML-движок правил: list / example / run."""
     from pathlib import Path
+
     from token_diet.workflow_engine import WorkflowEngine
     # --rules работает и до подкоманды, и на самой подкоманде (общий namespace)
     eng = WorkflowEngine(Path(args.rules) if args.rules else None)

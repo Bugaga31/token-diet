@@ -25,12 +25,10 @@ All 100% algorithmic. No neural models.
 
 from __future__ import annotations
 
-import re
 import math
+import re
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Any
-
+from dataclasses import dataclass
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. ADAPTIVE REASONING DEPTH
@@ -178,7 +176,7 @@ def plan_reasoning(query: str) -> ReasoningPlan:
         )
     elif complexity <= 5:
         # Medium: Chain-of-Draft (compact reasoning)
-        from token_diet.intelligence_optimizer import detect_task_type, _REASONING_BLUEPRINTS
+        from token_diet.intelligence_optimizer import _REASONING_BLUEPRINTS, detect_task_type
         task = detect_task_type(query)
         bp = _REASONING_BLUEPRINTS.get(task, _REASONING_BLUEPRINTS["analysis"])
         return ReasoningPlan(
@@ -460,8 +458,6 @@ def amplify_intelligence(
 
     # Estimate savings
     from token_diet.core import count_tokens
-    base_tokens = count_tokens(query)
-
     # Reasoning savings: full CoT would be ~120 tokens, we use plan.estimated
     reasoning_saved = max(0, 120 - plan.estimated_reasoning_tokens)
 

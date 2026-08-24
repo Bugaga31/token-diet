@@ -6,7 +6,6 @@
 """
 
 from token_diet.claim_check import (
-    Claim,
     ClaimAudit,
     HardcodedVerdict,
     Incoherence,

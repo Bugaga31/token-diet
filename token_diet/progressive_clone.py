@@ -20,8 +20,6 @@ Strix Progressive Cloning извлекает элемент НЕ целиком,
 
 from __future__ import annotations
 
-import json
-import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Any
@@ -39,7 +37,7 @@ _EVENT_ATTRS = (
 class ClonedElement:
     tag: str
     attrs: dict[str, str] = field(default_factory=dict)
-    children: list["ClonedElement"] = field(default_factory=list)
+    children: list[ClonedElement] = field(default_factory=list)
     text: str = ""
 
     # слои, которые уже развёрнуты (ленивость)

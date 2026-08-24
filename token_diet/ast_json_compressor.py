@@ -13,7 +13,8 @@ rather than code. Zero dependencies beyond stdlib.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 try:
     from .core import count_tokens
@@ -73,7 +74,7 @@ def _compress_records(records: list[dict]) -> dict | list:
 
     # Check for enum columns (few unique values → encode as map)
     columns: list[dict] = []
-    for col_idx, key in enumerate(first_keys):
+    for _col_idx, key in enumerate(first_keys):
         values = [r[key] for r in records]
         unique = list(dict.fromkeys(values))  # preserve order
         if len(unique) <= len(values) * 0.3:  # at least 70% repetition

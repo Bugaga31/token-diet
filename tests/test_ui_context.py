@@ -1,9 +1,8 @@
 """Tests for ui_context — Playwright/Strix-style a11y extraction."""
-import pytest
 
 from token_diet.ui_context import (
-    extract_interactive_elements,
     estimate_ui_savings,
+    extract_interactive_elements,
     is_bot_like_ua,
     render_accessibility_tree,
     render_ui_context,

@@ -1,12 +1,16 @@
 """Тесты progressive_clone — ленивое поэтапное извлечение (Strix-style, 16.08)."""
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from token_diet.progressive_clone import (
-    clone_complete, clone_skeleton, expand_layer, render, savings_report,
+    clone_complete,
+    clone_skeleton,
+    expand_layer,
+    render,
+    savings_report,
 )
 
 HTML = """
@@ -74,7 +78,7 @@ class TestExpand:
 
     def test_expand_twice_no_duplicate(self):
         el = clone_skeleton(HTML, "#card")
-        a1 = expand_layer(el, "events")
+        expand_layer(el, "events")
         a2 = expand_layer(el, "events")
         assert a2 == 0  # уже развёрнут
 

@@ -10,8 +10,8 @@ import tempfile
 from pathlib import Path
 
 from token_diet.factory_droid import (
-    Coordinator,
     DROIDS,
+    Coordinator,
     ambiguity,
     build_repo_knowledge,
     classify_task,
@@ -19,7 +19,6 @@ from token_diet.factory_droid import (
     droid_status_block,
     resolve_ambiguity,
 )
-
 
 # ── 1. Ролевые дроиды ────────────────────────────────────────────────────────
 

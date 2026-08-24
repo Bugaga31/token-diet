@@ -23,24 +23,21 @@ Obsidian-хранилище. Не важно Claude это, GPT, Gemini, DeepSee
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
-import textwrap
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 try:
-    from .obsidian_memory import ObsidianMemoryStore, ObsidianNote, RetrievalResult
+    from .obsidian_memory import ObsidianMemoryStore, ObsidianNote, RetrievalResult  # noqa: F401
     from .obsidian_vault import ObsidianVault
     HAS_OBSIDIAN = True
 except ImportError:
     HAS_OBSIDIAN = False
 
 try:
-    from .date_anchor import inject_date_anchor, full_date_context
+    from .date_anchor import full_date_context, inject_date_anchor  # noqa: F401
     HAS_DATE_ANCHOR = True
 except ImportError:
     HAS_DATE_ANCHOR = False

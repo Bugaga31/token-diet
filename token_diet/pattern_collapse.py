@@ -22,8 +22,6 @@ import hashlib
 import json
 import re
 from collections import defaultdict
-from typing import Any
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Pattern Collapse — SmartCrusher-style JSON compression
@@ -35,7 +33,7 @@ def _record_fingerprint(record: dict, keys: list[str]) -> str:
     parts = []
     for k in keys:
         v = record.get(k)
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             parts.append(f"{k}=NUM")
         elif isinstance(v, str):
             parts.append(f"{k}={v}")
@@ -103,13 +101,6 @@ def collapse_json_records(
 
         if remaining <= 0:
             break
-
-    # If we missed some groups, add note
-    total_collapsed = sum(1 for r in result if r.get("_collapsed"))
-    kept_groups = len(groups) - sum(
-        1 for fp, g in groups.items()
-        if any(r.get("_collapsed") for r in result if r.get("_label", "").startswith(f"[..."))
-    )
 
     return result
 

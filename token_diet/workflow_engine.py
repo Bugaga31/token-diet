@@ -38,7 +38,7 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 try:
     import yaml
@@ -145,7 +145,7 @@ class _ExprEval:
         self.pos = 0
         self.context = context
 
-    def _peek(self) -> Optional[_Token]:
+    def _peek(self) -> _Token | None:
         return self.tokens[self.pos] if self.pos < len(self.tokens) else None
 
     def _next(self) -> _Token:
@@ -355,7 +355,7 @@ def resolve_template(template: str, trigger_ctx: dict[str, Any],
 
 
 def _resolve_var(path: str, trigger_ctx: dict[str, Any],
-                 step_outputs: dict[str, Any]) -> Optional[str]:
+                 step_outputs: dict[str, Any]) -> str | None:
     if path.startswith("trigger."):
         field = path[len("trigger."):]
         v = trigger_ctx.get(field)
@@ -392,7 +392,7 @@ def _cron_field_match(field: str, value: int) -> bool:
     return False
 
 
-def cron_matches(cron_expr: str, dt: Optional[datetime] = None) -> bool:
+def cron_matches(cron_expr: str, dt: datetime | None = None) -> bool:
     """5-польный крон: min hour dom month dow."""
     dt = dt or datetime.now(timezone.utc)
     fields = cron_expr.split()
@@ -515,13 +515,13 @@ class WorkflowEngine:
     при переполнении сразу CapacityExceeded, без очереди.
     """
 
-    def __init__(self, rules_path: Optional[Path] = None, max_concurrent: int = 100):
+    def __init__(self, rules_path: Path | None = None, max_concurrent: int = 100):
         self.rules_path = Path(rules_path) if rules_path else Path(RULES_PATH_DEFAULT).expanduser()
         self.workflows: list[dict[str, Any]] = []
         self._sem = threading.Semaphore(max_concurrent)
 
     # ── загрузка ─────────────────────────────────────────────────────────
-    def load_rules(self, path: Optional[Path] = None) -> int:
+    def load_rules(self, path: Path | None = None) -> int:
         """Загрузить правила из YAML-файла (список или одно правило)."""
         if path:
             self.rules_path = Path(path)
@@ -544,7 +544,7 @@ class WorkflowEngine:
         self.workflows = loaded
         return len(loaded)
 
-    def save_example(self, path: Optional[Path] = None) -> str:
+    def save_example(self, path: Path | None = None) -> str:
         """Сгенерировать пример правил для торговли."""
         example = """\
 # Пример правил token-diet (YAML-движок из Buzz)
@@ -617,7 +617,7 @@ class WorkflowEngine:
             results.append(self._run_workflow(wf, ctx, dry_run))
         return results
 
-    def scheduled_due(self, now: Optional[datetime] = None) -> list[dict[str, Any]]:
+    def scheduled_due(self, now: datetime | None = None) -> list[dict[str, Any]]:
         """Правила с schedule-триггером, которые должны сработать сейчас."""
         now = now or datetime.now(timezone.utc)
         due: list[dict[str, Any]] = []
@@ -813,7 +813,7 @@ class WorkflowEngine:
 
 
 def _flat_ctx(trigger_ctx: dict[str, Any],
-              step_outputs: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+              step_outputs: dict[str, Any] | None = None) -> dict[str, Any]:
     """Переменные для условий: trigger_X + простое имя + steps_ID_output_FIELD.
 
     Удобство для рыночных правил: `ticker == 'PLZL'` работает, и

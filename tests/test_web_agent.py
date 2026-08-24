@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from token_diet.web_agent import _find_chrome, _extract_text
+from token_diet.web_agent import _extract_text, _find_chrome
 
 
 def test_find_chrome_returns_existing_path():

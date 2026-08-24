@@ -15,9 +15,9 @@ import copy
 from typing import Any
 
 try:
-    from .core import count_tokens, canonical_json
+    from .core import canonical_json, count_tokens
 except ImportError:
-    from core import count_tokens, canonical_json  # type: ignore[no-redef]
+    from core import canonical_json, count_tokens  # type: ignore[no-redef]
 
 _STRUCTURAL_KEY_WHITELIST = frozenset(
     {"name", "type", "required", "properties", "items", "enum", "oneOf", "anyOf"}

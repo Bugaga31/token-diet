@@ -1,7 +1,7 @@
 """Tests for Smart Multiplier — 5× intelligence proof."""
 
-import sys
 import os
+import sys
 import unittest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -18,7 +18,6 @@ from token_diet.smart_multiplier import (
     _make_record,
     compare_llm_quality,
 )
-from token_diet.core import count_tokens
 
 
 class TestSmartMultiplierDocs(unittest.TestCase):

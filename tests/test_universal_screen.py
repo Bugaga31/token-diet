@@ -1,12 +1,16 @@
 """Tests for universal_screen.py — cross-platform screen control."""
 
 import os
-import pytest
 
 # These tests work without actual screen hardware by testing the API surface
 from token_diet.universal_screen import (
-    UniversalScreen, DesktopScreen, PhoneScreen,
-    UINode, ScreenFrame, detect_platform, _which,
+    DesktopScreen,
+    PhoneScreen,
+    ScreenFrame,
+    UINode,
+    UniversalScreen,
+    _which,
+    detect_platform,
 )
 
 
@@ -86,7 +90,6 @@ class TestPhoneScreen:
         assert bounds == (0, 100, 200, 300)
 
     def test_parse_bounds_empty(self):
-        screen = PhoneScreen()
         assert PhoneScreen()._parse_bounds("") == (0, 0, 0, 0)
 
 
@@ -121,7 +124,7 @@ class TestUniversalScreen:
 
 class TestOneLiners:
     def test_screenshot(self):
-        from token_diet.universal_screen import screenshot, click_text, see_and_click
+        from token_diet.universal_screen import screenshot
         # Should not crash even without real screen
         frame = screenshot(quality=20)
         assert isinstance(frame, ScreenFrame)

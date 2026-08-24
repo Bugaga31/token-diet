@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 try:
-    from telethon import TelegramClient
+    from telethon import TelegramClient  # noqa: F401
     HAS_TELETHON = True
 except ImportError:
     HAS_TELETHON = False
@@ -61,7 +61,7 @@ def _find_live_session() -> Path | None:
         if not path.exists():
             continue
         try:
-            async def _check():
+            async def _check(path=path, api_id=api_id, api_hash=api_hash):
                 from .telegram_monitor import _make_client
                 client = _make_client(path, api_id, api_hash)
                 await client.connect()

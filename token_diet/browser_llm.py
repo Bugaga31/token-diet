@@ -134,7 +134,7 @@ def start_chrome(profile_dir: str | None = None) -> subprocess.Popen:
     # ждём CDP (таймаут 30 сек — медленный диск / холодный старт)
     for _ in range(60):
         try:
-            with urllib.request.urlopen(f"http://{CDP_HOST}:{CDP_PORT}/json/version", timeout=2) as r:
+            with urllib.request.urlopen(f"http://{CDP_HOST}:{CDP_PORT}/json/version", timeout=2):
                 return proc
         except Exception:  # noqa: BLE001
             time.sleep(0.5)

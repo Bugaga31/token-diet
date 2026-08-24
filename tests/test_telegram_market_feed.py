@@ -8,10 +8,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from token_diet.investment_analyzer import InvestmentAnalyzer, NewsItem
 from token_diet.telegram_market_feed import (
+    _CREDENTIALS_CANDIDATES,
     MARKET_CHANNELS,
     RawMessage,
     TelegramMarketFeed,
-    _CREDENTIALS_CANDIDATES,
     _load_credentials,
     compact_digest,
     detect_tickers,

@@ -34,7 +34,6 @@ import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
 
 try:
     import requests
@@ -42,7 +41,7 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-from token_diet.omni_eyes import OMNI_BASE, take_screenshot, _safe_image_base64
+from token_diet.omni_eyes import OMNI_BASE, _safe_image_base64, take_screenshot
 
 # Путь к обёртке из skill screen-control
 SCRCMD = os.environ.get(
@@ -248,7 +247,7 @@ def execute_action(action: str, params: dict, reason: str,
 # Мозг: модель решает следующее действие
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _extract_json(text: str) -> Optional[dict]:
+def _extract_json(text: str) -> dict | None:
     """Достать JSON из ответа модели (устойчиво к markdown-обёртке и мусору)."""
     if not text:
         return None
@@ -286,7 +285,7 @@ def _extract_json(text: str) -> Optional[dict]:
     return None
 
 
-def ask_brain(question: str, image_path: str, model: Optional[str] = None,
+def ask_brain(question: str, image_path: str, model: str | None = None,
               timeout: int = 120) -> dict:
     """Спросить модель с картинкой (как omni_eyes.ask_vision, но со stream=False)."""
     if not HAS_REQUESTS:
@@ -330,9 +329,9 @@ def ask_brain(question: str, image_path: str, model: Optional[str] = None,
 # Главный цикл
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_task(task: str, max_steps: int = 8, model: Optional[str] = None,
+def run_task(task: str, max_steps: int = 8, model: str | None = None,
              destructive: bool = False, verbose: bool = False,
-             screenshot_dir: Optional[str] = None) -> TaskResult:
+             screenshot_dir: str | None = None) -> TaskResult:
     """Выполнить GUI-задачу циклом «посмотри → реши → действуй → проверь».
 
     Возвращает TaskResult с историей шагов.

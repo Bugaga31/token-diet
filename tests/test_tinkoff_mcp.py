@@ -5,8 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from token_diet.tinkoff_mcp import TinkoffMCP, TinkoffMCPError
-
+from token_diet.tinkoff_mcp import TinkoffMCP
 
 # ── SSE parser ───────────────────────────────────────────────────────────
 

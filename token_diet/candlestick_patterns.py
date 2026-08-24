@@ -20,8 +20,7 @@ Bar anatomy used by every rule:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 _EPS = 1e-9
 
@@ -40,23 +39,23 @@ class CandlePattern:
         return f"{arrow} {self.name} (bar {self.bar}) {self.note}".strip()
 
 
-def _anatomy(o: float, h: float, l: float, c: float) -> dict[str, float]:
+def _anatomy(o: float, h: float, low: float, c: float) -> dict[str, float]:
     body = abs(c - o)
-    rng = max(h - l, _EPS)
+    rng = max(h - low, _EPS)
     return {
         "body": body,
         "range": rng,
         "upper": h - max(o, c),
-        "lower": min(o, c) - l,
+        "lower": min(o, c) - low,
         "body_ratio": body / rng,
     }
 
 
 # ── single-bar patterns ───────────────────────────────────────────────────────
 
-def single_bar_patterns(o: float, h: float, l: float, c: float) -> list[CandlePattern]:
+def single_bar_patterns(o: float, h: float, low: float, c: float) -> list[CandlePattern]:
     """Patterns detectable on one bar alone."""
-    a = _anatomy(o, h, l, c)
+    a = _anatomy(o, h, low, c)
     out: list[CandlePattern] = []
     if a["body"] <= 0.1 * a["range"]:
         out.append(CandlePattern("Doji", "neutral", strength=0.4))
@@ -78,7 +77,7 @@ def single_bar_patterns(o: float, h: float, l: float, c: float) -> list[CandlePa
 
 def two_bar_patterns(
     po: float, ph: float, pl: float, pc: float,
-    o: float, h: float, l: float, c: float,
+    o: float, h: float, low: float, c: float,
 ) -> list[CandlePattern]:
     """Patterns between the previous bar and the current bar."""
     out: list[CandlePattern] = []
@@ -153,19 +152,19 @@ def detect_patterns(
     n = min(len(opens), len(highs), len(lows), len(closes))
     found: list[CandlePattern] = []
     for i in range(n):
-        o, h, l, c = opens[i], highs[i], lows[i], closes[i]
-        for p in single_bar_patterns(o, h, l, c):
+        o, h, low, c = opens[i], highs[i], lows[i], closes[i]
+        for p in single_bar_patterns(o, h, low, c):
             p.bar = i
             found.append(p)
         if i >= 1:
             po, ph, pl, pc = opens[i - 1], highs[i - 1], lows[i - 1], closes[i - 1]
-            for p in two_bar_patterns(po, ph, pl, pc, o, h, l, c):
+            for p in two_bar_patterns(po, ph, pl, pc, o, h, low, c):
                 p.bar = i
                 found.append(p)
         if i >= 2:
             o1, h1, l1, c1 = opens[i - 2], highs[i - 2], lows[i - 2], closes[i - 2]
             o2, h2, l2, c2 = opens[i - 1], highs[i - 1], lows[i - 1], closes[i - 1]
-            for p in three_bar_patterns(o1, h1, l1, c1, o2, h2, l2, c2, o, h, l, c):
+            for p in three_bar_patterns(o1, h1, l1, c1, o2, h2, l2, c2, o, h, low, c):
                 p.bar = i
                 found.append(p)
     return found

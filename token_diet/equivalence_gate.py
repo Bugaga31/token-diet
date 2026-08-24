@@ -18,9 +18,9 @@ import json
 import math
 import re
 import statistics
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable
 
 Judge = Callable[[str, str], tuple[float, bool]]  # (similarity 0..1, passed)
 
@@ -52,23 +52,23 @@ class CriticalFact:
     must_be_absent: bool = False
 
     @classmethod
-    def number(cls, value: str) -> "CriticalFact":
+    def number(cls, value: str) -> CriticalFact:
         return cls(kind="number", expected=value)
 
     @classmethod
-    def date(cls, value: str) -> "CriticalFact":
+    def date(cls, value: str) -> CriticalFact:
         return cls(kind="date", expected=value)
 
     @classmethod
-    def name(cls, value: str) -> "CriticalFact":
+    def name(cls, value: str) -> CriticalFact:
         return cls(kind="name", expected=value)
 
     @classmethod
-    def url(cls, value: str) -> "CriticalFact":
+    def url(cls, value: str) -> CriticalFact:
         return cls(kind="url", expected=value)
 
     @classmethod
-    def negation(cls, value: str, must_be_absent: bool = True) -> "CriticalFact":
+    def negation(cls, value: str, must_be_absent: bool = True) -> CriticalFact:
         """value must be present (or absent) together with a negation marker."""
         return cls(kind="negation", expected=value, must_be_absent=must_be_absent)
 

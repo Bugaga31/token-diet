@@ -18,7 +18,6 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Pure-Python Technical Indicators (zero dependencies beyond stdlib)
 # ═══════════════════════════════════════════════════════════════════════════════

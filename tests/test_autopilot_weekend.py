@@ -1,8 +1,8 @@
 """Тесты автопилота: защита выходных (урок 15.08 — не долбим API в Сб/Вс)."""
 
-import sys
-import os
 import datetime
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

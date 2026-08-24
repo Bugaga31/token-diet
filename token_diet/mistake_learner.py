@@ -22,8 +22,6 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Anti-pattern types
@@ -315,7 +313,7 @@ class MistakeLearner:
             return  # Don't learn from success (yet)
 
         # Check if this matches an existing pattern
-        for pid, pattern in self.patterns.items():
+        for _pid, pattern in self.patterns.items():
             if pattern.matches(action):
                 pattern.occurrences += 1
                 pattern.last_seen = time.time()
@@ -378,7 +376,7 @@ class MistakeLearner:
     def summary(self) -> str:
         """Human-readable summary of all learned patterns."""
         lines = [f"Mistake Learner — {len(self.patterns)} patterns:\n"]
-        for pid, p in sorted(
+        for _pid, p in sorted(
             self.patterns.items(),
             key=lambda x: (-x[1].severity, -x[1].occurrences),
         ):

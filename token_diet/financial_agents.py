@@ -19,8 +19,8 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from datetime import datetime
+from typing import Any
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Модели данных
@@ -69,7 +69,7 @@ class CompanyReport:
     competitors: list[str] = field(default_factory=list)
     risks: list[str] = field(default_factory=list)
     ideas: list[str] = field(default_factory=list)
-    data: Optional[CompanyData] = None
+    data: CompanyData | None = None
     generated_at: str = ""
 
 
@@ -77,9 +77,9 @@ class CompanyReport:
 # 1. Market Researcher — отчёт по компании
 # ─────────────────────────────────────────────────────────────────────────────
 
-def market_research_report(ticker: str, data: Optional[CompanyData] = None,
-                           news: Optional[list[str]] = None,
-                           telegram_signals: Optional[list[str]] = None) -> CompanyReport:
+def market_research_report(ticker: str, data: CompanyData | None = None,
+                           news: list[str] | None = None,
+                           telegram_signals: list[str] | None = None) -> CompanyReport:
     """Собрать единый отчёт по компании: обзор, конкуренты, риски, идеи.
 
     Как в гайде Anthropic: «называешь компанию — получаешь готовый отчёт».
@@ -169,7 +169,7 @@ def _generate_ideas(d: CompanyData) -> list[str]:
 def build_dcf_model(price: float, revenue_ttm: float, net_income_ttm: float,
                     growth_rate: float = 0.10, wacc: float = 0.18,
                     years: int = 5, terminal_growth: float = 0.03,
-                    shares_outstanding: Optional[float] = None) -> DCFResult:
+                    shares_outstanding: float | None = None) -> DCFResult:
     """Построить DCF-модель (как Model Builder у Anthropic).
 
     Простая версия: FCF ≈ net_income * 0.8 (консервативная конверсия),

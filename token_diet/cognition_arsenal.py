@@ -23,8 +23,9 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from .core import count_tokens
 from .reasoning import normalize_answer, self_consistency_merge
@@ -40,7 +41,7 @@ class ThoughtNode:
     text: str
     score: float = 0.0
     depth: int = 0
-    children: list["ThoughtNode"] = field(default_factory=list)
+    children: list[ThoughtNode] = field(default_factory=list)
 
 
 @dataclass
@@ -441,7 +442,7 @@ def cognitive_solve(
     if plan.strategy == "sc":
         # Sample multiple independent reasoning paths, majority vote.
         paths: list[str] = []
-        for i in range(3):
+        for _i in range(3):
             paths.append(counted(
                 f"Reason step by step, then output 'Final answer:' followed by\n"
                 f"the answer. Question: {question}"

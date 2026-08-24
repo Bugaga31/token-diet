@@ -26,10 +26,9 @@ What this adds on top of market_intelligence (which has indicators):
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from typing import Any
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Indicators (local, no numpy)
@@ -171,11 +170,11 @@ def volume_profile(
     vol_by_bin = [0.0] * bins
     vwap_num = 0.0
     total_vol = 0.0
-    for h, l, c, v in zip(highs, lows, closes, volumes):
+    for h, lo, c, v in zip(highs, lows, closes, volumes, strict=False):
         if v <= 0:
             continue
         # distribute volume across bins touched by the candle (typical price)
-        typical = (h + l + c) / 3
+        typical = (h + lo + c) / 3
         idx = int((typical - lo) / step)
         idx = max(0, min(bins - 1, idx))
         vol_by_bin[idx] += v

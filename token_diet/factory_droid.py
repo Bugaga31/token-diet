@@ -22,13 +22,11 @@ Droid — Factory AI собрала автономного программис�
 
 from __future__ import annotations
 
-import json
-import os
 import re
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Ролевые дроиды (как у Factory: code / review / test / docs / knowledge)

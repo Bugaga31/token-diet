@@ -1,8 +1,8 @@
 """Tests for code_quality.py — deterministic code review without neural calls."""
 
 from token_diet.code_quality import (
-    Finding,
     REVIEW_CHECKLIST,
+    Finding,
     build_review_prompt,
     code_review_prompt,
     describe_findings,

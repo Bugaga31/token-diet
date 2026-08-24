@@ -86,10 +86,10 @@ def ld_flatten(data: dict, depth: int = 0) -> dict[str, Any]:
         if isinstance(v, dict):
             facts.update(ld_flatten(v, depth + 1))
         elif isinstance(v, list):
-            vals = [i for i in v if isinstance(i, (str, int, float))]
+            vals = [i for i in v if isinstance(i, str | int | float)]
             if vals:
                 facts[k] = ", ".join(str(x) for x in vals[:5])
-        elif isinstance(v, (str, int, float)) and str(v).strip():
+        elif isinstance(v, str | int | float) and str(v).strip():
             facts[k] = str(v).strip()
     return facts
 

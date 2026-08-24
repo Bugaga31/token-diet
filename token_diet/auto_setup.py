@@ -29,7 +29,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tool definitions
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -716,11 +715,11 @@ def configure_all() -> dict[str, Any]:
 
     # Add sourcing instructions
     results["instructions"] = (
-        f"\n📋 Next steps:\n"
-        f"  1. source ~/.token-diet/config.sh\n"
-        f"  2. token-diet serve\n"
-        f"  3. Use your AI tools — savings automatic.\n"
-        f"\n💡 All config files written. Run 'token-diet detect' to verify."
+        "\n📋 Next steps:\n"
+        "  1. source ~/.token-diet/config.sh\n"
+        "  2. token-diet serve\n"
+        "  3. Use your AI tools — savings automatic.\n"
+        "\n💡 All config files written. Run 'token-diet detect' to verify."
     )
 
     return results
@@ -763,7 +762,6 @@ def list_tools() -> str:
         "opencode": (None, Path.home() / ".token-diet" / "config.sh"),
         "cursor": (None, Path.home() / ".token-diet" / "config.sh"),
         "openai-sdk": (None, Path.home() / ".token-diet" / "config.sh"),
-        "buffy": ("~/.buffy/config.json", Path.home() / ".buffy" / "config.json"),
     }
 
     lines.append("  ✅ DETECTED:")
@@ -799,11 +797,11 @@ def list_tools() -> str:
             lines.append(f"\n  📋 Shell profile: {rc_name} ✓ auto-sourced")
             break
     if not shell_sourced:
-        lines.append(f"\n  📋 Shell profile: ○ add 'source ~/.token-diet/config.sh' to .bashrc/.zshrc")
+        lines.append("\n  📋 Shell profile: ○ add 'source ~/.token-diet/config.sh' to .bashrc/.zshrc")
 
     proxy_url = _get_proxy_url()
     lines.append(f"\n  🌐 Proxy: {proxy_url}/v1")
-    lines.append(f"  📂 Config dir: ~/.token-diet/")
+    lines.append("  📂 Config dir: ~/.token-diet/")
     lines.append("")
     return "\n".join(lines)
 

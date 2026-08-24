@@ -7,7 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from token_diet.invest_hub import InvestHub, _quotation_to_float
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 def _hub(news_enabled=False):

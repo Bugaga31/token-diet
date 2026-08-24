@@ -19,15 +19,16 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+
 
 # ── стемминг ─────────────────────────────────────────────────────────────
 def _stem(w: str) -> str:
     w = w.lower()
     if len(w) > 5:
-        w = w.rstrip("аяоеёуюыиэьийовымихое")
+        w = w.rstrip("аяоеёуюыиэьийовымихое")  # noqa: B005  # charset strip is the point: Russian vowel endings
         if len(w) < 3:
             w = w.lower()
     return w

@@ -18,7 +18,6 @@ Pure stdlib. Deterministic heuristics — no LLM calls, no tokens.
 from __future__ import annotations
 
 import re
-from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 

@@ -1,11 +1,8 @@
 """Тесты «глаз» (omni_eyes) — vision через OmniRoute."""
 
 import base64
-import io
 import os
 import tempfile
-
-import pytest
 
 from token_diet.omni_eyes import (
     VISION_MODELS,
@@ -15,7 +12,6 @@ from token_diet.omni_eyes import (
     _maybe_shrink,
     ask_vision,
     see_image,
-    take_screenshot,
 )
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from token_diet.cli import main, _core_checks, _self_test  # noqa: E402
+from token_diet.cli import _core_checks, _self_test, main  # noqa: E402
 
 
 def test_no_args_returns_zero_and_shows_arsenal(capsys):

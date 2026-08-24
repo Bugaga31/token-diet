@@ -21,7 +21,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Signal words for each intent type
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -174,7 +173,6 @@ class RapidContext:
             )
 
         text = text.strip()
-        text_lower = text.lower()
 
         # ── Step 0: Trivial? ──
         if _TRIVIAL_SIGNALS.match(text):

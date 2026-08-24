@@ -115,7 +115,7 @@ def _sec_web(ticker: str, gold_price: float | None) -> str:
 
 def _sec_sweet(gold_price: float | None) -> str:
     try:
-        from .sweet_spot import DEFAULT_BASKET, report, scan
+        from .sweet_spot import scan
 
         spots = scan(gold_price=gold_price)
         lines = []

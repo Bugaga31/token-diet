@@ -1,8 +1,6 @@
 """Тесты scrapling_diet — реверс-инжиниринг Scrapling (без их зависимостей)."""
 
-import time
 
-import pytest
 
 from token_diet.scrapling_diet import (
     AutoThrottle,
@@ -89,8 +87,8 @@ def test_link_extractor():
     assert "https://example.com/page1.html" in links
     assert "https://example.com/page2.html" in links
     assert "https://other.com/x.html" not in links
-    assert not any("report.pdf" in l for l in links)
-    assert not any("javascript:" in l for l in links)
+    assert not any("report.pdf" in ln for ln in links)
+    assert not any("javascript:" in ln for ln in links)
 
 
 def test_network_capture_bad_ws():

@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 # ISIN: 2 буквы + 10 символов (например RU000A10BZJ4)
 _ISIN_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{10}$")
@@ -174,8 +173,8 @@ def _recent_news(query: str, limit: int = 3) -> list[dict]:
         r = visit(f"https://www.tbank.ru/invest/stocks/{ticker}/",
                   timeout_ms=35000)
         if r.get("status") == "ok":
-            lines = [l.strip() for l in r.get("text", "").split("\n")
-                     if l.strip() and len(l.strip()) > 25]
+            lines = [ln.strip() for ln in r.get("text", "").split("\n")
+                     if ln.strip() and len(ln.strip()) > 25]
             # строки с признаками новости/анализа
             import re
 

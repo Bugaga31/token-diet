@@ -17,9 +17,9 @@ from __future__ import annotations
 import hashlib
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
-
+from typing import Any
 
 # ── Data structures ─────────────────────────────────────────────────
 
@@ -335,7 +335,7 @@ def supervised_agent_loop(
 
     current = initial_prompt
 
-    for i in range(max_iterations):
+    for _i in range(max_iterations):
         # Observe user turn
         supervisor.observe_turn(
             "user", current,

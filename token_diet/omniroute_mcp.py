@@ -37,7 +37,7 @@ def _read() -> dict | None:
 
 
 def _route_task(args: dict) -> dict:
-    from token_diet.omniroute import OmniRouter, DEFAULT_PROVIDERS
+    from token_diet.omniroute import DEFAULT_PROVIDERS, OmniRouter
     router = OmniRouter(providers=DEFAULT_PROVIDERS)
     task = args.get("task", "")
     strategy = args.get("strategy", "auto/balanced")
@@ -56,7 +56,7 @@ def _route_task(args: dict) -> dict:
 
 
 def _orchestrate(args: dict) -> dict:
-    from token_diet.omniroute import OmniRouter, DEFAULT_PROVIDERS
+    from token_diet.omniroute import DEFAULT_PROVIDERS, OmniRouter
     router = OmniRouter(providers=DEFAULT_PROVIDERS)
     task = args.get("task", "")
     strategy = args.get("strategy", "auto/balanced")

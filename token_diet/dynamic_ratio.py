@@ -27,24 +27,22 @@ in one section than lose critical info in another.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
 
 try:
     from .core import count_tokens
     from .loss_router import (
-        compress_with_routing,
+        _classify_segment,  # noqa: F401
         compress_prose_aggressive,
-        reduce_output,
-        _classify_segment,
+        compress_with_routing,
+        reduce_output,  # noqa: F401
     )
 except ImportError:
     from core import count_tokens  # type: ignore[no-redef]
     from loss_router import (  # type: ignore[no-redef]
-        compress_with_routing,
         compress_prose_aggressive,
-        reduce_output,
-        _classify_segment,
+        compress_with_routing,
     )
 
 

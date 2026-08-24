@@ -1,12 +1,15 @@
 """Tests for GreenCalculator — environmental impact."""
 
-import sys, os, unittest
+import os
+import sys
+import unittest
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PROJECT = os.path.dirname(_HERE)
 if _PROJECT not in sys.path:
     sys.path.insert(0, _PROJECT)
 
-from token_diet.green_calculator import GreenCalculator, GreenMetrics
+from token_diet.green_calculator import GreenCalculator
 
 
 class TestGreenMetrics(unittest.TestCase):

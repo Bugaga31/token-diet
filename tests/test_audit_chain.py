@@ -13,9 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from token_diet.audit_chain import (  # noqa: E402
     AuditChain,
     AuditEntry,
-    canonical_json,
     _now_storage_precision,
-    GENESIS_HASH,
+    canonical_json,
 )
 
 
@@ -66,7 +65,7 @@ def test_verify_empty_chain_false(tmp_path):
 # ── защита от подделки ───────────────────────────────────────────────────
 def test_tamper_detected(tmp_path):
     c = make_chain(tmp_path)
-    e1 = c.log("decision_made", detail={"what": "a"}, actor="buffy")
+    c.log("decision_made", detail={"what": "a"}, actor="buffy")
     e2 = c.log("decision_made", detail={"what": "b"}, actor="buffy")
     c.log("trade_executed", detail={"ticker": "PLZL"}, actor="buffy")
 
@@ -91,7 +90,7 @@ def test_tamper_detected(tmp_path):
 def test_chain_break_detected(tmp_path):
     """Разрыв связи (prev_hash не совпадает) тоже ловится."""
     c = make_chain(tmp_path)
-    e1 = c.log("decision_made", actor="buffy")
+    c.log("decision_made", actor="buffy")
     c.log("decision_made", actor="buffy")
 
     path = c.path

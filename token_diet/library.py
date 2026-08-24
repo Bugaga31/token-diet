@@ -50,7 +50,6 @@ def chunk_text(text: str, size: int = CHUNK_SIZE,
     if not text:
         return []
     chunks: list[str] = []
-    step = max(1, size - overlap)
     i = 0
     while i < len(text):
         end = min(i + size, len(text))

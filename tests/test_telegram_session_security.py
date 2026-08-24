@@ -7,18 +7,13 @@ Covers:
   never into the project tree, and never prints the session content.
 """
 
-import os
 import stat
 from pathlib import Path
 
-import pytest
-
 from token_diet.auto_setup import (
-    TELEGRAM_MCP_DIR,
     find_local_telegram_sessions,
     link_local_telegram_session,
 )
-
 
 REPO_GITIGNORE = Path(__file__).resolve().parent.parent / ".gitignore"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

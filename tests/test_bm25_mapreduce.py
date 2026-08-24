@@ -7,7 +7,6 @@ import unittest
 from token_diet.bm25_reranker import (
     BM25Reranker,
     rerank_chunks,
-    rerank_library,
 )
 from token_diet.map_reduce import (
     extractive_summarize,

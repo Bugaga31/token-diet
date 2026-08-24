@@ -1,8 +1,7 @@
 """Tests for claude_mem — SQLite memory with auto-injection."""
-import tempfile
 from pathlib import Path
 
-from token_diet.claude_mem import ClaudeMem, estimate_memory_injection_savings, _split_observations
+from token_diet.claude_mem import ClaudeMem, _split_observations, estimate_memory_injection_savings
 
 
 def test_split_observations():

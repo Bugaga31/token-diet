@@ -44,7 +44,7 @@ def test_top_memory_processes_returns_list():
 def test_turbo_graceful_without_sudo():
     """Без прав turbo не падает, а возвращает отчёт с ошибками."""
     with patch("token_diet.system_turbo._write_sys", return_value=(False, "нет прав")):
-        with patch("token_diet.system_turbo._run", return_value=(1, "")) as mock_run:
+        with patch("token_diet.system_turbo._run", return_value=(1, "")):
             rep = TurboReport()
             rep.line("swappiness: уже 5 ✅")
             rep.top_memory = []

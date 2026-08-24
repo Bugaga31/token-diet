@@ -20,8 +20,8 @@ turn importance based on content types, no extra API calls.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 try:
     from .core import count_tokens

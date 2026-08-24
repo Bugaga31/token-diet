@@ -23,54 +23,59 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import textwrap
-from typing import Any, Callable
+from typing import Any
 
 try:
-    from .cache_breakpoints import CacheBreakpointAnalyzer
-    from .context_memory import ContextManager, EventStore, TranslationCache, choose_language
+    from .cache_breakpoints import CacheBreakpointAnalyzer  # noqa: F401
+    from .context_memory import (  # noqa: F401
+        ContextManager,
+        EventStore,
+        TranslationCache,
+        choose_language,
+    )
     from .core import (
-        BlobStore,
+        BlobStore,  # noqa: F401
         PriceTable,
-        SemanticCache,
-        canonical_json,
+        SemanticCache,  # noqa: F401
+        canonical_json,  # noqa: F401
         count_tokens,
-        deduplicate_chunks,
-        guarded_records,
-        prepare_request,
+        deduplicate_chunks,  # noqa: F401
+        guarded_records,  # noqa: F401
+        prepare_request,  # noqa: F401
     )
     from .equivalence_gate import (
-        CriticalFact,
+        CriticalFact,  # noqa: F401
         EquivalenceGate,
-        GateResult,
-        check_critical_facts,
+        GateResult,  # noqa: F401
+        check_critical_facts,  # noqa: F401
     )
-    from .intelligence_booster import IntelligenceBooster, BoostedResult
-    from .llm_connector import LLMConnector, LLMResult
-    from .loss_router import compress_prose_aggressive, compress_with_routing, reduce_output
+    from .intelligence_booster import BoostedResult, IntelligenceBooster  # noqa: F401
+    from .llm_connector import LLMConnector, LLMResult  # noqa: F401
+    from .loss_router import (  # noqa: F401
+        compress_prose_aggressive,
+        compress_with_routing,
+        reduce_output,
+    )
     from .optimization_runner import (
+        OptimizationReport,  # noqa: F401
         OptimizationRunner,
-        OptimizationReport,
         RequestProfile,
     )
-    from .question_normalizer import normalize_question
-    from .tool_schema_compressor import guarded_tool_schemas
+    from .question_normalizer import normalize_question  # noqa: F401
+    from .tool_schema_compressor import guarded_tool_schemas  # noqa: F401
 except ImportError:
-    from cache_breakpoints import CacheBreakpointAnalyzer  # type: ignore
-    from context_memory import ContextManager, EventStore, TranslationCache, choose_language  # type: ignore
     from core import (  # type: ignore
-        BlobStore, PriceTable, SemanticCache, canonical_json, count_tokens,
-        deduplicate_chunks, guarded_records, prepare_request,
+        PriceTable,
+        count_tokens,
     )
     from equivalence_gate import (  # type: ignore
-        CriticalFact, EquivalenceGate, GateResult, check_critical_facts,
+        EquivalenceGate,
     )
-    from intelligence_booster import IntelligenceBooster, BoostedResult  # type: ignore
-    from llm_connector import LLMConnector, LLMResult  # type: ignore
-    from loss_router import compress_prose_aggressive, compress_with_routing, reduce_output  # type: ignore
-    from optimization_runner import OptimizationRunner, OptimizationReport, RequestProfile  # type: ignore
-    from question_normalizer import normalize_question  # type: ignore
-    from tool_schema_compressor import guarded_tool_schemas  # type: ignore
+    from llm_connector import LLMConnector  # type: ignore
+    from optimization_runner import (  # type: ignore
+        OptimizationRunner,
+        RequestProfile,
+    )
 
 PRICES = PriceTable(
     input_per_million=3.0,
@@ -174,11 +179,11 @@ class MultiplierResult:
             )
         lines += [
             "",
-            f"### Conclusion",
+            "### Conclusion",
             f"- **{self.scenarios[-1].name}** packs **{self.multiplier_vs_x_raw():.1f}×** "
             f"more context than RAW in the same ${self.budget / 1_000_000 * PRICES.input_per_million:.4f} budget",
             f"- Gate confirms all {len(HARD_FACTS)} critical facts survive compression",
-            f"- Cost is **lower** than RAW despite 5× richer context",
+            "- Cost is **lower** than RAW despite 5× richer context",
         ]
         return "\n".join(lines)
 
@@ -336,19 +341,6 @@ class SmartMultiplier:
 
         cost = total_tokens_used * self.prices.input_per_million / 1_000_000
 
-        # Run Gate on the boosted profile to verify facts survive
-        gate = EquivalenceGate(
-            judge1=lambda b, a: (0.96, True), model_version="demo-v2", strict=False
-        )
-        # Build a baseline text from original docs+records and optimized text from boosted
-        boosted_profile = RequestProfile(
-            task_id="diet-x5",
-            system_prompt=diet_profile.system_prompt,
-            records=all_records,
-            documents=all_docs,
-            question=diet_profile.question,
-            output_tokens=diet_profile.output_tokens,
-        )
         # Gate check: did we lose facts by adding more context?
         # In simulation: more context can't lose facts, so gate passes.
         gate_passed = total_tokens_used <= self.budget
@@ -372,7 +364,7 @@ class SmartMultiplier:
     def run(self) -> MultiplierResult:
         """Run all three scenarios and return the comparison."""
         print(f"\n{'='*70}")
-        print(f"  Smart Multiplier — 5× intelligence at lower cost")
+        print("  Smart Multiplier — 5× intelligence at lower cost")
         print(f"  Budget: {self.budget} tokens ($"
               f"{self.budget * self.prices.input_per_million / 1_000_000:.4f})")
         print(f"{'='*70}\n")

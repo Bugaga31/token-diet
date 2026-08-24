@@ -1,16 +1,15 @@
 """Тесты новых техник сжатия (v3.19): JSON-схема, CSV-компакт, TOC."""
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from token_diet.compression_arsenal import (
-    compress_json_schema,
     compress_csv,
+    compress_json_schema,
     make_document_toc,
 )
-
 
 # ── JSON schema collapse ─────────────────────────────────────────────
 

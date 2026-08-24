@@ -28,10 +28,8 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -74,7 +72,7 @@ _NUMBER_RE = re.compile(r"(?:\$)?\d[\d\s.,]*(?:%|₽|\$|тыс|млн|млрд|�
 def _stem(word: str) -> str:
     w = word.lower()
     if len(w) > 5:
-        w = w.rstrip("аяоеёуюыиэьийовымихое")
+        w = w.rstrip("аяоеёуюыиэьийовымихое")  # noqa: B005  # charset strip is the point: Russian vowel endings
         if len(w) < 3:
             w = word.lower()
     return w
@@ -425,9 +423,9 @@ class GraphitiBackend:
 
     def client(self):
         """LLM + embedder из локального Ollama (без внешних ключей)."""
+        from graphiti_core.embedder import OpenAIEmbedder, OpenAIEmbedderConfig
         from graphiti_core.llm_client import OpenAIClient
         from graphiti_core.llm_client.config import LLMConfig
-        from graphiti_core.embedder import OpenAIEmbedder, OpenAIEmbedderConfig
 
         base = os.environ.get("OLLAMA_BASE", "http://localhost:11434/v1")
         model = os.environ.get("GRAPH_LLM", "qwen3:4b")
@@ -487,6 +485,7 @@ class GraphMemory:
         if self._graphiti is not None:
             try:
                 import asyncio
+
                 from graphiti_core.nodes import EpisodeType
                 rt = ref_time or datetime.now(timezone.utc)
                 return asyncio.run(self._graphiti.add_episode(
@@ -548,7 +547,7 @@ def _cli() -> None:
 
     if cmd == "stats":
         s = gm.stats()
-        print(f"Бэкенд: {s['backend']}" + (f" (graphiti)" if s.get("graphiti") else ""))
+        print(f"Бэкенд: {s['backend']}" + (" (graphiti)" if s.get("graphiti") else ""))
         print(f"Эпизоды: {s['episodes']} | Сущности: {s['entities']} | "
               f"Факты: {s['facts']} (активных {s['active_facts']}) | Связи: {s['edges']}")
 

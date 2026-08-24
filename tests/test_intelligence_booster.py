@@ -11,11 +11,10 @@ if _PKG not in sys.path:
 if _TOKEN_DIET not in sys.path:
     sys.path.insert(0, _TOKEN_DIET)
 
-import pytest
 
-from intelligence_booster import IntelligenceBooster
 from context_memory import EventStore
-from core import BlobStore, PriceTable, count_tokens
+from core import BlobStore, PriceTable
+from intelligence_booster import IntelligenceBooster
 from optimization_runner import OptimizationRunner, RequestProfile
 
 PRICES = PriceTable(3.0, 3.75, 0.30, 15.0)

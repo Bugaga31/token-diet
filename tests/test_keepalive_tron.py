@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import time
 import unittest
 
@@ -12,12 +11,13 @@ from token_diet.cache_keepalive import (
     estimate_keepalive_savings,
 )
 from token_diet.tron_format import (
+    savings as tron_savings,
+)
+from token_diet.tron_format import (
     to_tron,
     to_tron_schemas,
     tron_roundtrip_safe,
-    savings as tron_savings,
 )
-
 
 TOOLS = [
     {"name": "get_weather", "description": "Current weather for a city",

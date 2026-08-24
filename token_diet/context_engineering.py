@@ -91,7 +91,7 @@ class RedundancyReport:
 
     @property
     def removable_tokens(self) -> int:
-        return sum(count_tokens(l) for l in self.ban_lines + self.filler_lines)
+        return sum(count_tokens(ln) for ln in self.ban_lines + self.filler_lines)
 
     @property
     def potential_savings_pct(self) -> float:
@@ -100,14 +100,14 @@ class RedundancyReport:
     def render(self) -> str:
         lines = [
             f"Промпт: {self.tokens} токенов, {self.lines} строк",
-            f"Запреты-пустышки: {len(self.ban_lines)} ({sum(count_tokens(l) for l in self.ban_lines)} ток.)",
-            f"Общие фразы: {len(self.filler_lines)} ({sum(count_tokens(l) for l in self.filler_lines)} ток.)",
+            f"Запреты-пустышки: {len(self.ban_lines)} ({sum(count_tokens(ln) for ln in self.ban_lines)} ток.)",
+            f"Общие фразы: {len(self.filler_lines)} ({sum(count_tokens(ln) for ln in self.filler_lines)} ток.)",
             f"Дубликаты: {len(self.duplicate_groups)} групп",
             f"Можно убрать: ~{self.removable_tokens} токенов ({self.potential_savings_pct}%)",
         ]
         if self.ban_lines:
             lines.append("\nЗапреты (заменить на контекстную форму):")
-            lines.extend(f"  - {l.strip()[:80]}" for l in self.ban_lines[:5])
+            lines.extend(f"  - {ln.strip()[:80]}" for ln in self.ban_lines[:5])
         if self.duplicate_groups:
             lines.append("\nДубликаты:")
             for g in self.duplicate_groups[:3]:
@@ -126,8 +126,6 @@ def analyze_prompt(prompt: str) -> RedundancyReport:
         stripped = line.strip()
         if not stripped or len(stripped) < 8:
             continue
-
-        lower = stripped.lower()
 
         # duplicates FIRST (by content signature) — a line can both be
         # a filler AND a duplicate; duplicates must be caught regardless
@@ -207,7 +205,6 @@ def minimize_system_prompt(prompt: str, aggressive: bool = True) -> MinimizeResu
     """
     tokens_before = count_tokens(prompt)
     lines = prompt.split("\n")
-    seen: dict[str, int] = {}
     out: list[str] = []
     removed_ban = 0
     removed_filler = 0
@@ -234,8 +231,6 @@ def minimize_system_prompt(prompt: str, aggressive: bool = True) -> MinimizeResu
         if not stripped:
             out.append(line)  # keep blank-line structure for now
             continue
-
-        lower = stripped.lower()
 
         # 1) duplicates
         if i in dup_indices:

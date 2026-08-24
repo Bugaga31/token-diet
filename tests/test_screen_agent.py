@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from unittest.mock import patch
 
@@ -14,13 +13,11 @@ from token_diet.screen_agent import (
     AgentStep,
     TaskResult,
     _extract_json,
-    ask_brain,
     check_deps,
     describe_task_result,
     execute_action,
     run_task,
 )
-
 
 # ── JSON-разбор ───────────────────────────────────────────────────────────────
 

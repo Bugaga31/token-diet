@@ -18,13 +18,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import io
 import os
 import shutil
 import subprocess
 import tempfile
 import time
-from typing import Optional
 
 try:
     import requests
@@ -59,7 +57,7 @@ _SCREEN_CACHE: dict[str, tuple[float, str, str]] = {}  # hash -> (t, b64, mime)
 _SCREEN_CACHE_TTL = 5.0  # секунд — экран живёт недолго, но повторные вызовы часты
 
 
-def _find_screenshot_tool() -> Optional[tuple[list[str], bool]]:
+def _find_screenshot_tool() -> tuple[list[str], bool] | None:
     """Найти доступный инструмент скриншота. Возвращает (cmd, нужен ли convert)."""
     for tool in SCREENSHOT_TOOLS:
         name = tool[0]
@@ -68,7 +66,7 @@ def _find_screenshot_tool() -> Optional[tuple[list[str], bool]]:
     return None
 
 
-def take_screenshot(path: Optional[str] = None) -> Optional[str]:
+def take_screenshot(path: str | None = None) -> str | None:
     """Сделать скриншот всего экрана. Возвращает путь к PNG или None."""
     path = path or os.path.join(tempfile.gettempdir(), "omni_eye.png")
     found = _find_screenshot_tool()
@@ -129,7 +127,7 @@ def _maybe_shrink(path: str) -> str:
     return path
 
 
-def _file_hash(path: str) -> Optional[str]:
+def _file_hash(path: str) -> str | None:
     """Быстрый хеш файла (первые + последние 64KB — достаточно для кэша)."""
     try:
         size = os.path.getsize(path)
@@ -149,7 +147,7 @@ def _image_to_base64(path: str) -> str:
         return base64.b64encode(f.read()).decode()
 
 
-def _cached_image_base64(path: str) -> Optional[tuple[str, str]]:
+def _cached_image_base64(path: str) -> tuple[str, str] | None:
     """base64 из кэша по хешу файла (ревью модели: экономия на повторах).
 
     Возвращает (b64, mime) или None. TTL короткий — экран меняется.
@@ -169,7 +167,7 @@ def _cached_image_base64(path: str) -> Optional[tuple[str, str]]:
     return b64, mime
 
 
-def _safe_image_base64(path: str) -> Optional[str]:
+def _safe_image_base64(path: str) -> str | None:
     """base64 изображения или None, если файл недоступен."""
     try:
         got = _cached_image_base64(path)
@@ -178,8 +176,8 @@ def _safe_image_base64(path: str) -> Optional[str]:
         return None
 
 
-def ask_vision(question: str, image_path: Optional[str] = None,
-               model: Optional[str] = None, max_tokens: int = 300,
+def ask_vision(question: str, image_path: str | None = None,
+               model: str | None = None, max_tokens: int = 300,
                timeout: int = 120) -> dict:
     """Задать вопрос vision-модели про изображение (экран).
 
@@ -238,7 +236,7 @@ def ask_vision(question: str, image_path: Optional[str] = None,
 
 
 def see(question: str = "Опиши кратко, что сейчас на экране. 2-3 предложения.",
-        model: Optional[str] = None) -> str:
+        model: str | None = None) -> str:
     """«Посмотреть» на экран — вернуть описание или ответ на вопрос."""
     res = ask_vision(question, model=model)
     if res["ok"]:
@@ -246,13 +244,13 @@ def see(question: str = "Опиши кратко, что сейчас на эк�
     return f"[глаза не видят: {res['error']}]"
 
 
-def ask_about_screen(question: str, model: Optional[str] = None) -> str:
+def ask_about_screen(question: str, model: str | None = None) -> str:
     """Спросить конкретное про текущий экран (например: «какой там текст?»)."""
     return see(question, model=model)
 
 
 def see_image(image_path: str, question: str = "Опиши, что на изображении.",
-              model: Optional[str] = None) -> str:
+              model: str | None = None) -> str:
     """Посмотреть на произвольное изображение (файл)."""
     res = ask_vision(question, image_path=image_path, model=model)
     if res["ok"]:

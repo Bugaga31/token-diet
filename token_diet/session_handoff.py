@@ -23,7 +23,6 @@ from __future__ import annotations
 import argparse
 import re
 from pathlib import Path
-from typing import Optional
 
 TICKER_RE = re.compile(r"\b[A-ZА-Я]{3,6}\b(?=\s*[:\-–]?\s*\d)")
 PRICE_RE = re.compile(r"\d[\d\s.,]*\s*(?:₽|руб(?:\.|лей)?|\$|%|\s%|проц(?:ента|ентов)?)")
@@ -85,7 +84,7 @@ def compress_history(history: str, max_chars: int = 6000) -> list[str]:
     return kept
 
 
-def chain_decisions(chain_path: Optional[Path] = None, limit: int = MAX_DECISIONS) -> list[str]:
+def chain_decisions(chain_path: Path | None = None, limit: int = MAX_DECISIONS) -> list[str]:
     """Решения из hash-chain (prediction/decision/trade) — свежие первыми."""
     try:
         from token_diet.audit_chain import AuditChain
@@ -106,7 +105,7 @@ def chain_decisions(chain_path: Optional[Path] = None, limit: int = MAX_DECISION
         return []
 
 
-def vault_lessons(vault_dir: Optional[Path] = None, limit: int = MAX_LESSONS) -> list[str]:
+def vault_lessons(vault_dir: Path | None = None, limit: int = MAX_LESSONS) -> list[str]:
     """Уроки из Obsidian: файлы с именем «Урок …» — первые строки."""
     try:
         from token_diet.memory_cli import vault_path
@@ -122,14 +121,14 @@ def vault_lessons(vault_dir: Optional[Path] = None, limit: int = MAX_LESSONS) ->
         except OSError:
             continue
         title = f.stem
-        first = next((l.strip() for l in head if l.strip() and not l.startswith("---")), "")
+        first = next((ln.strip() for ln in head if ln.strip() and not ln.startswith("---")), "")
         out.append(f"«{title}»{': ' + first[:120] if first else ''}")
         if len(out) >= limit:
             break
     return out
 
 
-def active_rules(rules_path: Optional[Path] = None, limit: int = MAX_RULES) -> list[str]:
+def active_rules(rules_path: Path | None = None, limit: int = MAX_RULES) -> list[str]:
     """Активные правила из YAML-движка."""
     try:
         from token_diet.workflow_engine import WorkflowEngine
@@ -152,12 +151,12 @@ def estimate_savings(source_chars: int, handoff_chars: int) -> dict:
     }
 
 
-def build_handoff(history: Optional[str] = None, max_history_chars: int = 6000,
+def build_handoff(history: str | None = None, max_history_chars: int = 6000,
                   include_chain: bool = True, include_lessons: bool = True,
                   include_rules: bool = True,
-                  chain_path: Optional[Path] = None,
-                  vault_dir: Optional[Path] = None,
-                  rules_path: Optional[Path] = None) -> dict:
+                  chain_path: Path | None = None,
+                  vault_dir: Path | None = None,
+                  rules_path: Path | None = None) -> dict:
     """Собрать handoff-блок: факты истории + решения + уроки + правила."""
     sections: dict[str, list[str]] = {}
     source_chars = len(history or "")
@@ -199,7 +198,7 @@ def render_handoff(sections: dict[str, list[str]]) -> str:
     return "\n".join(out)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="token-diet handoff",
         description="Компактный слепок сессии: факты + решения + уроки — чтобы новая ИИ продолжила с того же места")

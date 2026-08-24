@@ -1,6 +1,5 @@
 """Тесты финансовых агентов (реверс Anthropic financial-services)."""
 
-import pytest
 
 from token_diet.financial_agents import (
     CompanyData,

@@ -24,13 +24,12 @@ For the people. For the planet. Honesty is cheaper than regret.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from .trading_robot import stop_loss_level, percentile_corridor
 from .invest_hub import InvestHub, _safe
-
+from .trading_robot import percentile_corridor, stop_loss_level
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Чистые функции планирования (тестируются без сети)
@@ -244,7 +243,7 @@ class PortfolioCommander:
             if qty <= 0 or avg <= 0 or cur <= 0:
                 continue
             closes = None
-            candles = _safe(lambda: self.hub.candles(ticker, days=self.days), [])
+            candles = _safe(lambda t=ticker: self.hub.candles(t, days=self.days), [])
             if candles:
                 closes = [c["close"] for c in candles]
             plan = plan_position(
@@ -279,7 +278,7 @@ class PortfolioCommander:
         alerts = []
         for p in plan["positions"]:
             # свежая цена с биржи
-            q = _safe(lambda: self.hub.quote(p["ticker"]), {})
+            q = _safe(lambda p=p: self.hub.quote(p["ticker"]), {})
             price = (q or {}).get("price")
             if price is None:
                 alerts.append({

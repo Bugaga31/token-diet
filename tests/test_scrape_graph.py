@@ -1,5 +1,4 @@
 """Tests for scrape_graph — ScrapeGraphAI-style schema extraction."""
-import json
 
 from token_diet.scrape_graph import (
     ScrapeGraph,

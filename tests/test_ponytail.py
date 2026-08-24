@@ -1,5 +1,4 @@
 """Tests for ponytail — tab/session manager."""
-import tempfile
 from pathlib import Path
 
 from token_diet.ponytail import TabManager, estimate_tabs_savings
@@ -16,7 +15,7 @@ def test_open_and_dedupe():
 def test_close():
     m = TabManager()
     a = m.open("https://a.com", "A")
-    b = m.open("https://b.com", "B")
+    m.open("https://b.com", "B")
     assert m.close(a.id) is True
     assert m.close(999) is False
     assert m.stats()["tabs"] == 1

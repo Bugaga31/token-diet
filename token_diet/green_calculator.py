@@ -29,7 +29,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # ── Conservative constants ────────────────────────────────────────────────────
 
 KWH_PER_1K_TOKENS = 0.003        # kWh per 1,000 tokens

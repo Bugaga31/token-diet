@@ -19,7 +19,6 @@ from __future__ import annotations
 import datetime
 import time
 from pathlib import Path
-from typing import Optional
 
 DEFAULT_INTERVAL_SEC = 300
 
@@ -29,12 +28,12 @@ MOEX_OPEN = datetime.time(10, 0)
 MOEX_CLOSE = datetime.time(18, 50)
 
 
-def is_trading_day(dt: Optional[datetime.datetime] = None) -> bool:
+def is_trading_day(dt: datetime.datetime | None = None) -> bool:
     dt = dt or datetime.datetime.now()
     return dt.weekday() < 5  # 0=Пн ... 4=Пт
 
 
-def is_market_open(dt: Optional[datetime.datetime] = None) -> bool:
+def is_market_open(dt: datetime.datetime | None = None) -> bool:
     """Торговые часы MOEX в МСК: Пн-Пт 10:00-18:50."""
     now = dt or datetime.datetime.now()
     msk = now + MSK_OFFSET
@@ -44,7 +43,7 @@ def is_market_open(dt: Optional[datetime.datetime] = None) -> bool:
     return MOEX_OPEN <= t <= MOEX_CLOSE
 
 
-def change_vs_last(price: float, last: Optional[float]) -> float:
+def change_vs_last(price: float, last: float | None) -> float:
     """Изменение в % от предыдущего опроса (0, если данных нет)."""
     if last is None or last <= 0:
         return 0.0
@@ -52,7 +51,7 @@ def change_vs_last(price: float, last: Optional[float]) -> float:
 
 
 def feed_price_event(inv, eng: object, ticker: str, dry_run: bool = False,
-                     last: Optional[float] = None) -> tuple[Optional[float], list]:
+                     last: float | None = None) -> tuple[float | None, list]:
     """Один опрос: котировка -> price_event -> сработавшие правила.
 
     Возвращает (последняя_цена, результаты_правил). last — цена прошлого
@@ -68,7 +67,7 @@ def feed_price_event(inv, eng: object, ticker: str, dry_run: bool = False,
     return price, results
 
 
-def watch(ticker: str, rules_path: Optional[Path] = None,
+def watch(ticker: str, rules_path: Path | None = None,
           interval_sec: int = DEFAULT_INTERVAL_SEC,
           dry_run: bool = False, once: bool = False, max_iters: int = 0) -> None:
     """Главный цикл: опрос в торговые часы, сон вне их и в выходные."""
@@ -90,7 +89,7 @@ def watch(ticker: str, rules_path: Optional[Path] = None,
     if dry_run:
         print("[watch] РЕЖИМ СУХОГО ПРОГОНА: заявки не исполняются")
 
-    last: Optional[float] = None
+    last: float | None = None
     iters = 0
     while True:
         if once or (max_iters and iters >= max_iters):
@@ -130,7 +129,7 @@ def _next_open() -> datetime.datetime:
     return nxt
 
 
-def init_rules(path: Optional[Path] = None, ticker: str = "SNGSP") -> Path:
+def init_rules(path: Path | None = None, ticker: str = "SNGSP") -> Path:
     """Сгенерировать правила докупки: лёстница на просадках (3 уровня).
 
     Стратегия для Сургута (вход 41.50, стоп 39.5): докупаем мелкими
@@ -203,7 +202,7 @@ def init_rules(path: Optional[Path] = None, ticker: str = "SNGSP") -> Path:
     return path
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     import argparse
     p = argparse.ArgumentParser(prog="token-diet watch",
                                 description="Сторож рынка: живые цены -> правила докупки/продажи")

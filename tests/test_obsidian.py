@@ -1,10 +1,8 @@
 """Tests for obsidian_memory.py — ObsidianMemoryStore."""
 
-import pytest
 from token_diet.obsidian_memory import (
     ObsidianMemoryStore,
     ObsidianNote,
-    RetrievalResult,
     estimate_memory_savings,
 )
 

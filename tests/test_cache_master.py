@@ -6,7 +6,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from token_diet.cache_master import (  # noqa: E402
-    BLOCK_SIZE,
     Provider,
     align_prefix,
     mark_static,

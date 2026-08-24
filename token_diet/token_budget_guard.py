@@ -17,9 +17,8 @@ All 100% algorithmic. Transparent. Auditable.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
 from collections import defaultdict
-
+from dataclasses import dataclass, field
 
 # ═══════════════════════════════════════════════════════════════
 # Budget limits

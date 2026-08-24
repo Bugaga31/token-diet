@@ -5,12 +5,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from token_diet.core import count_tokens  # noqa: E402
 from token_diet.lazy_skills import (  # noqa: E402
     Skill,
     SkillRegistry,
     default_registry,
 )
-from token_diet.core import count_tokens  # noqa: E402
 
 
 def make_reg() -> SkillRegistry:

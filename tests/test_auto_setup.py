@@ -1,12 +1,9 @@
 """Tests for auto_setup.py — tool detection + configuration."""
 
-import os
-import pytest
 from token_diet.auto_setup import (
-    ToolConfig,
     TOOLS,
-    detect_tools,
     detect_and_report,
+    detect_tools,
     generate_shell_config,
     list_tools,
 )

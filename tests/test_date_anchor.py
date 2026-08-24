@@ -1,11 +1,9 @@
 """Tests for date_anchor.py — the date anchor module (never guess dates)."""
 
-from datetime import date, timedelta
+from datetime import date
 
 from token_diet.date_anchor import (
-    RUS_HOLIDAYS_2026,
     date_anchor_block,
-    days_until,
     describe_horizon,
     format_date_iso,
     format_date_ru,
@@ -18,7 +16,6 @@ from token_diet.date_anchor import (
     next_trading_day,
     today,
     trading_days_between,
-    trading_days_until,
     weekday_ru,
 )
 
