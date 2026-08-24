@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.27.1"
+__version__ = "3.28.0"
 
 __all__ = [
     "__version__",
@@ -562,6 +562,17 @@ __all__ = [
     "heal_cli",
     "verify_docs",
     "render_report",
+    "SpendForecast",
+    "UsageDay",
+    "Anomaly",
+    "forecast_spend",
+    "forecast_from_pairs",
+    "budget_runway",
+    "Holding",
+    "RebalancePlan",
+    "TradeAdvice",
+    "rebalance_plan",
+    "drift_report",
 ]
 
 _LAZY_IMPORTS = {
@@ -1282,6 +1293,20 @@ _LAZY_IMPORTS = {
 
 import importlib
 import typing as _typing
+
+_LAZY_IMPORTS.update({
+    "Anomaly": ("token_diet.spend_forecast", "Anomaly"),
+    "Holding": ("token_diet.rebalance_advisor", "Holding"),
+    "RebalancePlan": ("token_diet.rebalance_advisor", "RebalancePlan"),
+    "SpendForecast": ("token_diet.spend_forecast", "SpendForecast"),
+    "TradeAdvice": ("token_diet.rebalance_advisor", "TradeAdvice"),
+    "UsageDay": ("token_diet.spend_forecast", "UsageDay"),
+    "budget_runway": ("token_diet.spend_forecast", "budget_runway"),
+    "drift_report": ("token_diet.rebalance_advisor", "drift_report"),
+    "forecast_from_pairs": ("token_diet.spend_forecast", "forecast_from_pairs"),
+    "forecast_spend": ("token_diet.spend_forecast", "forecast_spend"),
+    "rebalance_plan": ("token_diet.rebalance_advisor", "rebalance_plan"),
+})
 
 
 def __getattr__(name: str) -> _typing.Any:
