@@ -1,3 +1,14 @@
+# Token Diet — v3.30.0 «Free Neurons»
+
+### ollama_bridge — бесплатные локальные нейросети
+Авто-детект Ollama-сервера (OLLAMA_HOST → :11434 → :8080). Список моделей,
+generate/chat, эмбеддинги с L2-нормализацией и кэшем. ':cloud'-модели —
+только fallback, приоритет локальным (ноль рублей, ноль ключей).
+`ollama_embed_fn()` подключается прямо в `EmbeddingCache(embed=...)`:
+живая проверка — пара вопросов про Сбербанк дала SAFE-хит с sim=0.98.
+`neural_status_block()` для doctor.
+
+Тесты: +17 → 1587 зелёных.
 # Token Diet — v3.29.0 «Agent Infrastructure»
 
 Пять модулей инфраструктуры для агента: ордера, стопы, Reddit, видео, сеть.

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.29.0"
+__version__ = "3.30.0"
 
 __all__ = [
     "__version__",
@@ -599,6 +599,10 @@ __all__ = [
     "storyboard_block",
     "video_metadata",
     "watch_positions",
+    "OllamaBridge",
+    "OllamaModel",
+    "neural_status_block",
+    "ollama_embed_fn",
 ]
 
 _LAZY_IMPORTS = {
@@ -1320,6 +1324,12 @@ _LAZY_IMPORTS = {
 import importlib
 import typing as _typing
 
+_LAZY_IMPORTS.update({
+    "OllamaBridge": ("token_diet.ollama_bridge", "OllamaBridge"),
+    "OllamaModel": ("token_diet.ollama_bridge", "OllamaModel"),
+    "neural_status_block": ("token_diet.ollama_bridge", "neural_status_block"),
+    "ollama_embed_fn": ("token_diet.ollama_bridge", "ollama_embed_fn"),
+})
 _LAZY_IMPORTS.update({
     "DomainBudget": ("token_diet.network_control", "DomainBudget"),
     "FetchError": ("token_diet.network_control", "FetchError"),
