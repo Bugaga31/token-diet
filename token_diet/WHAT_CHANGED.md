@@ -1,3 +1,34 @@
+# Token Diet — v3.29.0 «Agent Infrastructure»
+
+Пять модулей инфраструктуры для агента: ордера, стопы, Reddit, видео, сеть.
+
+### order_orchestra — оркестр ордеров (инфраструктура исполнения)
+Конвейер PLAN → VALIDATE → PAPER → LIVE. По умолчанию всё в PAPER;
+LIVE требует строку-подтверждение из sha256 содержимого корзины
+(случайное «да» не сработает). Аудит каждой корзины в JSONL.
+`plan_stop_bracket()` строит связку «вход + ATR-стоп + тейк» (R:R настраивается).
+
+### position_guard — страж портфеля (стопы)
+По каждой позиции: статус OK/WARN/BREACHED и рекомендованный уровень стопа
+(max(фикс −5% от средней, ATR-trailing freqtrade-style)). Ордеров не ставит —
+отчёт человеку; подтверждённое исполнение через order_orchestra.
+
+### reddit_reader — посты, комментарии, картинки
+Публичный JSON API без ключей: fetch_subreddit / fetch_comments /
+collect_images (i.redd.it, imgur, превью, галереи) + токен-бережный digest().
+Только чтение.
+
+### video_frames — просмотр YouTube
+Метаданные/главы (yt-dlp), ключевые кадры через ffmpeg, storyboard_block()
+для vision-контекста. Пара к youtube_learner (субтитры). Деградирует тихо,
+если бинарников нет.
+
+### network_control — управление сетью для всех модулей
+polite_fetch (retry+backoff+Retry-After), RateLimiter по доменам,
+DomainBudget (жёсткий лимит запросов), check_connectivity — матрица
+связности MOEX/Reddit/YouTube/GitHub одним вызовом.
+
+Тесты: +49 → 1570 зелёных.
 # Token Diet — v3.28.0
 
 ## Новые модули

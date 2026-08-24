@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.28.0"
+__version__ = "3.29.0"
 
 __all__ = [
     "__version__",
@@ -573,6 +573,32 @@ __all__ = [
     "TradeAdvice",
     "rebalance_plan",
     "drift_report",
+    "DomainBudget",
+    "FetchError",
+    "GuardReport",
+    "GuardVerdict",
+    "HostCheck",
+    "OrderIntent",
+    "OrderOrchestra",
+    "OrchestrationResult",
+    "Position",
+    "RateLimiter",
+    "RedditComment",
+    "RedditPost",
+    "VideoMeta",
+    "check_connectivity",
+    "connectivity_block",
+    "collect_images",
+    "digest",
+    "extract_keyframes",
+    "fetch_comments",
+    "fetch_subreddit",
+    "guard_position",
+    "polite_fetch",
+    "plan_stop_bracket",
+    "storyboard_block",
+    "video_metadata",
+    "watch_positions",
 ]
 
 _LAZY_IMPORTS = {
@@ -1294,6 +1320,34 @@ _LAZY_IMPORTS = {
 import importlib
 import typing as _typing
 
+_LAZY_IMPORTS.update({
+    "DomainBudget": ("token_diet.network_control", "DomainBudget"),
+    "FetchError": ("token_diet.network_control", "FetchError"),
+    "GuardReport": ("token_diet.position_guard", "GuardReport"),
+    "GuardVerdict": ("token_diet.position_guard", "GuardVerdict"),
+    "HostCheck": ("token_diet.network_control", "HostCheck"),
+    "OrderIntent": ("token_diet.order_orchestra", "OrderIntent"),
+    "OrderOrchestra": ("token_diet.order_orchestra", "OrderOrchestra"),
+    "OrchestrationResult": ("token_diet.order_orchestra", "OrchestrationResult"),
+    "Position": ("token_diet.position_guard", "Position"),
+    "RateLimiter": ("token_diet.network_control", "RateLimiter"),
+    "RedditComment": ("token_diet.reddit_reader", "RedditComment"),
+    "RedditPost": ("token_diet.reddit_reader", "RedditPost"),
+    "VideoMeta": ("token_diet.video_frames", "VideoMeta"),
+    "check_connectivity": ("token_diet.network_control", "check_connectivity"),
+    "connectivity_block": ("token_diet.network_control", "connectivity_block"),
+    "collect_images": ("token_diet.reddit_reader", "collect_images"),
+    "digest": ("token_diet.reddit_reader", "digest"),
+    "extract_keyframes": ("token_diet.video_frames", "extract_keyframes"),
+    "fetch_comments": ("token_diet.reddit_reader", "fetch_comments"),
+    "fetch_subreddit": ("token_diet.reddit_reader", "fetch_subreddit"),
+    "guard_position": ("token_diet.position_guard", "guard_position"),
+    "polite_fetch": ("token_diet.network_control", "polite_fetch"),
+    "plan_stop_bracket": ("token_diet.order_orchestra", "plan_stop_bracket"),
+    "storyboard_block": ("token_diet.video_frames", "storyboard_block"),
+    "video_metadata": ("token_diet.video_frames", "video_metadata"),
+    "watch_positions": ("token_diet.position_guard", "watch_positions"),
+})
 _LAZY_IMPORTS.update({
     "Anomaly": ("token_diet.spend_forecast", "Anomaly"),
     "Holding": ("token_diet.rebalance_advisor", "Holding"),
