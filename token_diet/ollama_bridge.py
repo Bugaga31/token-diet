@@ -50,13 +50,22 @@ class OllamaModel:
 
 @dataclass
 class OllamaBridge:
-    """Мост к локальному серверу Ollama."""
+    """Мост к локальному серверу Ollama.
+
+    Ресурсная политика: модели по умолчанию выгружаются из памяти сразу
+    после вызова (``keep_alive="0"``) — Ollama не держит гигабайты в RAM
+    между запросами. Поменять: переменная окружения
+    ``TOKEN_DIET_OLLAMA_KEEP_ALIVE`` ("5m", "-1" = держать вечно).
+    """
 
     host: str | None = None
     timeout: float = _DEFAULT_TIMEOUT
+    keep_alive: str | None = None      # None → env или "0"
     _embed_cache: dict[str, list[float]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
+        if self.keep_alive is None:
+            self.keep_alive = os.environ.get("TOKEN_DIET_OLLAMA_KEEP_ALIVE", "0")
         if self.host is None:
             for candidate in _CANDIDATE_HOSTS:
                 if not candidate:
@@ -126,16 +135,41 @@ class OllamaBridge:
     def generate(
         self, prompt: str, model: str | None = None,
         system: str = "", stream: bool = False,
+        keep_alive: str | None = None,
     ) -> str | None:
-        """Ответ локальной LLM; None при недоступности."""
+        """Ответ локальной LLM; None при недоступности.
+
+        После ответа модель выгружается (keep_alive из политики),
+        чтобы не жрать RAM в простое.
+        """
         model = model or self.pick_model("chat")
         if not model:
             return None
-        payload: dict[str, Any] = {"model": model, "prompt": prompt, "stream": False}
+        payload: dict[str, Any] = {
+            "model": model, "prompt": prompt, "stream": False,
+            "keep_alive": keep_alive if keep_alive is not None else self.keep_alive,
+        }
         if system:
             payload["system"] = system
         data = self._post("generate", payload)
         return (data or {}).get("response")
+
+    def chat(
+        self, messages: list[dict[str, Any]], model: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        keep_alive: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Диалог /api/chat (нужен для tool-calling); None при недоступности."""
+        model = model or self.pick_model("chat")
+        if not model:
+            return None
+        payload: dict[str, Any] = {
+            "model": model, "messages": messages, "stream": False,
+            "keep_alive": keep_alive if keep_alive is not None else self.keep_alive,
+        }
+        if tools:
+            payload["tools"] = tools
+        return self._post("chat", payload)
 
     def embed(self, text: str, model: str | None = None) -> list[float] | None:
         """Эмбеддинг текста (кэшируется по паре модель+текст)."""
@@ -145,13 +179,32 @@ class OllamaBridge:
         key = f"{model}\x00{text}"
         if key in self._embed_cache:
             return self._embed_cache[key]
-        data = self._post("embed", {"model": model, "input": text}, timeout=60)
+        data = self._post("embed", {
+            "model": model, "input": text, "keep_alive": self.keep_alive,
+        }, timeout=60)
         vecs = (data or {}).get("embeddings")
         if not vecs:
             return None
         vec = _l2_normalize(vecs[0])
         self._embed_cache[key] = vec
         return vec
+
+    # ── ресурсы ─────────────────────────────────────────────────
+
+    def loaded_models(self) -> list[str]:
+        """Модели, прямо сейчас сидящие в памяти."""
+        data = self._post("ps", {}, timeout=5, method="GET")
+        return [m.get("name", "") for m in (data or {}).get("models") or []]
+
+    def unload(self, model: str | None = None) -> int:
+        """Выгрузить модель (или все загруженные) из памяти. Сколько выгружено."""
+        targets = [model] if model else self.loaded_models()
+        done = 0
+        for m in targets:
+            if m and self._post("generate",
+                                {"model": m, "keep_alive": 0}, timeout=15):
+                done += 1
+        return done
 
 
 def _normalize_host(host: str) -> str:

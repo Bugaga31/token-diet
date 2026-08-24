@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Keep in sync with `version` in pyproject.toml.
-__version__ = "3.30.0"
+__version__ = "3.31.0"
 
 __all__ = [
     "__version__",
@@ -603,6 +603,12 @@ __all__ = [
     "OllamaModel",
     "neural_status_block",
     "ollama_embed_fn",
+    "AgentBrain",
+    "CloudBrain",
+    "ToolSpec",
+    "capability_block",
+    "default_tools",
+    "register_pack",
 ]
 
 _LAZY_IMPORTS = {
@@ -1324,6 +1330,14 @@ _LAZY_IMPORTS = {
 import importlib
 import typing as _typing
 
+_LAZY_IMPORTS.update({
+    "AgentBrain": ("token_diet.agent_brain", "AgentBrain"),
+    "CloudBrain": ("token_diet.cloud_brain", "CloudBrain"),
+    "ToolSpec": ("token_diet.agent_brain", "ToolSpec"),
+    "capability_block": ("token_diet.bootstrap", "capability_block"),
+    "default_tools": ("token_diet.agent_brain", "default_tools"),
+    "register_pack": ("token_diet.plugin_pack", "register_pack"),
+})
 _LAZY_IMPORTS.update({
     "OllamaBridge": ("token_diet.ollama_bridge", "OllamaBridge"),
     "OllamaModel": ("token_diet.ollama_bridge", "OllamaModel"),

@@ -12,8 +12,12 @@
 from __future__ import annotations
 
 import datetime as _dt
+import importlib.util as _importlib
 import os
+import shutil as _shutil
 import subprocess as _sp
+import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from .config import TD_HOME, TD_VAULT
@@ -170,6 +174,63 @@ def show_link() -> str:
         f"загрузит память, узнает правила и команды.\n"
         f"   Память целиком: `{VAULT_DIR / 'CONTEXT_ALL.md'}` (пересборка: token-diet memo export)"
     )
+
+
+# ── Capability matrix: что установлено, чего не хватает ────────────
+
+_CAPABILITIES: tuple[tuple[str, tuple[Callable[[], bool], ...], str], ...] = (
+    ("python>=3.10",
+     (lambda: _sp.run([sys.executable, "--version"],
+                      capture_output=True).returncode == 0,),
+     "https://python.org"),
+    ("ollama (локальные нейронки)",
+     (lambda: _shutil.which("ollama") is not None,),
+     "curl -fsSL https://ollama.com/install.sh | sh  # затем: ollama pull qwen3:1.7b"),
+    ("yt-dlp (YouTube субтитры/видео)",
+     (lambda: _shutil.which("yt-dlp") is not None,),
+     "pip install yt-dlp"),
+    ("ffmpeg (кадры видео)",
+     (lambda: _shutil.which("ffmpeg") is not None,),
+     "sudo apt install ffmpeg  # или brew install ffmpeg"),
+    ("tiktoken (точный подсчёт токенов)",
+     (lambda: _importlib.find_spec("tiktoken") is not None,),
+     "pip install 'token-diet[tiktoken]'"),
+    ("fastapi+uvicorn (прокси-сервер)",
+     (lambda: _importlib.find_spec("fastapi") is not None,
+      lambda: _importlib.find_spec("uvicorn") is not None),
+     "pip install 'token-diet[server]'"),
+    ("telethon (Telegram-модули)",
+     (lambda: _importlib.find_spec("telethon") is not None,),
+     "pip install telethon"),
+)
+
+
+def capability_matrix() -> list[dict[str, str]]:
+    """[{capability, status, install}] — что есть и как доустановить."""
+    rows = []
+    for name, checks, install in _CAPABILITIES:
+        ok = all(fn() for fn in checks)
+        rows.append({
+            "capability": name,
+            "status": "OK" if ok else "MISSING",
+            "install": "" if ok else install,
+        })
+    return rows
+
+
+def capability_block() -> str:
+    """Текстовый отчёт для новичка: что скачать, чтобы всё работало."""
+    rows = capability_matrix()
+    missing = [r for r in rows if r["status"] == "MISSING"]
+    lines = [f"[caps] готовность: {len(rows) - len(missing)}/{len(rows)}"]
+    for row in rows:
+        mark = "✓" if row["status"] == "OK" else "✗"
+        lines.append(f"[caps]   {mark} {row['capability']}")
+        if row["install"]:
+            lines.append(f"[caps]       установить: {row['install']}")
+    if not missing:
+        lines.append("[caps] всё на месте — полный арсенал доступен")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

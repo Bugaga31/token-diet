@@ -313,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = p.add_subparsers(dest="cmd")
 
+    sub.add_parser("capabilities", help="что установлено и как доустановить")
     sub.add_parser("doctor", help="проверка здоровья всех модулей")
     sub.add_parser("self-test", help="быстрый офлайн-тест ядра")
     sub.add_parser("serve", help="прокси-сервер экономии токенов")
@@ -480,6 +481,10 @@ def main(argv: list[str] | None = None) -> int:
         from token_diet.server import main as serve_main
         return serve_main()
 
+    if args.cmd == "capabilities":
+        from token_diet.bootstrap import capability_block
+        print(capability_block())
+        return 0
     if args.cmd == "doctor":
         return _doctor()
     if args.cmd == "self-test":
